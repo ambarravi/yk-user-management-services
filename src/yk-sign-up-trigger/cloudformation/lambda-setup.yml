@@ -6,6 +6,12 @@ Resources:
       FunctionName: yk-sign-up-trigger
       Handler: handler.handler
       Runtime: nodejs20.x
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Placeholder Lambda Function");
+              return { statusCode: 200, body: "Placeholder" };
+          };
       Role: !GetAtt SignUpLambdaExecutionRole.Arn
 
   SignUpLambdaExecutionRole:
