@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  SignUpTriggerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-sign-up-trigger
+      Handler: handler.handler
+      Runtime: nodejs20.x
+      Code:
+        S3Bucket: your-artifact-bucket
+        S3Key: path/to/sign-up-trigger.zip
+      Role: !GetAtt SignUpLambdaExecutionRole.Arn
+  SignUpLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SignUpLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                Resource: arn:aws:dynamodb:us-west-2:123456789012:table/UsersTable
