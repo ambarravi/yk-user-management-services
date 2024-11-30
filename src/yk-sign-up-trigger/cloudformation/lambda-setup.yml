@@ -6,9 +6,6 @@ Resources:
       FunctionName: yk-sign-up-trigger
       Handler: handler.handler
       Runtime: nodejs20.x
-      Code:
-        S3Bucket: your-artifact-bucket
-        S3Key: path/to/sign-up-trigger.zip
       Role: !GetAtt SignUpLambdaExecutionRole.Arn
 
   SignUpLambdaExecutionRole:
