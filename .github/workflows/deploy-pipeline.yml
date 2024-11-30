@@ -15,35 +15,43 @@ jobs:
           - yk-sign-up-trigger
 
     steps:
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Step 2: Set up AWS CLI
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}    
+          aws-region: ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
 
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: |
           cd src/${{ matrix.function }}
           npm install
 
+      # Step 4: Zip Lambda function code
       - name: Zip Lambda function code
         run: |
           cd src/${{ matrix.function }}
           zip -r function.zip . -x "*.yml" -x "*.json"
 
+      # Step 5: Deploy using CloudFormation
       - name: Run CloudFormation for Lambda
         run: |
           aws cloudformation deploy \
             --template-file src/${{ matrix.function }}/cloudformation/lambda-setup.yml \
             --stack-name user-management-${{ matrix.function }}-stack \
+            --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }} \
             --capabilities CAPABILITY_NAMED_IAM
 
+      # Step 6: Update Lambda function code
       - name: Update Lambda function code
         run: |
           aws lambda update-function-code \
             --function-name ${{ matrix.function }} \
-            --zip-file fileb://src/${{ matrix.function }}/function.zip
+            --zip-file fileb://src/${{ matrix.function }}/function.zip \
+            --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
