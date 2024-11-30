@@ -1,3 +1,5 @@
+// Lambda function to handle signup trigger
+
 const AWS = require("aws-sdk");
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
