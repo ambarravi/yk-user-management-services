@@ -10,6 +10,7 @@ Resources:
         S3Bucket: your-artifact-bucket
         S3Key: path/to/sign-up-trigger.zip
       Role: !GetAtt SignUpLambdaExecutionRole.Arn
+
   SignUpLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -28,4 +29,5 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:UpdateItem
-                Resource: arn:aws:dynamodb:us-west-2:123456789012:table/UsersTable
+                Resource:
+                  !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
