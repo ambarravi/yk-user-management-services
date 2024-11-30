@@ -12,8 +12,8 @@ jobs:
     strategy:
       matrix:
         function:
-          - sign-up-trigger
-          - update-role-api
+          - yk-sign-up-trigger
+          - yk-update-role-api
 
     steps:
       - name: Checkout code
