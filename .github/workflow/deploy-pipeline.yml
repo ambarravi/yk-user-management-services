@@ -11,40 +11,40 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        function: 
-          - yk-sign-up-trigger
+        function:
+          - sign-up-trigger
+          - update-role-api
 
     steps:
-      # Step 1: Checkout code from GitHub
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up AWS CLI with IAM credentials
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}     
+          aws-region: us-west-2
 
-      # Step 3: Install dependencies for Lambda (Node.js example)
       - name: Install dependencies
         run: |
-          echo "Installing dependencies for ${{ matrix.function }}"
           cd src/${{ matrix.function }}
           npm install
 
-      # Step 4: Zip the Lambda function code and its dependencies
       - name: Zip Lambda function code
         run: |
-          echo "Zipping Lambda function ${{ matrix.function }} code"
           cd src/${{ matrix.function }}
-          zip -r function.zip . -x "*.yml" -x "*.json"  # Exclude CloudFormation templates
+          zip -r function.zip . -x "*.yml" -x "*.json"
 
-      # Step 5: Deploy the Lambda function code directly to AWS Lambda
+      - name: Run CloudFormation for Lambda
+        run: |
+          aws cloudformation deploy \
+            --template-file src/${{ matrix.function }}/cloudformation/lambda-setup.yml \
+            --stack-name user-management-${{ matrix.function }}-stack \
+            --capabilities CAPABILITY_NAMED_IAM
+
       - name: Update Lambda function code
         run: |
-          echo "Updating Lambda function: ${{ matrix.function }}"
           aws lambda update-function-code \
             --function-name ${{ matrix.function }} \
             --zip-file fileb://src/${{ matrix.function }}/function.zip
