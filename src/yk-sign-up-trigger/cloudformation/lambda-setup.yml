@@ -1,19 +1,4 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Parameters:
-  BranchName:
-    Type: String
-    Default: dev
-    AllowedValues:
-      - dev
-      - main
-    Description: The branch name, used to determine the AWS region.
-
-Mappings:
-  RegionMapping:
-    dev:
-      Region: eu-west-1
-    main:
-      Region: us-west-1
 Resources:
   SignUpTriggerLambda:
     Type: AWS::Lambda::Function
@@ -21,9 +6,6 @@ Resources:
       FunctionName: yk-sign-up-trigger
       Handler: index.handler
       Runtime: nodejs18.x
-      Environment:
-        Variables:
-          AWS_REGION: !FindInMap [RegionMapping, !Ref BranchName, Region]
       Timeout : 30
       Code:
         ZipFile: |
