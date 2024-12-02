@@ -19,6 +19,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+            # Step 2: Set AWS Region based on the branch
+      - name: Set AWS Region
+        run: echo "AWS_REGION=$([[ '${{ github.ref }}' == 'refs/heads/main' ]] && echo 'us-west-1' || echo 'eu-west-1')" >> $GITHUB_ENV
+
       # Step 2: Set up AWS CLI
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v2
@@ -53,6 +57,7 @@ jobs:
             --template-file src/${{ matrix.function }}/cloudformation/lambda-setup.yml \
             --stack-name user-management-${{ matrix.function }}-stack \
             --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }} \
+            --parameter-overrides BranchName=$([[ '${{ github.ref }}' == 'refs/heads/main' ]] && echo 'main' || echo 'dev') \
             --capabilities CAPABILITY_NAMED_IAM
 
       # Step 7: Update Lambda function code

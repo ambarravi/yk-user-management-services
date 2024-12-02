@@ -1,14 +1,17 @@
 {
-    "name": "yojanakaar",
-    "version": "1.0.0",
-    "description": "Function to cpature user details after signup confirmation",
-    "main": "handler..js",
-    "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "dependencies": {     "aws-sdk": "^2.1317.0" },
-    "devDependencies": {},
-    "author": "Ravi Ambar",
-    "license": "MIT"
-  }
-  
+  "name": "yojanakaar",
+  "version": "1.0.0",
+  "description": "Function to capture user details after signup confirmation",
+  "main": "handler.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+      "@aws-sdk/lib-dynamodb": "^3.216.0",
+    "@aws-sdk/client-dynamodb": "^3.216.0"
+  },
+  "devDependencies": {},
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}

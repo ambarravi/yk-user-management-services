@@ -1,9 +1,12 @@
-const AWS = require("aws-sdk");
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
+import { DynamoDBClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+
+// Use the region from the environment variable
+const region = process.env.AWS_REGION || "eu-west-1"; // Default to us-east-1 if not set
+const dynamoDB = new DynamoDBClient({ region });
 
 const USERS_TABLE = "UsersTable"; // Replace with your table name
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   console.log("Event received from Cognito:", JSON.stringify(event, null, 2));
 
   try {
@@ -42,10 +45,12 @@ exports.handler = async (event) => {
 
     console.log("Update parameters:", JSON.stringify(updateParams, null, 2));
 
-    const result = await dynamoDB.update(updateParams).promise();
+    const command = new UpdateCommand(updateParams);
+    const result = await dynamoDB.send(command);
+
     console.log("DynamoDB update result:", JSON.stringify(result, null, 2));
 
-    return event;
+    return event; // Return the original event for Cognito
   } catch (error) {
     console.error("Error updating DynamoDB:", error.message);
     throw new Error(`Post-confirmation trigger failed: ${error.message}`);
