@@ -31,7 +31,6 @@ jobs:
       - name: Install dependencies
         run: |
           cd src/${{ matrix.function }}
-          npm uninstall aws-sdk
           npm install --production
       # Step 4: Zip Lambda function code
       - name: Zip Lambda function code
