@@ -32,13 +32,20 @@ jobs:
         run: |
           cd src/${{ matrix.function }}
           npm install --production
+
       # Step 4: Zip Lambda function code
       - name: Zip Lambda function code
         run: |
           cd src/${{ matrix.function }}
           zip -r function.zip . -x "*.yml" -x "*.json"
 
-      # Step 5: Deploy using CloudFormation
+      # Step 5: Upload zipped Lambda function to S3
+      - name: Upload Lambda function code to S3
+        run: |
+          aws s3 cp src/${{ matrix.function }}/function.zip s3://yk-zips/${{ matrix.function }}/function.zip \
+            --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
+
+      # Step 6: Deploy using CloudFormation
       - name: Run CloudFormation for Lambda
         run: |
           aws cloudformation deploy \
@@ -47,10 +54,11 @@ jobs:
             --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }} \
             --capabilities CAPABILITY_NAMED_IAM
 
-      # Step 6: Update Lambda function code
+      # Step 7: Update Lambda function code
       - name: Update Lambda function code
         run: |
           aws lambda update-function-code \
             --function-name ${{ matrix.function }} \
-            --zip-file fileb://src/${{ matrix.function }}/function.zip \
+            --s3-bucket your-s3-bucket-name \
+            --s3-key ${{ matrix.function }}/function.zip \
             --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
