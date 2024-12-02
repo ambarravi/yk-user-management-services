@@ -1,10 +1,9 @@
-import AWS from 'aws-sdk';
-
+const AWS = require("aws-sdk");
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
 const USERS_TABLE = "UsersTable"; // Replace with your table name
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   console.log("Event received from Cognito:", JSON.stringify(event, null, 2));
 
   try {
@@ -14,15 +13,14 @@ export const handler = async (event) => {
       throw new Error("Missing UserID (sub) from Cognito attributes");
     }
 
-    // Construct the item to update
     const updateParams = {
       TableName: USERS_TABLE,
       Key: { UserID },
       UpdateExpression: `
-        SET #email = :email, 
-            #firstName = :firstName, 
-            #lastName = :lastName, 
-            #mobile = :mobile, 
+        SET #email = :email,
+            #firstName = :firstName,
+            #lastName = :lastName,
+            #mobile = :mobile,
             #createdAt = :createdAt
       `,
       ExpressionAttributeNames: {
@@ -44,11 +42,10 @@ export const handler = async (event) => {
 
     console.log("Update parameters:", JSON.stringify(updateParams, null, 2));
 
-    // Perform the update
     const result = await dynamoDB.update(updateParams).promise();
     console.log("DynamoDB update result:", JSON.stringify(result, null, 2));
 
-    return event; // Return the original event for Cognito
+    return event;
   } catch (error) {
     console.error("Error updating DynamoDB:", error.message);
     throw new Error(`Post-confirmation trigger failed: ${error.message}`);
