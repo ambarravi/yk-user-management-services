@@ -5,7 +5,7 @@ Resources:
     Properties:
       FunctionName: yk-sign-up-trigger
       Handler: index.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs18.x
       Code:
         ZipFile: |
           exports.handler = async (event) => {
