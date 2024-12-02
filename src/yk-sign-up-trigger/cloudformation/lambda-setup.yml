@@ -4,7 +4,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: yk-sign-up-trigger
-      Handler: handler.handler
+      Handler: index.handler
       Runtime: nodejs20.x
       Code:
         ZipFile: |

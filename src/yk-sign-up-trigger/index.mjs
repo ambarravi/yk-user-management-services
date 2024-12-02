@@ -1,8 +1,8 @@
 // Lambda function to handle signup trigger
 
-const AWS = require("aws-sdk");
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
-
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { QueryCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+const dynamoDB = new DynamoDBClient();
 const USERS_TABLE = "UsersTable"; // Replace with your table name
 
 exports.handler = async (event) => {
