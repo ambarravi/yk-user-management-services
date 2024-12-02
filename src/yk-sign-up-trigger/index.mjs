@@ -1,4 +1,5 @@
-import { DynamoDBClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 // Use the region from the environment variable
 const region = process.env.AWS_REGION || "eu-west-1"; // Default to us-east-1 if not set
