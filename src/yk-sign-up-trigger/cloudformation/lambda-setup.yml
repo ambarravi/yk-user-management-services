@@ -5,7 +5,7 @@ Resources:
     Properties:
       FunctionName: yk-sign-up-trigger
       Handler: index.handler
-      Runtime: nodejs18.x
+      Runtime: nodejs20.x
       Timeout : 30
       Code:
         ZipFile: |
