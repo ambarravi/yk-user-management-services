@@ -44,6 +44,7 @@ jobs:
         run: |
           aws s3 cp src/${{ matrix.function }}/function.zip s3://yk-zips/${{ matrix.function }}/function.zip \
             --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
+    
 
       # Step 6: Deploy using CloudFormation
       - name: Run CloudFormation for Lambda
@@ -59,6 +60,6 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name ${{ matrix.function }} \
-            --s3-bucket your-s3-bucket-name \
+            --s3-bucket yk-zips \
             --s3-key ${{ matrix.function }}/function.zip \
             --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
