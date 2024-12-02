@@ -1,11 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Resources:
-  SignUpTriggerLambdaLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${SignUpTriggerLambda}"
-      RetentionInDays: 14  # Optional: Adjust retention period as needed
-
   SignUpTriggerLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -19,9 +13,6 @@ Resources:
               return { statusCode: 200, body: "Placeholder" };
           };
       Role: !GetAtt SignUpLambdaExecutionRole.Arn
-      Environment:
-        Variables:
-          LOG_GROUP_NAME: !Ref SignUpTriggerLambdaLogGroup
 
   SignUpLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -45,13 +36,13 @@ Resources:
                 Resource:
                   !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
 
-              # Allow writing logs to the log group
+              # Allow writing logs to log groups
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${SignUpTriggerLambda}:*
+                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
 
               # Allow invocation by Cognito
               - Effect: Allow
