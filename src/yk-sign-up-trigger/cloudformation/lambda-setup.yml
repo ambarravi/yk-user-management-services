@@ -6,6 +6,7 @@ Resources:
       FunctionName: yk-sign-up-trigger
       Handler: index.handler
       Runtime: nodejs18.x
+      Timeout : 30
       Code:
         ZipFile: |
           exports.handler = async (event) => {

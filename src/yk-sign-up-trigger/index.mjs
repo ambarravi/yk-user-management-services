@@ -1,11 +1,10 @@
-// Lambda function to handle signup trigger
+import AWS from 'aws-sdk';
 
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { QueryCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-const dynamoDB = new DynamoDBClient();
+const dynamoDB = new AWS.DynamoDB.DocumentClient();
+
 const USERS_TABLE = "UsersTable"; // Replace with your table name
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   console.log("Event received from Cognito:", JSON.stringify(event, null, 2));
 
   try {
