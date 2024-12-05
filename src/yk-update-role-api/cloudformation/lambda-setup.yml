@@ -140,4 +140,4 @@ UpdateRoleApiResource:
 Outputs:
   UpdateRoleApiEndpoint:
     Description: Endpoint for the UpdateRole API
-    Value: !Sub "https://${!FindInMap [EnvToResources, !Ref Env, ApiGatewayId]}.execute-api.${AWS::Region}.amazonaws.com/${ExistingApiStageName}/update-role"
+    Value: !Sub "https://${!FindInMap [EnvToResources, !Ref Env, ApiGatewayId]}.execute-api.${AWS::Region}.amazonaws.com/${!FindInMap [EnvToResources, !Ref Env, Stage]}/update-role"
