@@ -16,22 +16,21 @@ Mappings:
       Stage: dev
       ApiGatewayRootResourceId: 78iwchywp5
     Production:
-      ApiGatewayId: prod-api-gateway-id
+      ApiGatewayId: 27sqbwaad7
       UserPoolId: eu-west-1_hgUDdjyRr
       Stage: prod
-      ApiGatewayRootResourceId: root-resource-id-dev
+      ApiGatewayRootResourceId: 78iwchywp5
 
 Conditions:
   IsProduction: !Equals [!Ref Env, Production]
 
 Resources:
-
-UpdateRoleApiResource:
-  Type: AWS::ApiGateway::Resource
-  Properties:
-    RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-    ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId] 
-    PathPart: update-role
+  UpdateRoleApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId] 
+      PathPart: update-role
 
   # Lambda Function
   UpdateRoleLambda:
@@ -43,7 +42,10 @@ UpdateRoleApiResource:
       Timeout: 30
       Code:
         ZipFile: |
-          # Add your Lambda function code here
+          exports.handler = async (event) => {
+              console.log("Placeholder Lambda Function");
+              return { statusCode: 200, body: "Placeholder" };
+          };
       Environment:
         Variables:
           USERS_TABLE: "UsersTable"
@@ -67,7 +69,7 @@ UpdateRoleApiResource:
     Properties:
       UsagePlanName: "UpdateRoleUsagePlan"
       ApiStages:
-        - ApiId: !FindInMap [EnvToResources, !Ref Env, ApiId]
+        - ApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
           Stage: !FindInMap [EnvToResources, !Ref Env, Stage]
       Throttle:
         BurstLimit: 100
