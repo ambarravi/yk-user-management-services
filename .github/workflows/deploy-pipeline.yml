@@ -56,7 +56,6 @@ jobs:
             --parameter-overrides \
               Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
             --capabilities CAPABILITY_NAMED_IAM
-             --debug
 
       # Step 7: Update Lambda function code
       - name: Update Lambda function code
