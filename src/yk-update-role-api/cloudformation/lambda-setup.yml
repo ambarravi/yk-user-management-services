@@ -1,5 +1,4 @@
 AWSTemplateFormatVersion: "2010-09-09"
-
 Parameters:
   Env:
     Type: String
@@ -20,9 +19,6 @@ Mappings:
       UserPoolId: eu-west-1_hgUDdjyRr
       Stage: prod
       ApiGatewayRootResourceId: 78iwchywp5
-
-Conditions:
-  IsProduction: !Equals [!Ref Env, Production]
 
 Resources:
   UpdateRoleApiResource:
@@ -105,7 +101,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:UpdateItem
-                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable"
               - Effect: Allow
                 Action:
                   - cognito-idp:AdminUpdateUserAttributes
@@ -115,7 +111,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
 
   # API Gateway Lambda Integration
   UpdateRoleApiGatewayPermission:
@@ -124,21 +120,6 @@ Resources:
       FunctionName: !GetAtt UpdateRoleLambda.Arn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${!FindInMap [EnvToResources, !Ref Env, ApiGatewayId]}/*/*/update-role
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${!FindInMap [EnvToResources, !Ref Env, ApiGatewayId]}/*/*/update-role"
 
-  UpdateRoleApiMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-      ResourceId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]  # Use root resource ID from the mapping
-      HttpMethod: POST
-      AuthorizationType: API_KEY # Use "AWS_IAM" or "COGNITO_USER_POOLS" if needed
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateRoleLambda.Arn}/invocations
 
-Outputs:
-  UpdateRoleApiEndpoint:
-    Description: Endpoint for the UpdateRole API
-    Value: !Sub "https://${!FindInMap [EnvToResources, !Ref Env, ApiGatewayId]}.execute-api.${AWS::Region}.amazonaws.com/${!FindInMap [EnvToResources, !Ref Env, Stage]}/update-role"
