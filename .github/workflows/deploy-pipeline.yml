@@ -52,7 +52,8 @@ jobs:
           aws cloudformation deploy \
             --template-file src/${{ matrix.function }}/cloudformation/lambda-setup.yml \
             --stack-name user-management-${{ matrix.function }}-stack \
-            --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }} \
+            --parameter-overrides \
+              Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
             --capabilities CAPABILITY_NAMED_IAM
 
       # Step 7: Update Lambda function code
