@@ -13,6 +13,7 @@ jobs:
       matrix:
         function:
           - yk-sign-up-trigger
+          - yk-update-role-api
 
     steps:
       # Step 1: Checkout code
