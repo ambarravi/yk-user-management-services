@@ -13,12 +13,12 @@ Mappings:
     Development:
       ApiGatewayId: 27sqbwaad7
       UserPoolId: eu-west-1_hgUDdjyRr
-      Env: dev
+      Stage: dev
       ApiGatewayRootResourceId: 78iwchywp5
     Production:
       ApiGatewayId: prod-api-gateway-id
       UserPoolId: eu-west-1_hgUDdjyRr
-      Env: prod
+      Stage: prod
       ApiGatewayRootResourceId: root-resource-id-dev
 
 Conditions:
@@ -59,7 +59,7 @@ UpdateRoleApiResource:
       Enabled: true
       StageKeys:
         - RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-          StageName: !FindInMap [EnvToResources, !Ref Env, Env]
+          StageName: !FindInMap [EnvToResources, !Ref Env, Stage]
 
   # Usage Plan
   UsagePlan:
@@ -68,7 +68,7 @@ UpdateRoleApiResource:
       UsagePlanName: "UpdateRoleUsagePlan"
       ApiStages:
         - ApiId: !FindInMap [EnvToResources, !Ref Env, ApiId]
-          Stage: !FindInMap [EnvToResources, !Ref Env, Env]
+          Stage: !FindInMap [EnvToResources, !Ref Env, Stage]
       Throttle:
         BurstLimit: 100
         RateLimit: 50
