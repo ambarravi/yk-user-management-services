@@ -77,7 +77,6 @@ Resources:
       Quota:
         Limit: 1000
         Period: MONTH
-      ApiKeySource: HEADER
 
   # API Key Association
   ApiKeyUsagePlan:
