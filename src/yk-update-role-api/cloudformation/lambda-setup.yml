@@ -21,6 +21,7 @@ Mappings:
       ApiGatewayRootResourceId: 78iwchywp5
 
 Resources:
+
   UpdateRoleApiResource:
     Type: AWS::ApiGateway::Resource
     Properties:
