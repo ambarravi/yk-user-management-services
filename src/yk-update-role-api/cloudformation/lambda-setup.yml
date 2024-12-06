@@ -10,11 +10,36 @@ Parameters:
 Mappings:
   EnvToResources:
     Development:
+      ApiGatewayId: 27sqbwaad7
       UserPoolId: eu-west-1_hgUDdjyRr
+      Stage: dev
+      ApiGatewayRootResourceId: 78iwchywp5
     Production:
+      ApiGatewayId: 27sqbwaad7
       UserPoolId: eu-west-1_hgUDdjyRr
+      Stage: prod
+      ApiGatewayRootResourceId: 78iwchywp5
 
 Resources:
+
+  UpdateRoleApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId] 
+      PathPart: update-role
+
+  UpdateRoleApiPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      ResourceId: !Ref UpdateRoleApiResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateRoleLambda.Arn}/invocations"
 
   # Lambda Function
   UpdateRoleLambda:
@@ -27,7 +52,7 @@ Resources:
       Code:
         ZipFile: |
           exports.handler = async (event) => {
-              console.log("Placeholder Lambda Function");
+              console.log("Event received:", JSON.stringify(event));
               return { statusCode: 200, body: "Placeholder" };
           };
       Environment:
@@ -67,3 +92,12 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+
+  # API Gateway Lambda Integration
+  UpdateRoleApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt UpdateRoleLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:27sqbwaad7/*/POST/update-role"
