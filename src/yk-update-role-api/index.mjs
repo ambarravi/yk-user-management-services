@@ -3,15 +3,24 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import jwt from "jsonwebtoken";
 
-const REGION = process.env.AWS_REGION; // AWS region
-const USER_POOL_ID = process.env.USER_POOL_ID; // Cognito User Pool ID
-const ROLE_CONFIG = process.env.ROLE_CONFIG?.split(",") || ["user", "organizer"]; // Valid roles from environment variable
-const USERS_TABLE = process.env.USERS_TABLE; // DynamoDB Table
+const REGION = process.env.AWS_REGION;
+const USER_POOL_ID = process.env.USER_POOL_ID;
+const ROLE_CONFIG = process.env.ROLE_CONFIG?.split(",") || ["user", "organizer"];
+const USERS_TABLE = process.env.USERS_TABLE;
 
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
 export const handler = async (event) => {
+  // Handle OPTIONS (preflight request) here
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({ message: 'CORS preflight request success' }),
+    };
+  }
+
   try {
     // Parse the event body to extract role and token
     const { roleName, token } = JSON.parse(event.body);
@@ -20,6 +29,7 @@ export const handler = async (event) => {
     if (!ROLE_CONFIG.includes(roleName)) {
       return {
         statusCode: 400,
+        headers: getCorsHeaders(),
         body: JSON.stringify({ message: `Invalid role name: ${roleName}` }),
       };
     }
@@ -58,12 +68,14 @@ export const handler = async (event) => {
 
     return {
       statusCode: 200,
+      headers: getCorsHeaders(),
       body: JSON.stringify({ message: "Role updated successfully" }),
     };
   } catch (error) {
     console.error("Error:", error);
     return {
       statusCode: 500,
+      headers: getCorsHeaders(),
       body: JSON.stringify({ message: error.message || "Internal Server Error" }),
     };
   }
@@ -77,4 +89,14 @@ async function fetchJWKS(jwksUrl, kid) {
   const key = keys.find((k) => k.kid === kid);
   if (!key) throw new Error("Key not found in JWKS");
   return `-----BEGIN PUBLIC KEY-----\n${key.x5c[0]}\n-----END PUBLIC KEY-----`;
+}
+
+// Helper function to get CORS headers
+function getCorsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "http://localhost:3000", // Change to your CloudFront URL for production
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Amz-Date, X-Api-Key, X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "OPTIONS, POST, GET, PUT, DELETE",
+    "Access-Control-Allow-Credentials": "true", // Allow credentials if needed (cookies, etc.)
+  };
 }
