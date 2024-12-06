@@ -22,11 +22,13 @@ export const handler = async (event) => {
   }
 
   try {
+    console.log('Input event');
+    console.log(event);
     // Parse the event body to extract role and token
-    const { roleName, token } = JSON.parse(event.body);
+    
 
     // Validate role
-    if (!ROLE_CONFIG.includes(roleName)) {
+    if (!ROLE_CONFIG.includes(event.tempRole)) {
       return {
         statusCode: 400,
         headers: getCorsHeaders(),
@@ -34,11 +36,35 @@ export const handler = async (event) => {
       };
     }
 
+    if (!authHeader) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ message: "Authorization header missing" }),
+      };
+    }
+
+    console.log('Check  Token ' + token);
+    const authHeader = event.headers.Authorization || event.headers.authorization;
+
+      // Extract the Bearer token
+      console.log('Extract  Token ' + token);
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ message: "Bearer token missing" }),
+      };
+    }
+
+    console.log('Processing  Token ' + token);
     // Validate JWT token and extract user ID
     const decodedToken = jwt.decode(token, { complete: true });
     if (!decodedToken || !decodedToken.payload) {
       throw new Error("Invalid or missing token");
     }
+
+    console.log('Decode Token ' + decodedToken);
+
     const userId = decodedToken.payload.sub;
 
     // Verify JWT token
