@@ -1,7 +1,7 @@
 import { CognitoIdentityProviderClient, AdminUpdateUserAttributesCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { decode, verify } from "jsonwebtoken";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = process.env.USER_POOL_ID;
@@ -10,6 +10,7 @@ const USERS_TABLE = process.env.USERS_TABLE;
 
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
+const JWKS_URL = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/jwks.json`;
 
 export const handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
@@ -21,8 +22,7 @@ export const handler = async (event) => {
   }
 
   try {
-    console.log("Input event");
-    console.log(event);
+    console.log("Input event:", event);
 
     const authHeader = event.headers.Authorization || event.headers.authorization;
     if (!authHeader) {
@@ -40,22 +40,19 @@ export const handler = async (event) => {
       };
     }
 
-    console.log("Processing Token", token);
+    console.log("Processing Token:", token);
 
-    // Decode the token
-    const decodedToken = decode(token, { complete: true });
-    if (!decodedToken || !decodedToken.payload) {
-      throw new Error("Invalid or missing token");
-    }
+    // Create a remote JWKS set
+    const JWKS = createRemoteJWKSet(new URL(JWKS_URL));
 
-    console.log("Decoded Token:", decodedToken);
+    // Verify the token and extract payload
+    const { payload } = await jwtVerify(token, JWKS, {
+      algorithms: ["RS256"],
+    });
 
-    const userId = decodedToken.payload.sub;
+    console.log("Decoded Token Payload:", payload);
 
-    // Verify the token
-    const JWKS_URL = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/jwks.json`;
-    const publicKey = await fetchJWKS(JWKS_URL, decodedToken.header.kid);
-    verify(token, publicKey, { algorithms: ["RS256"] });
+    const userId = payload.sub;
 
     // Extract role and validate
     const roleName = event.tempRole;
@@ -101,16 +98,6 @@ export const handler = async (event) => {
     };
   }
 };
-
-// Helper function to fetch the public key from JWKS
-async function fetchJWKS(jwksUrl, kid) {
-  const response = await fetch(jwksUrl);
-  if (!response.ok) throw new Error("Unable to fetch JWKS");
-  const { keys } = await response.json();
-  const key = keys.find((k) => k.kid === kid);
-  if (!key) throw new Error("Key not found in JWKS");
-  return `-----BEGIN PUBLIC KEY-----\n${key.x5c[0]}\n-----END PUBLIC KEY-----`;
-}
 
 // Helper function to get CORS headers
 function getCorsHeaders() {
