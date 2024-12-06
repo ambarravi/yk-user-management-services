@@ -1,8 +1,7 @@
 import { CognitoIdentityProviderClient, AdminUpdateUserAttributesCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
-//import jwt from "jsonwebtoken";
-const jwt = require("jsonwebtoken");
+import { decode, verify } from "jsonwebtoken";
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = process.env.USER_POOL_ID;
@@ -13,30 +12,19 @@ const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
 export const handler = async (event) => {
-  // Handle OPTIONS (preflight request) here
-  if (event.httpMethod === 'OPTIONS') {
+  if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
       headers: getCorsHeaders(),
-      body: JSON.stringify({ message: 'CORS preflight request success' }),
+      body: JSON.stringify({ message: "CORS preflight request success" }),
     };
   }
 
   try {
-    console.log('Input event');
+    console.log("Input event");
     console.log(event);
-    // Parse the event body to extract role and token
-    
 
-    // Validate role
-    if (!ROLE_CONFIG.includes(event.tempRole)) {
-      return {
-        statusCode: 400,
-        headers: getCorsHeaders(),
-        body: JSON.stringify({ message: `Invalid role name: ${roleName}` }),
-      };
-    }
-
+    const authHeader = event.headers.Authorization || event.headers.authorization;
     if (!authHeader) {
       return {
         statusCode: 401,
@@ -44,12 +32,7 @@ export const handler = async (event) => {
       };
     }
 
-    console.log('Check  Token ' + token);
-    const authHeader = event.headers.Authorization || event.headers.authorization;
-
-      // Extract the Bearer token
-      console.log('Extract  Token ' + token);
-    const token = authHeader.split(' ')[1];
+    const token = authHeader.split(" ")[1];
     if (!token) {
       return {
         statusCode: 401,
@@ -57,21 +40,32 @@ export const handler = async (event) => {
       };
     }
 
-    console.log('Processing  Token ' + token);
-    // Validate JWT token and extract user ID
-    const decodedToken = jwt.decode(token, { complete: true });
+    console.log("Processing Token", token);
+
+    // Decode the token
+    const decodedToken = decode(token, { complete: true });
     if (!decodedToken || !decodedToken.payload) {
       throw new Error("Invalid or missing token");
     }
 
-    console.log('Decode Token ' + decodedToken);
+    console.log("Decoded Token:", decodedToken);
 
     const userId = decodedToken.payload.sub;
 
-    // Verify JWT token
+    // Verify the token
     const JWKS_URL = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/jwks.json`;
     const publicKey = await fetchJWKS(JWKS_URL, decodedToken.header.kid);
-    jwt.verify(token, publicKey, { algorithms: ["RS256"] });
+    verify(token, publicKey, { algorithms: ["RS256"] });
+
+    // Extract role and validate
+    const roleName = event.tempRole;
+    if (!ROLE_CONFIG.includes(roleName)) {
+      return {
+        statusCode: 400,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({ message: `Invalid role name: ${roleName}` }),
+      };
+    }
 
     // Update role in Cognito
     const cognitoParams = {
@@ -121,9 +115,10 @@ async function fetchJWKS(jwksUrl, kid) {
 // Helper function to get CORS headers
 function getCorsHeaders() {
   return {
-    "Access-Control-Allow-Origin": "http://localhost:3000", // Change to your CloudFront URL for production
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Amz-Date, X-Api-Key, X-Amz-Security-Token",
+    "Access-Control-Allow-Origin": "http://localhost:3000", // Update with your production URL
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, X-Amz-Date, X-Api-Key, X-Amz-Security-Token",
     "Access-Control-Allow-Methods": "OPTIONS, POST, GET, PUT, DELETE",
-    "Access-Control-Allow-Credentials": "true", // Allow credentials if needed (cookies, etc.)
+    "Access-Control-Allow-Credentials": "true",
   };
 }
