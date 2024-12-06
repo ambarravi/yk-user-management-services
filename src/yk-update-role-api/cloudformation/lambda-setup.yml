@@ -37,7 +37,7 @@ Resources:
       RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
       IdentitySource: method.request.header.Authorization
       ProviderARNs:
-        - !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${!FindInMap [EnvToResources, !Ref Env, UserPoolId]}"
+        - !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${FindInMap [EnvToResources, ${Env}, UserPoolId]}"
 
   UpdateRoleApiPostMethod:
     Type: AWS::ApiGateway::Method
