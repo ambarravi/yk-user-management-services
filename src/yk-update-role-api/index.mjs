@@ -1,7 +1,8 @@
 import { CognitoIdentityProviderClient, AdminUpdateUserAttributesCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import jwt from "jsonwebtoken";
+//import jwt from "jsonwebtoken";
+const jwt = require("jsonwebtoken");
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = process.env.USER_POOL_ID;
