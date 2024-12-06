@@ -10,24 +10,11 @@ Parameters:
 Mappings:
   EnvToResources:
     Development:
-      ApiGatewayId: 27sqbwaad7
       UserPoolId: eu-west-1_hgUDdjyRr
-      Stage: dev
-      ApiGatewayRootResourceId: 78iwchywp5
     Production:
-      ApiGatewayId: 27sqbwaad7
       UserPoolId: eu-west-1_hgUDdjyRr
-      Stage: prod
-      ApiGatewayRootResourceId: 78iwchywp5
 
 Resources:
-
-  UpdateRoleApiResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId] 
-      PathPart: update-role
 
   # Lambda Function
   UpdateRoleLambda:
@@ -49,39 +36,6 @@ Resources:
           ROLE_CONFIG: "user,organizer"
           USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
       Role: !GetAtt UpdateRoleApiExecutionRole.Arn
-
-  # API Key
-  ApiKey:
-    Type: AWS::ApiGateway::ApiKey
-    Properties:
-      Name: "UpdateRoleApiKey"
-      Enabled: true
-      StageKeys:
-        - RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-          StageName: !FindInMap [EnvToResources, !Ref Env, Stage]
-
-  # Usage Plan
-  UsagePlan:
-    Type: AWS::ApiGateway::UsagePlan
-    Properties:
-      UsagePlanName: "UpdateRoleUsagePlan"
-      ApiStages:
-        - ApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-          Stage: !FindInMap [EnvToResources, !Ref Env, Stage]
-      Throttle:
-        BurstLimit: 100
-        RateLimit: 50
-      Quota:
-        Limit: 1000
-        Period: MONTH
-
-  # API Key Association
-  ApiKeyUsagePlan:
-    Type: AWS::ApiGateway::UsagePlanKey
-    Properties:
-      KeyId: !Ref ApiKey
-      KeyType: API_KEY
-      UsagePlanId: !Ref UsagePlan
 
   # Lambda Execution Role
   UpdateRoleApiExecutionRole:
@@ -113,15 +67,3 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
-
-  # API Gateway Lambda Integration
-  UpdateRoleApiGatewayPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt UpdateRoleLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:27sqbwaad7/*/*/update-role"
-
-
-
