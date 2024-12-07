@@ -3,7 +3,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 //import { createRemoteJWKSet, jwtVerify } from "jose";
 //import { jwtVerify } from 'jose/dist/browser/jwt/verify'
-import { decodeJwt, importJWK, jwtVerify } from 'jose';
+import { decodeJwt, importJWK, jwtVerify , createRemoteJWKSet } from 'jose';
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = process.env.USER_POOL_ID;
@@ -58,6 +58,7 @@ export const handler = async (event) => {
 
     // Extract role and validate
     const roleName = event.tempRole;
+    console.log("Decoded Token roleName:", roleName);
     if (!ROLE_CONFIG.includes(roleName)) {
       return {
         statusCode: 400,
@@ -74,7 +75,7 @@ export const handler = async (event) => {
     };
     const updateUserCommand = new AdminUpdateUserAttributesCommand(cognitoParams);
     await cognitoClient.send(updateUserCommand);
-
+    console.log("Update role in Cognito:");
     // Update role in DynamoDB
     const dynamoParams = {
       TableName: USERS_TABLE,
@@ -85,7 +86,7 @@ export const handler = async (event) => {
     };
     const updateCommand = new UpdateCommand(dynamoParams);
     await dynamoDBClient.send(updateCommand);
-
+    console.log("Update role in DDB:");
     return {
       statusCode: 200,
       headers: getCorsHeaders(),
