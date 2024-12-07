@@ -109,7 +109,7 @@ function getCorsHeaders(origin) {
     "https://dom5rgdes5ko4.cloudfront.net",
   ];
 
-  // Check if the incoming origin is in the allowed list
+  // Check if the incoming origin is in the allowed list // 
   const isOriginAllowed = allowedOrigins.includes(origin);
 
   return {
