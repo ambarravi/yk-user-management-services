@@ -103,9 +103,17 @@ export const handler = async (event) => {
 };
 
 // Helper function to get CORS headers
-function getCorsHeaders() {
+function getCorsHeaders(origin) {
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "https://dom5rgdes5ko4.cloudfront.net",
+  ];
+
+  // Check if the incoming origin is in the allowed list
+  const isOriginAllowed = allowedOrigins.includes(origin);
+
   return {
-    "Access-Control-Allow-Origin": "http://localhost:3000", // Update with your production URL
+    "Access-Control-Allow-Origin": isOriginAllowed ? origin : "http://localhost:3000",
     "Access-Control-Allow-Headers":
       "Content-Type, Authorization, X-Amz-Date, X-Api-Key, X-Amz-Security-Token",
     "Access-Control-Allow-Methods": "OPTIONS, POST, GET, PUT, DELETE",
