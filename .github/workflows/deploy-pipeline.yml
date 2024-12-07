@@ -38,7 +38,7 @@ jobs:
       - name: Zip Lambda function code
         run: |
           cd src/${{ matrix.function }}
-          zip -r function.zip . -x "*.yml" -x "*.json"
+          zip -r function.zip . -x "*.yml"
 
       # Step 5: Upload zipped Lambda function to S3
       - name: Upload Lambda function code to S3

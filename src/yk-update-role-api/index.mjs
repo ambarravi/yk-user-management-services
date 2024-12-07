@@ -1,7 +1,9 @@
 import { CognitoIdentityProviderClient, AdminUpdateUserAttributesCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+//import { createRemoteJWKSet, jwtVerify } from "jose";
+//import { jwtVerify } from 'jose/dist/browser/jwt/verify'
+import { decodeJwt, importJWK, jwtVerify } from 'jose';
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = process.env.USER_POOL_ID;
@@ -46,7 +48,7 @@ export const handler = async (event) => {
     const JWKS = createRemoteJWKSet(new URL(JWKS_URL));
 
     // Verify the token and extract payload
-    const { payload } = await jwtVerify(token, JWKS, {
+    const { payload } =  await jwtVerify(token, JWKS, {
       algorithms: ["RS256"],
     });
 
