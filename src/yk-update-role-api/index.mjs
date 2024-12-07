@@ -102,7 +102,7 @@ export const handler = async (event) => {
   }
 };
 
-// Helper function to get CORS headers
+// Helper function to get CORS headers , update prod URL
 function getCorsHeaders(origin) {
   const allowedOrigins = [
     "http://localhost:3000",
