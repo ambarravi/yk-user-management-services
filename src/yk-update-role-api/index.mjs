@@ -89,6 +89,8 @@ export const handler = async (event) => {
       ExpressionAttributeNames: { "#role": "role" },
       ExpressionAttributeValues: { ":tempRole": tempRole },
     };
+
+    console.log(dynamoParams);
     const updateCommand = new UpdateCommand(dynamoParams);
     await dynamoDBClient.send(updateCommand);
     console.log("Update role in DDB:");
