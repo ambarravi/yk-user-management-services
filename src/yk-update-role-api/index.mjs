@@ -57,7 +57,7 @@ export const handler = async (event) => {
     const userId = payload.sub;
 
     // Extract role and validate
-    parsedBody = JSON.parse(event.body);
+   let parsedBody = JSON.parse(event.body);
     console.log("Event Body")
     console.log(parsedBody);
     const { username, roleName } = parsedBody;
