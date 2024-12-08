@@ -60,15 +60,15 @@ export const handler = async (event) => {
    let parsedBody = JSON.parse(event.body);
     console.log("Event Body")
     console.log(parsedBody);
-    const { username, roleName } = parsedBody;
+    const { username, tempRole  } = parsedBody;
 
     
-    console.log("Decoded Token roleName:", roleName);
-    if (!ROLE_CONFIG.includes(roleName)) {
+    console.log("Decoded Token tempRole:", tempRole );
+    if (!ROLE_CONFIG.includes(tempRole)) {
       return {
         statusCode: 400,
         headers: getCorsHeaders(),
-        body: JSON.stringify({ message: `Invalid role name: ${roleName}` }),
+        body: JSON.stringify({ message: `Invalid role name: ${tempRole}` }),
       };
     }
 
@@ -76,7 +76,7 @@ export const handler = async (event) => {
     const cognitoParams = {
       UserPoolId: USER_POOL_ID,
       Username: userId,
-      UserAttributes: [{ Name: "custom:role", Value: roleName }],
+      UserAttributes: [{ Name: "custom:role", Value: tempRole }],
     };
     const updateUserCommand = new AdminUpdateUserAttributesCommand(cognitoParams);
     await cognitoClient.send(updateUserCommand);
@@ -85,9 +85,9 @@ export const handler = async (event) => {
     const dynamoParams = {
       TableName: USERS_TABLE,
       Key: { userId },
-      UpdateExpression: "SET #role = :roleName",
+      UpdateExpression: "SET #role = :tempRole",
       ExpressionAttributeNames: { "#role": "role" },
-      ExpressionAttributeValues: { ":roleName": roleName },
+      ExpressionAttributeValues: { ":tempRole": tempRole },
     };
     const updateCommand = new UpdateCommand(dynamoParams);
     await dynamoDBClient.send(updateCommand);
