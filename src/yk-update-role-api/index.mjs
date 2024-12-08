@@ -57,7 +57,12 @@ export const handler = async (event) => {
     const userId = payload.sub;
 
     // Extract role and validate
-    const roleName = event.tempRole;
+    parsedBody = JSON.parse(event.body);
+    console.log("Event Body")
+    console.log(parsedBody);
+    const { username, roleName } = parsedBody;
+
+    
     console.log("Decoded Token roleName:", roleName);
     if (!ROLE_CONFIG.includes(roleName)) {
       return {
