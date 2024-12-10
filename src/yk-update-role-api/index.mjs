@@ -84,7 +84,7 @@ export const handler = async (event) => {
     // Update role in DynamoDB
     const dynamoParams = {
       TableName: USERS_TABLE,
-      Key: { userId },
+      Key: { UserID },
       UpdateExpression: "SET #role = :tempRole",
       ExpressionAttributeNames: { "#role": "role" },
       ExpressionAttributeValues: { ":tempRole": tempRole },
