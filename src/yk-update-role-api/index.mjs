@@ -1,9 +1,7 @@
 import { CognitoIdentityProviderClient, AdminUpdateUserAttributesCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
-//import { createRemoteJWKSet, jwtVerify } from "jose";
-//import { jwtVerify } from 'jose/dist/browser/jwt/verify'
-import { decodeJwt, importJWK, jwtVerify , createRemoteJWKSet } from 'jose';
+import { decodeJwt, importJWK, jwtVerify, createRemoteJWKSet } from "jose";
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = process.env.USER_POOL_ID;
@@ -15,19 +13,22 @@ const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 const JWKS_URL = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/jwks.json`;
 
 export const handler = async (event) => {
+  const origin = event.headers.origin || event.headers.Origin;
+
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
-      headers: getCorsHeaders(),
+      headers: getCorsHeaders(origin),
       body: JSON.stringify({ message: "CORS preflight request success" }),
     };
   }
 
   try {
-    console.log("Input event:", event);
+    console.log("Input event:", JSON.stringify(event));
 
     const authHeader = event.headers.Authorization || event.headers.authorization;
     if (!authHeader) {
+      console.error("Authorization header missing");
       return {
         statusCode: 401,
         body: JSON.stringify({ message: "Authorization header missing" }),
@@ -36,6 +37,7 @@ export const handler = async (event) => {
 
     const token = authHeader.split(" ")[1];
     if (!token) {
+      console.error("Bearer token missing");
       return {
         statusCode: 401,
         body: JSON.stringify({ message: "Bearer token missing" }),
@@ -48,26 +50,26 @@ export const handler = async (event) => {
     const JWKS = createRemoteJWKSet(new URL(JWKS_URL));
 
     // Verify the token and extract payload
-    const { payload } =  await jwtVerify(token, JWKS, {
+    const { payload } = await jwtVerify(token, JWKS, {
       algorithms: ["RS256"],
     });
 
     console.log("Decoded Token Payload:", payload);
 
-    const userId = payload.sub;
+    const UserID = payload.sub;
 
     // Extract role and validate
-   let parsedBody = JSON.parse(event.body);
-    console.log("Event Body")
-    console.log(parsedBody);
-    const { username, tempRole  } = parsedBody;
+    const parsedBody = JSON.parse(event.body);
+    console.log("Event Body:", JSON.stringify(parsedBody));
 
-    
-    console.log("Decoded Token tempRole:", tempRole );
+    const { username, tempRole } = parsedBody;
+
+    console.log("Decoded Token tempRole:", tempRole);
     if (!ROLE_CONFIG.includes(tempRole)) {
+      console.error(`Invalid role name: ${tempRole}`);
       return {
         statusCode: 400,
-        headers: getCorsHeaders(),
+        headers: getCorsHeaders(origin),
         body: JSON.stringify({ message: `Invalid role name: ${tempRole}` }),
       };
     }
@@ -75,12 +77,19 @@ export const handler = async (event) => {
     // Update role in Cognito
     const cognitoParams = {
       UserPoolId: USER_POOL_ID,
-      Username: userId,
+      Username: UserID,
       UserAttributes: [{ Name: "custom:role", Value: tempRole }],
     };
-    const updateUserCommand = new AdminUpdateUserAttributesCommand(cognitoParams);
-    await cognitoClient.send(updateUserCommand);
-    console.log("Update role in Cognito:");
+
+    try {
+      const updateUserCommand = new AdminUpdateUserAttributesCommand(cognitoParams);
+      await cognitoClient.send(updateUserCommand);
+      console.log("Successfully updated role in Cognito for UserID:", UserID);
+    } catch (cognitoError) {
+      console.error("Failed to update role in Cognito:", cognitoError);
+      throw new Error("Error updating role in Cognito");
+    }
+
     // Update role in DynamoDB
     const dynamoParams = {
       TableName: USERS_TABLE,
@@ -90,35 +99,43 @@ export const handler = async (event) => {
       ExpressionAttributeValues: { ":tempRole": tempRole },
     };
 
-    console.log(dynamoParams);
-    const updateCommand = new UpdateCommand(dynamoParams);
-    await dynamoDBClient.send(updateCommand);
-    console.log("Update role in DDB:");
+    try {
+      console.log("DynamoDB Update Params:", JSON.stringify(dynamoParams));
+      const updateCommand = new UpdateCommand(dynamoParams);
+      await dynamoDBClient.send(updateCommand);
+      console.log("Successfully updated role in DynamoDB for UserID:", UserID);
+    } catch (dynamoError) {
+      console.error("Failed to update role in DynamoDB:", dynamoError);
+      throw new Error("Error updating role in DynamoDB");
+    }
+
     return {
       statusCode: 200,
-      headers: getCorsHeaders(),
+      headers: getCorsHeaders(origin),
       body: JSON.stringify({ message: "Role updated successfully" }),
     };
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error processing request:", error);
     return {
       statusCode: 500,
-      headers: getCorsHeaders(),
+      headers: getCorsHeaders(origin),
       body: JSON.stringify({ message: error.message || "Internal Server Error" }),
     };
   }
 };
 
-// Helper function to get CORS headers , update prod URL
+// Helper function to get CORS headers
 function getCorsHeaders(origin) {
+  console.log("in getCorsHeaders function");
+
   const allowedOrigins = [
     "http://localhost:3000",
     "https://dom5rgdes5ko4.cloudfront.net",
   ];
 
-  // Check if the incoming origin is in the allowed list // 
   const isOriginAllowed = allowedOrigins.includes(origin);
 
+  console.log("Allowed Origin:", isOriginAllowed);
   return {
     "Access-Control-Allow-Origin": isOriginAllowed ? origin : "http://localhost:3000",
     "Access-Control-Allow-Headers":
