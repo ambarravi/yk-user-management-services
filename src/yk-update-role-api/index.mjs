@@ -55,6 +55,18 @@ export const handler = async (event) => {
     });
 
     console.log("Decoded Token Payload:", payload);
+    const role = user['custom:role'];
+    console.log(role); // Output: 'organizer'
+
+    if(role)
+    {
+      return {
+        statusCode: 200,
+        headers: getCorsHeaders(origin),
+        body: JSON.stringify({ message: "Role is already assigned" }),
+      };
+
+    }
 
     const UserID = payload.sub;
 
