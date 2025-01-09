@@ -8,7 +8,7 @@ export async function handler(event) {
 
   const params = {
     TableName: "City",
-    IndexName: "CityNameIndex", // Query against the GSI
+    IndexName: "CityName-index", // Query against the GSI
     KeyConditionExpression: "CityName begins_with :cityPrefix",
     ExpressionAttributeValues: {
       ":cityPrefix": cityPrefix,
