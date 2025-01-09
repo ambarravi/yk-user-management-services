@@ -20,6 +20,7 @@ export async function handler(event) {
     console.log(command);
     console.log(dynamoDB);
     const result = await dynamoDB.send(command);
+    console.log("Result");
     console.log(result);
     return {
       statusCode: 200,
