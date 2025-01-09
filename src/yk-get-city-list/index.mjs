@@ -1,23 +1,18 @@
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 
-const region = process.env.AWS_REGION || "eu-west-1"; // Default region
-const dynamoDB = new DynamoDBClient({ region });
+const dynamoDB = new DynamoDBClient({ region: "eu-west-1" });
 
 export async function handler(event) {
   const cityPrefix = event.queryStringParameters?.cityPrefix || "";
-  console.log("Incoming Event:", JSON.stringify(event, null, 2)); // Debugging log
-  if (!cityPrefix) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "cityPrefix is required" }),
-    };
-  }
+  console.log(JSON.stringify(event));
 
   const params = {
-    TableName: "City", // Your DynamoDB Table name
-    KeyConditionExpression: "#city = :cityPrefix", // Use an appropriate key expression
-    ExpressionAttributeNames: { "#city": "cityName" },
-    ExpressionAttributeValues: { ":cityPrefix": { S: cityPrefix } }, // Ensure proper attribute type
+    TableName: "City",
+    IndexName: "CityNameIndex", // Query against the GSI
+    KeyConditionExpression: "CityName begins_with :cityPrefix",
+    ExpressionAttributeValues: {
+      ":cityPrefix": cityPrefix,
+    },
   };
 
   try {
@@ -29,7 +24,7 @@ export async function handler(event) {
       body: JSON.stringify(result.Items || []),
     };
   } catch (error) {
-    console.error("Error fetching city suggestions:", error);
+    console.error("Error querying cities:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Could not fetch city suggestions" }),
