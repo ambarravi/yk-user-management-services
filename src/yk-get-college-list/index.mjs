@@ -4,6 +4,7 @@ const region = process.env.AWS_REGION || "eu-west-1";
 const dynamoDB = new DynamoDBClient({ region });
 
 export async function handler(event) {
+  console.log(event);
   const searchText = event.queryStringParameters?.searchText || "";
 
   if (!searchText) {
