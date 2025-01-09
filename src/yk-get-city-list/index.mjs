@@ -17,6 +17,8 @@ export async function handler(event) {
   console.log(JSON.stringify(params));
   try {
     const command = new QueryCommand(params);
+    console.log(command);
+    console.log(dynamoDB);
     const result = await dynamoDB.send(command);
 
     return {
