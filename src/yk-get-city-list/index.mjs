@@ -5,7 +5,7 @@ const dynamoDB = new DynamoDBClient({ region });
 
 export async function handler(event) {
   const cityPrefix = event.queryStringParameters?.cityPrefix || "";
-
+  console.log("Incoming Event:", JSON.stringify(event, null, 2)); // Debugging log
   if (!cityPrefix) {
     return {
       statusCode: 400,
