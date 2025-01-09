@@ -14,7 +14,7 @@ export async function handler(event) {
   }
 
   const params = {
-    TableName: "CitiesTable", // Your DynamoDB Table name
+    TableName: "City", // Your DynamoDB Table name
     KeyConditionExpression: "#city = :cityPrefix", // Use an appropriate key expression
     ExpressionAttributeNames: { "#city": "cityName" },
     ExpressionAttributeValues: { ":cityPrefix": { S: cityPrefix } }, // Ensure proper attribute type
