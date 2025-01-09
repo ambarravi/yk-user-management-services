@@ -15,7 +15,7 @@ Resources:
           };
       Role: !GetAtt GetCollegeLambdaExecutionRole.Arn
 
-  GetCityLambdaExecutionRole:
+  GetCollegeLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
