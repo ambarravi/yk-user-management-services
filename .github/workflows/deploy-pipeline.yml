@@ -14,6 +14,7 @@ jobs:
         function:
           - yk-sign-up-trigger
           - yk-update-role-api
+          - yk-get-city-list
 
     steps:
       # Step 1: Checkout code
@@ -45,7 +46,6 @@ jobs:
         run: |
           aws s3 cp src/${{ matrix.function }}/function.zip s3://yk-zips/${{ matrix.function }}/function.zip \
             --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
-    
 
       # Step 6: Deploy using CloudFormation
       - name: Run CloudFormation for Lambda

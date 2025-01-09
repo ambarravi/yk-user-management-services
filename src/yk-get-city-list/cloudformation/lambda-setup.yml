@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  SignUpTriggerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-get-city-list
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Placeholder Lambda Function");
+              return { statusCode: 200, body: "Placeholder" };
+          };
+      Role: !GetAtt GetCityLambdaExecutionRole.Arn
+
+  GetCityLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SignUpLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Allow DynamoDB UpdateItem operation
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City
+
+              # Allow writing logs to log groups
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+              # Basic AWS Lambda service operations
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
