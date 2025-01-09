@@ -14,7 +14,7 @@ export async function handler(event) {
       ":cityPrefix": cityPrefix,
     },
   };
-
+  console.log(JSON.stringify(params));
   try {
     const command = new QueryCommand(params);
     const result = await dynamoDB.send(command);
