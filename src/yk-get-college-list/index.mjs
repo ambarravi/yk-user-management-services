@@ -20,17 +20,35 @@ export async function handler(event) {
     };
   }
 
+  // const input = {
+  //   TableName: "College", // Your table name
+  //   IndexName: "City-index", // Name of the GSI
+  //   KeyConditionExpression: "City = :city", // Partition key condition
+  //   ExpressionAttributeValues: {
+  //     ":city": { S: city }, // Replace "pune" with the desired city
+  //     ":searchText": { S: searchText }, // Additional filter condition
+  //   },
+  //   FilterExpression: "contains(#nameAttr, :searchText)", // Filter to check if Name contains "Engineering"
+  //   ExpressionAttributeNames: {
+  //     "#nameAttr": "Name", // Attribute name mapping
+  //   },
+  //   Select: "ALL_ATTRIBUTES", // Retrieve all attributes
+  // };
+
   const input = {
     TableName: "College", // Your table name
     IndexName: "City-index", // Name of the GSI
     KeyConditionExpression: "City = :city", // Partition key condition
     ExpressionAttributeValues: {
       ":city": { S: city }, // Replace "pune" with the desired city
-      ":searchText": { S: searchText }, // Additional filter condition
+      ":searchText": { S: searchText }, // Additional filter condition for "Name"
+      ":shortformPrefix": { S: searchText }, // Additional filter condition for "Shortform"
     },
-    FilterExpression: "contains(#nameAttr, :searchText)", // Filter to check if Name contains "Engineering"
+    FilterExpression:
+      "contains(#nameAttr, :searchText) OR begins_with(#shortformAttr, :shortformPrefix)", // Filter criteria
     ExpressionAttributeNames: {
-      "#nameAttr": "Name", // Attribute name mapping
+      "#nameAttr": "Name", // Attribute name mapping for "Name"
+      "#shortformAttr": "Shortform", // Attribute name mapping for "Shortform"
     },
     Select: "ALL_ATTRIBUTES", // Retrieve all attributes
   };
