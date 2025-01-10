@@ -14,25 +14,26 @@ export async function handler(event) {
       body: JSON.stringify({ error: "city is required" }),
     };
   }
-
   const params = {
     TableName: "College",
-    IndexName: "City-index", // Use the GSI for querying by city
+    IndexName: "City-index",
     KeyConditionExpression: "City = :city",
     ExpressionAttributeValues: {
-      ":city": city,
+      ":city": "Pune",
+      ":searchText": "vid",
+    },
+    FilterExpression:
+      "contains(#nameAttr, :searchText) OR begins_with(#shortformAttr, :searchText)",
+    ExpressionAttributeNames: {
+      "#nameAttr": "Name", // Replace 'Name' with actual attribute name if different
+      "#shortformAttr": "Shortform", // Replace 'Shortform' with actual attribute name if different
     },
   };
 
-  // Add FilterExpression based on searchText
-  if (searchText) {
-    params.FilterExpression =
-      "contains(Name, :searchText) OR begins_with(Shortform, :searchText)";
-    params.ExpressionAttributeValues[":searchText"] = searchText;
-  }
-  console.log("Params", params);
   try {
+    console.log("Params:", params);
     const result = await dynamoDB.send(new QueryCommand(params));
+    console.log("Query result:", JSON.stringify(result, null, 2));
     return {
       statusCode: 200,
       body: JSON.stringify(result.Items || []),
@@ -41,7 +42,7 @@ export async function handler(event) {
     console.error("Error querying DynamoDB:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Could not fetch cities" }),
+      body: JSON.stringify({ error: "Error querying data" }),
     };
   }
 }
