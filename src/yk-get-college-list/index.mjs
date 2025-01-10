@@ -21,17 +21,17 @@ export async function handler(event) {
     IndexName: "City-index",
     KeyConditionExpression: "City = :city",
     ExpressionAttributeValues: {
-      ":city": "pune",
-      // ":searchText": searchText,
+      ":city": city,
+      ":searchText": searchText,
     },
     // FilterExpression:
     //   "contains(#nameAttr, :searchText) OR begins_with(#shortformAttr, :searchText)",
-    //  FilterExpression: "contains(#nameAttr, :searchText)",
+    FilterExpression: "contains(#nameAttr, :searchText)",
     // FilterExpression: "begins_with(#shortformAttr, :searchText)",
-    // ExpressionAttributeNames: {
-    //   "#nameAttr": "Name", // Replace 'Name' with actual attribute name if different
-    //   "#shortformAttr": "Shortform", // Replace 'Shortform' with actual attribute name if different
-    // },
+    ExpressionAttributeNames: {
+      "#nameAttr": "Name", // Replace 'Name' with actual attribute name if different
+      "#shortformAttr": "Shortform", // Replace 'Shortform' with actual attribute name if different
+    },
   };
 
   try {

@@ -26,7 +26,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: SignUpLambdaPolicy
+        - PolicyName: GetCollegeLambdaPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -36,7 +36,7 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:Scan
                   - dynamodb:Query
-                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College
 
               # Allow writing logs to log groups
               - Effect: Allow
