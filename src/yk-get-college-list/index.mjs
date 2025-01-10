@@ -4,6 +4,7 @@ const region = process.env.AWS_REGION || "eu-west-1";
 const dynamoDB = new DynamoDBClient({ region });
 
 export async function handler(event) {
+  console.log(JSON.stringify(event));
   const city = event.queryStringParameters?.city || "";
   const searchText = event.queryStringParameters?.searchText || "";
 
@@ -29,7 +30,7 @@ export async function handler(event) {
       "contains(CityName, :searchText) OR begins_with(Shortform, :searchText)";
     params.ExpressionAttributeValues[":searchText"] = searchText;
   }
-
+  console.log("Params", params);
   try {
     const result = await dynamoDB.send(new QueryCommand(params));
     return {
