@@ -21,7 +21,7 @@ export async function handler(event) {
     IndexName: "City-index",
     KeyConditionExpression: "City = :city",
     ExpressionAttributeValues: {
-      ":city": city,
+      ":city": "pune",
       // ":searchText": searchText,
     },
     // FilterExpression:
