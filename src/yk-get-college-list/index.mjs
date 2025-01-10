@@ -5,6 +5,7 @@ const dynamoDB = new DynamoDBClient({ region });
 
 export async function handler(event) {
   console.log(JSON.stringify(event));
+
   const city = event.queryStringParameters?.city || "";
   const searchText = event.queryStringParameters?.searchText || "";
 
@@ -14,19 +15,19 @@ export async function handler(event) {
       body: JSON.stringify({ error: "city is required" }),
     };
   }
+
   const params = {
     TableName: "College",
     IndexName: "City-index",
     KeyConditionExpression: "City = :city",
     ExpressionAttributeValues: {
-      ":city": "Pune",
-      ":searchText": "vid",
+      ":city": city,
+      ":searchText": searchText,
     },
-    //  FilterExpression:
-    //   "contains(#nameAttr, :searchText) OR begins_with(#shortformAttr, :searchText)",
-    FilterExpression: "contains(#nameAttr, :searchText)",
-    //   FilterExpression: 'begins_with(#shortformAttr, :searchText)'
-
+    FilterExpression:
+      "contains(#nameAttr, :searchText) OR begins_with(#shortformAttr, :searchText)",
+    // FilterExpression: "contains(#nameAttr, :searchText)",
+    // FilterExpression: "begins_with(#shortformAttr, :searchText)",
     ExpressionAttributeNames: {
       "#nameAttr": "Name", // Replace 'Name' with actual attribute name if different
       "#shortformAttr": "Shortform", // Replace 'Shortform' with actual attribute name if different
