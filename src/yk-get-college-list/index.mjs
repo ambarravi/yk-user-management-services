@@ -16,7 +16,7 @@ export async function handler(event) {
   }
 
   const params = {
-    TableName: "City",
+    TableName: "College",
     IndexName: "City-index", // Use the GSI for querying by city
     KeyConditionExpression: "City = :city",
     ExpressionAttributeValues: {
