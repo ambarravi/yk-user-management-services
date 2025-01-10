@@ -6,7 +6,7 @@ Resources:
       FunctionName: yk-get-college-list
       Handler: index.handler
       Runtime: nodejs20.x
-      Timeout: 29
+      Timeout: 20
       Code:
         ZipFile: |
           exports.handler = async (event) => {
