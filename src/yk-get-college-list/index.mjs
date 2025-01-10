@@ -26,7 +26,7 @@ export async function handler(event) {
     },
     // FilterExpression:
     //   "contains(#nameAttr, :searchText) OR begins_with(#shortformAttr, :searchText)",
-    FilterExpression: "contains(#nameAttr, :searchText)",
+    //  FilterExpression: "contains(#nameAttr, :searchText)",
     // FilterExpression: "begins_with(#shortformAttr, :searchText)",
     ExpressionAttributeNames: {
       "#nameAttr": "Name", // Replace 'Name' with actual attribute name if different
