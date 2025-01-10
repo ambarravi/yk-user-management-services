@@ -48,5 +48,6 @@ export async function handler(event) {
     }
   }
 
-  queryDynamoDB();
+  const response = await queryDynamoDB();
+  return response;
 }
