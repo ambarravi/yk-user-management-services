@@ -26,6 +26,11 @@ export async function handler(event) {
     KeyConditionExpression: "City = :city", // Partition key condition
     ExpressionAttributeValues: {
       ":city": { S: city }, // Replace "pune" with the desired city
+      ":searchText": { S: searchText }, // Additional filter condition
+    },
+    FilterExpression: "contains(#nameAttr, :searchText)", // Filter to check if Name contains "Engineering"
+    ExpressionAttributeNames: {
+      "#nameAttr": "Name", // Attribute name mapping
     },
     Select: "ALL_ATTRIBUTES", // Retrieve all attributes
   };
