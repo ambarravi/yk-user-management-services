@@ -1,4 +1,8 @@
-import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  QueryCommand,
+  ScanCommand,
+} from "@aws-sdk/client-dynamodb";
 
 const region = process.env.AWS_REGION || "eu-west-1";
 const dynamoDB = new DynamoDBClient({ region });
