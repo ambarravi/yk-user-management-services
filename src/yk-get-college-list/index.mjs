@@ -18,12 +18,12 @@ export async function handler(event) {
 
   const params = {
     TableName: "College",
-    IndexName: "City-index",
-    KeyConditionExpression: "City = :city",
-    ExpressionAttributeValues: {
-      ":city": "pune",
-      //  ":searchText": searchText,
-    },
+    // IndexName: "City-index",
+    // KeyConditionExpression: "City = :city",
+    // ExpressionAttributeValues: {
+    //   ":city": "pune",
+    //   //  ":searchText": searchText,
+    // },
     //  FilterExpression:
     //   "contains(#nameAttr, :searchText) OR begins_with(#shortformAttr, :searchText)",
     //  FilterExpression: "contains(#nameAttr, :searchText)",
