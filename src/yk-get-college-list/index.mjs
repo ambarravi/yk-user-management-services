@@ -27,7 +27,7 @@ export async function handler(event) {
   // Add FilterExpression based on searchText
   if (searchText) {
     params.FilterExpression =
-      "contains(CityName, :searchText) OR begins_with(Shortform, :searchText)";
+      "contains(Name, :searchText) OR begins_with(Shortform, :searchText)";
     params.ExpressionAttributeValues[":searchText"] = searchText;
   }
   console.log("Params", params);
