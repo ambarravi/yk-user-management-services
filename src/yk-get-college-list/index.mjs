@@ -5,7 +5,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 
 const region = process.env.AWS_REGION || "eu-west-1";
-const dynamoDB = new DynamoDBClient({ region });
+const client = new DynamoDBClient({ region });
 
 export async function handler(event) {
   console.log(JSON.stringify(event));
@@ -20,38 +20,33 @@ export async function handler(event) {
     };
   }
 
-  const params = {
-    TableName: "College",
-    // IndexName: "City-index",
-    // KeyConditionExpression: "City = :city",
-    // ExpressionAttributeValues: {
-    //   ":city": "pune",
-    //   //  ":searchText": searchText,
-    // },
-    //  FilterExpression:
-    //   "contains(#nameAttr, :searchText) OR begins_with(#shortformAttr, :searchText)",
-    //  FilterExpression: "contains(#nameAttr, :searchText)",
-    // FilterExpression: "begins_with(#shortformAttr, :searchText)",
-    //  ExpressionAttributeNames: {
-    //   "#nameAttr": "Name", // Replace 'Name' with actual attribute name if different
-    //    "#shortformAttr": "Shortform", // Replace 'Shortform' with actual attribute name if different
-    //  },
+  const input = {
+    TableName: "College", // Your table name
+    IndexName: "City-index", // Name of the GSI
+    KeyConditionExpression: "City = :city", // Partition key condition
+    ExpressionAttributeValues: {
+      ":city": { S: "pune" }, // Replace "pune" with the desired city
+    },
+    Select: "ALL_ATTRIBUTES", // Retrieve all attributes
   };
 
-  try {
-    console.log("Params:", params);
-    const result = await dynamoDB.send(new ScanCommand(params));
-    //const result = await dynamoDB.send(new QueryCommand(params));
-    console.log("Query result:", JSON.stringify(result, null, 2));
-    return {
-      statusCode: 200,
-      body: JSON.stringify(result.Items || []),
-    };
-  } catch (error) {
-    console.error("Error querying DynamoDB:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Error querying data" }),
-    };
+  async function queryDynamoDB() {
+    try {
+      const command = new QueryCommand(input);
+      const response = await client.send(command);
+      console.log("Query succeeded:", response.Items);
+      return {
+        statusCode: 200,
+        body: JSON.stringify(response.Items || []),
+      };
+    } catch (error) {
+      console.error("Error querying DynamoDB:", error);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "Error querying data" }),
+      };
+    }
   }
+
+  queryDynamoDB();
 }

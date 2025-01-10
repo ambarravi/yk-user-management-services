@@ -36,7 +36,9 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:Scan
                   - dynamodb:Query
-                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College*
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College*
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College/index/City-index
 
               # Allow writing logs to log groups
               - Effect: Allow
