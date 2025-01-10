@@ -36,7 +36,8 @@ export async function handler(event) {
 
   try {
     console.log("Params:", params);
-    const result = await dynamoDB.send(new QueryCommand(params));
+    const result = await dynamoDB.send(new ScanCommand(params));
+    //const result = await dynamoDB.send(new QueryCommand(params));
     console.log("Query result:", JSON.stringify(result, null, 2));
     return {
       statusCode: 200,
