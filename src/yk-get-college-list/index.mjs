@@ -4,59 +4,43 @@ const region = process.env.AWS_REGION || "eu-west-1";
 const dynamoDB = new DynamoDBClient({ region });
 
 export async function handler(event) {
-  console.log(event);
+  const city = event.queryStringParameters?.city || "";
   const searchText = event.queryStringParameters?.searchText || "";
 
-  if (!searchText) {
+  if (!city) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: "Search text is required" }),
+      body: JSON.stringify({ error: "city is required" }),
     };
   }
 
-  const queries = [
-    {
-      TableName: "College",
-      IndexName: "Name-index",
-      KeyConditionExpression: "begins_with(Name, :searchText)",
-      ExpressionAttributeValues: {
-        ":searchText": searchText,
-      },
+  const params = {
+    TableName: "City",
+    IndexName: "City-index", // Use the GSI for querying by city
+    KeyConditionExpression: "City = :city",
+    ExpressionAttributeValues: {
+      ":city": city,
     },
-    {
-      TableName: "College",
-      IndexName: "Shortform-index",
-      KeyConditionExpression: "begins_with(Shortform, :searchText)",
-      ExpressionAttributeValues: {
-        ":searchText": searchText,
-      },
-    },
-  ];
+  };
+
+  // Add FilterExpression based on searchText
+  if (searchText) {
+    params.FilterExpression =
+      "contains(CityName, :searchText) OR begins_with(Shortform, :searchText)";
+    params.ExpressionAttributeValues[":searchText"] = searchText;
+  }
 
   try {
-    const [collegeNameResults, shortformResults] = await Promise.all(
-      queries.map((query) => dynamoDB.send(new QueryCommand(query)))
-    );
-
-    // Combine results and remove duplicates based on CollegeID
-    const combinedResults = [
-      ...(collegeNameResults.Items || []),
-      ...(shortformResults.Items || []),
-    ];
-
-    const uniqueResults = Array.from(
-      new Map(combinedResults.map((item) => [item.CollegeID.S, item])).values()
-    );
-
+    const result = await dynamoDB.send(new QueryCommand(params));
     return {
       statusCode: 200,
-      body: JSON.stringify(uniqueResults),
+      body: JSON.stringify(result.Items || []),
     };
   } catch (error) {
     console.error("Error querying DynamoDB:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Could not fetch colleges" }),
+      body: JSON.stringify({ error: "Could not fetch cities" }),
     };
   }
 }
