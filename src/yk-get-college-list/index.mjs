@@ -25,7 +25,7 @@ export async function handler(event) {
     IndexName: "City-index", // Name of the GSI
     KeyConditionExpression: "City = :city", // Partition key condition
     ExpressionAttributeValues: {
-      ":city": { S: "pune" }, // Replace "pune" with the desired city
+      ":city": { S: city }, // Replace "pune" with the desired city
     },
     Select: "ALL_ATTRIBUTES", // Retrieve all attributes
   };
