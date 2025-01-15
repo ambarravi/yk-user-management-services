@@ -25,7 +25,7 @@ Resources:
   RoleUpdateMobileTriggerLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: yk-m-update-mobile-role
+      FunctionName: yk-m-update-role-api
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 30
