@@ -1,11 +1,17 @@
-import { CognitoIdentityProviderClient, AdminUpdateUserAttributesCommand } from "@aws-sdk/client-cognito-identity-provider";
+import {
+  CognitoIdentityProviderClient,
+  AdminUpdateUserAttributesCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { decodeJwt, importJWK, jwtVerify, createRemoteJWKSet } from "jose";
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = process.env.USER_POOL_ID;
-const ROLE_CONFIG = process.env.ROLE_CONFIG?.split(",") || ["user", "organizer"];
+const ROLE_CONFIG = process.env.ROLE_CONFIG?.split(",") || [
+  "user",
+  "organizer",
+];
 const USERS_TABLE = process.env.USERS_TABLE;
 
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
@@ -14,7 +20,7 @@ const JWKS_URL = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.w
 
 export const handler = async (event) => {
   const origin = event.headers.origin || event.headers.Origin;
-
+  let newRole;
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
@@ -26,7 +32,8 @@ export const handler = async (event) => {
   try {
     console.log("Input event:", JSON.stringify(event));
 
-    const authHeader = event.headers.Authorization || event.headers.authorization;
+    const authHeader =
+      event.headers.Authorization || event.headers.authorization;
     if (!authHeader) {
       console.error("Authorization header missing");
       return {
@@ -55,18 +62,8 @@ export const handler = async (event) => {
     });
 
     console.log("Decoded Token Payload:", payload);
-    const role = user['custom:role'];
-    console.log(role); // Output: 'organizer'
-
-    if(role)
-    {
-      return {
-        statusCode: 200,
-        headers: getCorsHeaders(origin),
-        body: JSON.stringify({ message: "Role is already assigned" }),
-      };
-
-    }
+    const existingRole = user["custom:role"];
+    console.log(existingRole); // Output: 'organizer'
 
     const UserID = payload.sub;
 
@@ -86,15 +83,30 @@ export const handler = async (event) => {
       };
     }
 
+    if (existingRole.includes === tempRole) {
+      return {
+        statusCode: 200,
+        headers: getCorsHeaders(origin),
+        body: JSON.stringify({ message: "Role is already assigned" }),
+      };
+    } else {
+      // create new string to have existingRole and tempRole. tempROle is string
+
+      newRole = existingRole + "," + tempRole;
+      console.log("New Role:", newRole);
+    }
+
     // Update role in Cognito
     const cognitoParams = {
       UserPoolId: USER_POOL_ID,
       Username: UserID,
-      UserAttributes: [{ Name: "custom:role", Value: tempRole }],
+      UserAttributes: [{ Name: "custom:role", Value: newRole }],
     };
 
     try {
-      const updateUserCommand = new AdminUpdateUserAttributesCommand(cognitoParams);
+      const updateUserCommand = new AdminUpdateUserAttributesCommand(
+        cognitoParams
+      );
       await cognitoClient.send(updateUserCommand);
       console.log("Successfully updated role in Cognito for UserID:", UserID);
     } catch (cognitoError) {
@@ -108,7 +120,7 @@ export const handler = async (event) => {
       Key: { UserID },
       UpdateExpression: "SET #role = :tempRole",
       ExpressionAttributeNames: { "#role": "role" },
-      ExpressionAttributeValues: { ":tempRole": tempRole },
+      ExpressionAttributeValues: { ":tempRole": newRole },
     };
 
     try {
@@ -131,7 +143,9 @@ export const handler = async (event) => {
     return {
       statusCode: 500,
       headers: getCorsHeaders(origin),
-      body: JSON.stringify({ message: error.message || "Internal Server Error" }),
+      body: JSON.stringify({
+        message: error.message || "Internal Server Error",
+      }),
     };
   }
 };
@@ -143,13 +157,16 @@ function getCorsHeaders(origin) {
   const allowedOrigins = [
     "http://localhost:3000",
     "https://dom5rgdes5ko4.cloudfront.net",
+    "*",
   ];
 
   const isOriginAllowed = allowedOrigins.includes(origin);
 
   console.log("Allowed Origin:", isOriginAllowed);
   return {
-    "Access-Control-Allow-Origin": isOriginAllowed ? origin : "http://localhost:3000",
+    "Access-Control-Allow-Origin": isOriginAllowed
+      ? origin
+      : "http://localhost:3000",
     "Access-Control-Allow-Headers":
       "Content-Type, Authorization, X-Amz-Date, X-Api-Key, X-Amz-Security-Token",
     "Access-Control-Allow-Methods": "OPTIONS, POST, GET, PUT, DELETE",
