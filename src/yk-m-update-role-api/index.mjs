@@ -19,18 +19,14 @@ const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
 export const handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
-  console.log("Event", event);
+
   try {
     const body = JSON.parse(event.body);
-    const {
-      username,
-      tempRole,
-      "custom:role": currentRole,
-      city,
-      collegeDetails,
-    } = body;
+    console.log("Body: ", body);
+    const { username, userID, tempRole, currentRole, city, collegeDetails } =
+      body;
 
-    if (!username || !tempRole || !currentRole || !city) {
+    if (!userID || !tempRole || !currentRole || !city) {
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -86,7 +82,7 @@ export const handler = async (event) => {
     await dynamoDBClient.send(
       new UpdateCommand({
         TableName: USERS_TABLE,
-        Key: { username },
+        Key: { userID },
         UpdateExpression: updateExpression.join(", "),
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
