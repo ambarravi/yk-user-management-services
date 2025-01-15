@@ -2,9 +2,9 @@ import {
   CognitoIdentityProviderClient,
   AdminUpdateUserAttributesCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-import pkg from "@aws-sdk/lib-dynamodb";
 
-const { DynamoDBClient, UpdateCommand } = pkg;
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = process.env.USER_POOL_ID;
