@@ -36,6 +36,11 @@ Resources:
               return { statusCode: 200, body: "Placeholder" };
           };
       Role: !GetAtt UpdateMobileRoleLambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          USERS_TABLE: "UsersTable"
+          ROLE_CONFIG: "user,organizer"
+          USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
 
   UpdateMobileRoleLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -47,11 +52,6 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-        Environment:
-          Variables:
-            USERS_TABLE: "UsersTable"
-            ROLE_CONFIG: "user,organizer"
-            USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
       Policies:
         - PolicyName: UpdateMobileRoleLambdaPolicy
           PolicyDocument:
