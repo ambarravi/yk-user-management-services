@@ -86,7 +86,7 @@ export const handler = async (event) => {
     const dbResult = await dynamoDBClient.send(
       new UpdateCommand({
         TableName: USERS_TABLE,
-        Key: { userID },
+        Key: { UserID: userID },
         UpdateExpression: updateExpression.join(", "),
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
