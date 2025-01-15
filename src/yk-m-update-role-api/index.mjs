@@ -18,6 +18,8 @@ const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
 export const handler = async (event) => {
+  console.log("Event: ", JSON.stringify(event));
+  console.log("Event", event);
   try {
     const body = JSON.parse(event.body);
     const {
