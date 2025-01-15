@@ -16,6 +16,7 @@ jobs:
           - yk-update-role-api
           - yk-get-city-list
           - yk-get-college-list
+          - yk-m-update-role-api
 
     steps:
       # Step 1: Checkout code

@@ -71,10 +71,11 @@ export const handler = async (event) => {
     const parsedBody = JSON.parse(event.body);
     console.log("Event Body:", JSON.stringify(parsedBody));
 
-    const { username, tempRole } = parsedBody;
+    let { username, tempRole } = parsedBody;
+    tempRole = tempRole.toLowerCase();
 
     console.log("Decoded Token tempRole:", tempRole);
-    if (!ROLE_CONFIG.includes(tempRole)) {
+    if (!ROLE_CONFIG.includes(tempRole) {
       console.error(`Invalid role name: ${tempRole}`);
       return {
         statusCode: 400,

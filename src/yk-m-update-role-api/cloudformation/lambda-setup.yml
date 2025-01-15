@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  Env:
+    Type: String
+    Default: Development
+    AllowedValues:
+      - Development
+      - Production
+
+Mappings:
+  EnvToResources:
+    Development:
+      ApiGatewayId: 27sqbwaad7
+      UserPoolId: eu-west-1_hgUDdjyRr
+      Stage: dev
+      ApiGatewayRootResourceId: 78iwchywp5
+    Production:
+      ApiGatewayId: 27sqbwaad7
+      UserPoolId: eu-west-1_hgUDdjyRr
+      Stage: prod
+      ApiGatewayRootResourceId: 78iwchywp5
+
+Resources:
+  UpdateRoleMobileApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]
+      PathPart: m-update-role
+
+  CognitoAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: CognitoUserPoolAuthorizer
+      Type: COGNITO_USER_POOLS
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      IdentitySource: method.request.header.Authorization
+      ProviderARNs:
+        - !Sub
+          - "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
+          - UserPoolId: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
+
+  UpdateMobileRoleApiPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      ResourceId: !Ref UpdateRoleMobileApiResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateMobileRoleLambda.Arn}/invocations"
+
+  # Lambda Function
+  UpdateMobileRoleLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-m-update-role-api
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Event received:", JSON.stringify(event));
+              return { statusCode: 200, body: "Placeholder" };
+          };
+      Environment:
+        Variables:
+          USERS_TABLE: "UsersTable"
+          ROLE_CONFIG: "user,organizer"
+          USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
+      Role: !GetAtt UpdateMobileRoleApiExecutionRole.Arn
+
+  # Lambda Execution Role
+  UpdateMobileRoleApiExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: updateMobileRoleLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable"
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminUpdateUserAttributes
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+
+  # API Gateway Lambda Integration
+  UpdateMobileRoleApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt UpdateMobileRoleLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:27sqbwaad7/*/POST/m-update-role"
