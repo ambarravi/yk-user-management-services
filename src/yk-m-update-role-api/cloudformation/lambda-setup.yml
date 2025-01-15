@@ -28,26 +28,12 @@ Resources:
       ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]
       PathPart: m-update-role
 
-  CognitoAuthorizer:
-    Type: AWS::ApiGateway::Authorizer
-    Properties:
-      Name: CognitoUserPoolAuthorizer
-      Type: COGNITO_USER_POOLS
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-      IdentitySource: method.request.header.Authorization
-      ProviderARNs:
-        - !Sub
-          - "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
-          - UserPoolId: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
-
   UpdateMobileRoleApiPostMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
       ResourceId: !Ref UpdateRoleMobileApiResource
       HttpMethod: POST
-      AuthorizationType: COGNITO_USER_POOLS
-      AuthorizerId: !Ref CognitoAuthorizer
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST

@@ -37,10 +37,12 @@ export const handler = async (event) => {
     }
 
     let newRole;
-    if (tempRole.toLowerCase() === currentRole.toLowerCase()) {
+    if (currentRole.toLowerCase().includes(tempRole.toLowerCase())) {
       return {
         statusCode: 200,
-        body: JSON.stringify({ message: "Role is already updated" }),
+        body: JSON.stringify({
+          message: "Role is already updated or included",
+        }),
       };
     } else {
       newRole = currentRole.toLowerCase() + "," + tempRole.toLowerCase();
