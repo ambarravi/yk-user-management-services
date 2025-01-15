@@ -23,8 +23,17 @@ export const handler = async (event) => {
   try {
     //const body = JSON.parse(event.body);
     console.log("eventDetails: ", event);
-    const { userName, userID, tempRole, currentRole, city, collegeDetails } =
-      event;
+    const {
+      userName,
+      userID,
+      tempRole,
+      currentRole,
+      city,
+      collegeDetails,
+      name,
+      email,
+      lastName,
+    } = event;
 
     if (!userID || !tempRole || !currentRole || !city) {
       return {
@@ -81,6 +90,21 @@ export const handler = async (event) => {
       updateExpression.push("#collegeDetails = :collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
       expressionAttributeValues[":collegeDetails"] = collegeDetails;
+    }
+    if (name) {
+      updateExpression.push("#name = :FirstName");
+      expressionAttributeNames["#name"] = "FirstName";
+      expressionAttributeValues[":FirstName"] = name;
+    }
+    if (lastName) {
+      updateExpression.push("#lastName = :LastName");
+      expressionAttributeNames["#lastName"] = "LastName";
+      expressionAttributeValues[":LastName"] = lastName;
+    }
+    if (email) {
+      updateExpression.push("#EmailAddress = :email");
+      expressionAttributeNames["#EmailAddress"] = "Email";
+      expressionAttributeValues[":email"] = email;
     }
 
     const dbResult = await dynamoDBClient.send(
