@@ -23,7 +23,7 @@ export const handler = async (event) => {
   try {
     //const body = JSON.parse(event.body);
     console.log("eventDetails: ", event);
-    const { username, userID, tempRole, currentRole, city, collegeDetails } =
+    const { userName, userID, tempRole, currentRole, city, collegeDetails } =
       event;
 
     if (!userID || !tempRole || !currentRole || !city) {
@@ -31,7 +31,7 @@ export const handler = async (event) => {
         statusCode: 400,
         body: JSON.stringify({
           message:
-            "Invalid input: username, tempRole, custom:role, and city are required.",
+            "Invalid input: userName, tempRole, custom:role, and city are required.",
         }),
       };
     }
@@ -56,13 +56,13 @@ export const handler = async (event) => {
     ];
 
     console.log("USER_POOL_ID: ", USER_POOL_ID);
-    console.log("username: ", username);
+    console.log("username: ", userName);
     console.log("updatedAttributes: ", updatedAttributes);
 
     const resultCognito = await cognitoClient.send(
       new AdminUpdateUserAttributesCommand({
         UserPoolId: USER_POOL_ID,
-        Username: username,
+        Username: userName,
         UserAttributes: updatedAttributes,
       })
     );
