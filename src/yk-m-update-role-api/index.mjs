@@ -21,10 +21,10 @@ export const handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
 
   try {
-    const body = JSON.parse(event.body);
-    console.log("Body: ", body);
+    //const body = JSON.parse(event.body);
+    console.log("eventDetails: ", event);
     const { username, userID, tempRole, currentRole, city, collegeDetails } =
-      body;
+      event;
 
     if (!userID || !tempRole || !currentRole || !city) {
       return {
