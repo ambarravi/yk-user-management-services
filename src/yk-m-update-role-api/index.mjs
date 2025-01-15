@@ -55,6 +55,8 @@ export const handler = async (event) => {
       },
     ];
 
+    console.log("USER_POOL_ID: ", USER_POOL_ID);
+    console.log("username: ", username);
     console.log("updatedAttributes: ", updatedAttributes);
 
     const resultCognito = await cognitoClient.send(
@@ -96,6 +98,7 @@ export const handler = async (event) => {
       body: JSON.stringify({ message: "Role updated successfully" }),
     };
   } catch (error) {
+    console.error("Error: ", error);
     return {
       statusCode: 500,
       body: JSON.stringify({
