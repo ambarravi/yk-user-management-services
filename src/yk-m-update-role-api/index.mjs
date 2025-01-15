@@ -47,7 +47,7 @@ export const handler = async (event) => {
     } else {
       newRole = currentRole.toLowerCase() + "," + tempRole.toLowerCase();
     }
-
+    console.log("newRole: ", newRole);
     const updatedAttributes = [
       {
         Name: "custom:role",
@@ -55,14 +55,16 @@ export const handler = async (event) => {
       },
     ];
 
-    await cognitoClient.send(
+    console.log("updatedAttributes: ", updatedAttributes);
+
+    const resultCognito = await cognitoClient.send(
       new AdminUpdateUserAttributesCommand({
         UserPoolId: USER_POOL_ID,
         Username: username,
         UserAttributes: updatedAttributes,
       })
     );
-
+    console.log("resultCognito: ", resultCognito);
     const updateExpression = ["set #role = :role"];
     const expressionAttributeNames = { "#role": "role" };
     const expressionAttributeValues = { ":role": newRole };
@@ -79,7 +81,7 @@ export const handler = async (event) => {
       expressionAttributeValues[":collegeDetails"] = collegeDetails;
     }
 
-    await dynamoDBClient.send(
+    const dbResult = await dynamoDBClient.send(
       new UpdateCommand({
         TableName: USERS_TABLE,
         Key: { userID },
@@ -88,7 +90,7 @@ export const handler = async (event) => {
         ExpressionAttributeValues: expressionAttributeValues,
       })
     );
-
+    console.log("dbResult: ", dbResult);
     return {
       statusCode: 200,
       body: JSON.stringify({ message: "Role updated successfully" }),
