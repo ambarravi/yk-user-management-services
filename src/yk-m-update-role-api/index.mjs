@@ -62,6 +62,10 @@ export const handler = async (event) => {
         Name: "custom:role",
         Value: newRole,
       },
+      {
+        Name: "custom:City",
+        Value: city,
+      },
     ];
 
     console.log("USER_POOL_ID: ", USER_POOL_ID);
