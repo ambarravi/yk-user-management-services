@@ -24,17 +24,12 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-          - Effect: Allow
-            Action:
-              - s3:PutObject
-              - s3:GetObject
-              - s3:DeleteObject
-            Resource: !Sub arn:aws:s3:::tikto-orgnizer-dev/*
       Policies:
         - PolicyName: SubmitProfileLambdaPolicy
           PolicyDocument:
@@ -50,6 +45,14 @@ Resources:
                   - dynamodb:UpdateItem
                 Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
 
+              # Allow S3 object operations
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub arn:aws:s3:::tikto-orgnizer-dev/*
+
               # Allow writing logs to log groups
               - Effect: Allow
                 Action:
@@ -57,6 +60,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+
               # Basic AWS Lambda service operations
               - Effect: Allow
                 Action:
