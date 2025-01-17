@@ -1,0 +1,19 @@
+{
+  "name": "yojanakaar-submit-org-profile",
+  "version": "1.0.0",
+  "description": "Function to insert/update Orgization profile",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.216.0",
+    "@aws-sdk/client-dynamodb": "^3.216.0",
+    "@aws-sdk/lib-dynamodb": "^3.216.0",
+    "jose": "^4.14.4",
+    "uuid": "^9.0.0"
+  },
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}
