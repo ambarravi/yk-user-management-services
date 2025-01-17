@@ -86,7 +86,7 @@ export const handler = async (event) => {
       console.error("Failed to insert data into DynamoDB:", dynamoError);
       throw new Error("Error inserting data into DynamoDB");
     }
-
+    // Test comment
     return {
       statusCode: 200,
       headers: getCorsHeaders(event.headers.origin),
