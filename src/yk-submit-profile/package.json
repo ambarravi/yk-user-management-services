@@ -11,6 +11,7 @@
     "@aws-sdk/client-cognito-identity-provider": "^3.216.0",
     "@aws-sdk/client-dynamodb": "^3.216.0",
     "@aws-sdk/lib-dynamodb": "^3.216.0",
+    "formidable": "^3.5.2",
     "jose": "^4.14.4",
     "uuid": "^9.0.0"
   },
