@@ -3,7 +3,7 @@ Resources:
   SignUpTriggerLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: yk-submmit-profile
+      FunctionName: yk-submit-profile
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 30
