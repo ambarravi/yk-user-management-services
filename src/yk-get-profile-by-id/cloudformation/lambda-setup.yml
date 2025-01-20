@@ -64,11 +64,17 @@ Resources:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                 Resource: "*"
+  GetProfileResource:
+  Type: AWS::ApiGateway::Resource
+  Properties:
+    RestApiId: 27sqbwaad7 # Your existing API Gateway ID
+    ParentId: 78iwchywp5 # Parent resource ID (root ID for adding a new resource)
+    PathPart: get-profile-by-id # Path for the new resource (e.g., /get-profile)
   GetProfilePOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: 27sqbwaad7 # Replace with your existing API Gateway ID
-      ResourceId: 78iwchywp5 # Replace with your existing resource ID
+      ResourceId: !Ref GetProfileResource
       HttpMethod: POST
       AuthorizationType: NONE
       Integration:
