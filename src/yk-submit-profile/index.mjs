@@ -4,14 +4,15 @@ import {
   PutItemCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { S3Client, GetSignedUrlCommand } from "@aws-sdk/client-s3";
+//import { S3Client, GetSignedUrlCommand } from "@aws-sdk/client-s3";
+import * as S3 from "@aws-sdk/client-s3";
 
 const REGION = process.env.AWS_REGION;
 const TABLE = process.env.ORGANIZER_TABLE;
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
-const s3Client = new S3Client({ region: REGION });
+const s3Client = new S3.S3Client({ region: REGION });
 
 export const handler = async (event) => {
   try {
@@ -32,7 +33,7 @@ export const handler = async (event) => {
     const logoPath = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${logoKey}`;
 
     const presignedUrl = await s3Client.send(
-      new GetSignedUrlCommand({
+      new S3.GetSignedUrlCommand({
         Bucket: S3_BUCKET_NAME,
         Key: logoKey,
         Expires: 300,
