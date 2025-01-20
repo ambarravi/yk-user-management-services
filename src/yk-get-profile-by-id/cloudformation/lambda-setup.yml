@@ -67,10 +67,21 @@ Resources:
   GetProfilePOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      ResourceId: 78iwchywp5 # Replace with existing resource ID
+      RestApiId: 27sqbwaad7 # Replace with your existing API Gateway ID
+      ResourceId: 78iwchywp5 # Replace with your existing resource ID
       HttpMethod: POST
       AuthorizationType: NONE
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !GetAtt GetProfileByIDLambda.Arn
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt GetProfileByIDLambda.Arn }
+
+  GetProfilePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt GetProfileByIDLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:27sqbwaad7/*/POST/
