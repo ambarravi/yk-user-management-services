@@ -4,15 +4,11 @@ import {
   PutItemCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
-//import { S3Client, GetSignedUrlCommand } from "@aws-sdk/client-s3";
-import * as S3 from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const REGION = process.env.AWS_REGION;
-const TABLE = process.env.ORGANIZER_TABLE;
-const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
-
-const dynamoDBClient = new DynamoDBClient({ region: REGION });
-const s3Client = new S3.S3Client({ region: REGION });
+const dynamoDBClient = new DynamoDBClient({ region: "eu-west-1" });
+const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
 export const handler = async (event) => {
   try {
@@ -20,38 +16,51 @@ export const handler = async (event) => {
 
     const { username, logoFileName, logoFileType, ...profileData } = event;
 
+    const REGION = process.env.AWS_REGION;
+    const TABLE = process.env.ORGANIZER_TABLE;
+    const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
+
+    console.log("TABLE:", TABLE);
+
     const getParams = {
       TableName: TABLE,
-      Key: { OrganizerID: username },
+      Key: {
+        OrganizerID: {
+          S: username,
+        },
+      },
     };
 
     console.log("Get params:", JSON.stringify(getParams));
+
     const existingRecord = await dynamoDBClient.send(
       new GetItemCommand(getParams)
     );
 
-    console.log("Existing record:", JSON.stringify(existingRecord));
+    console.log("Existing record:", existingRecord);
 
     const logoKey = `logo/${username}_${logoFileName}`;
     const logoPath = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${logoKey}`;
 
     console.log("Logo key:", logoKey);
-    const presignedUrl = await s3Client.send(
-      new S3.GetSignedUrlCommand({
+
+    // Generate the presigned URL
+    const presignedUrl = await getSignedUrl(
+      s3Client,
+      new PutObjectCommand({
         Bucket: S3_BUCKET_NAME,
         Key: logoKey,
-        Expires: 300,
         ContentType: logoFileType,
-      })
+      }),
+      { expiresIn: 300 }
     );
 
     console.log("Presigned URL:", presignedUrl);
-    if (existingRecord.Item) {
-      console.log(`Record found for username: ${username}. Updating...`);
 
+    if (existingRecord.Item) {
       const updateParams = {
         TableName: TABLE,
-        Key: { OrganizerID: username },
+        Key: { OrganizerID: { S: username } },
         UpdateExpression: `
           SET OrganizerName = :name,
               contactPerson = :contactPerson,
@@ -60,43 +69,39 @@ export const handler = async (event) => {
               alternateNumber = :alternateNumber,
               aboutOrganization = :aboutOrganization,
               termsAccepted = :termsAccepted,
-              logoPath = :logoPath,
-              metadata = :metadata
+              logoPath = :logoPath
+             
         `,
         ExpressionAttributeValues: {
-          ":name": profileData.name,
-          ":contactPerson": profileData.contactPerson,
-          ":contactEmail": profileData.contactEmail,
-          ":contactNumber": profileData.contactNumber,
-          ":alternateNumber": profileData.alternateNumber,
-          ":aboutOrganization": profileData.aboutOrganization,
-          ":termsAccepted": profileData.termsAccepted,
-          ":logoPath": logoPath,
-          ":metadata": profileData.metadata,
+          ":name": { S: profileData.name },
+          ":contactPerson": { S: profileData.contactPerson },
+          ":contactEmail": { S: profileData.contactEmail },
+          ":contactNumber": { S: profileData.contactNumber },
+          ":alternateNumber": { S: profileData.alternateNumber },
+          ":aboutOrganization": { S: profileData.aboutOrganization },
+          ":termsAccepted": { BOOL: profileData.termsAccepted },
+          ":logoPath": { S: logoPath },
         },
       };
 
       await dynamoDBClient.send(new UpdateItemCommand(updateParams));
       console.log("Record updated successfully.");
     } else {
-      console.log(`No record found for username: ${username}. Inserting...`);
-
       const insertParams = {
         TableName: TABLE,
         Item: {
-          OrganizerID: username,
-          OrganizerName: profileData.name,
-          contactPerson: profileData.contactPerson,
-          contactEmail: profileData.contactEmail,
-          contactNumber: profileData.contactNumber,
-          alternateNumber: profileData.alternateNumber,
-          aboutOrganization: profileData.aboutOrganization,
-          termsAccepted: profileData.termsAccepted,
-          logoPath: logoPath,
-          metadata: profileData.metadata,
+          OrganizerID: { S: username },
+          OrganizerName: { S: profileData.name },
+          contactPerson: { S: profileData.contactPerson },
+          contactEmail: { S: profileData.contactEmail },
+          contactNumber: { S: profileData.contactNumber },
+          alternateNumber: { S: profileData.alternateNumber },
+          aboutOrganization: { S: profileData.aboutOrganization },
+          termsAccepted: { BOOL: profileData.termsAccepted },
+          logoPath: { S: logoPath },
         },
       };
-
+      console.log("insertParams", insertParams);
       await dynamoDBClient.send(new PutItemCommand(insertParams));
       console.log("Record inserted successfully.");
     }
