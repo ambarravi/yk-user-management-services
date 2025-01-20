@@ -67,7 +67,6 @@ Resources:
   GetProfilePOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      ApiId: 27sqbwaad7 # Replace with your existing API Gateway ID
       ResourceId: 78iwchywp5 # Replace with existing resource ID
       HttpMethod: POST
       AuthorizationType: NONE
