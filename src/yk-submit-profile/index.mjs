@@ -14,8 +14,8 @@ export const handler = async (event) => {
     console.log("Input event:", JSON.stringify(event));
 
     // Parse JSON input
-    const inputData = JSON.parse(event);
-    const { username, logoFileName, logoFileType, ...profileData } = inputData;
+    // const inputData = JSON.parse(event);
+    const { username, logoFileName, logoFileType, ...profileData } = event;
 
     const getParams = {
       TableName: TABLE,
