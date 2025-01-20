@@ -18,6 +18,7 @@ jobs:
           - yk-get-college-list
           - yk-m-update-role-api
           - yk-submit-profile
+          - yk-get-profile-by-id
 
     steps:
       # Step 1: Checkout code
