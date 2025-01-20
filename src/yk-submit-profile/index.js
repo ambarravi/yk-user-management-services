@@ -69,7 +69,8 @@ export const handler = async (event) => {
               alternateNumber = :alternateNumber,
               aboutOrganization = :aboutOrganization,
               termsAccepted = :termsAccepted,
-              logoPath = :logoPath
+              logoPath = :logoPath,
+              updatedAt = :updatedAt
              
         `,
         ExpressionAttributeValues: {
@@ -81,6 +82,7 @@ export const handler = async (event) => {
           ":aboutOrganization": { S: profileData.aboutOrganization },
           ":termsAccepted": { BOOL: profileData.termsAccepted },
           ":logoPath": { S: logoPath },
+          ":updatedAt": { S: new Date().toISOString() },
         },
       };
 
@@ -99,6 +101,7 @@ export const handler = async (event) => {
           aboutOrganization: { S: profileData.aboutOrganization },
           termsAccepted: { BOOL: profileData.termsAccepted },
           logoPath: { S: logoPath },
+          createdAt: { S: new Date().toISOString() },
         },
       };
       console.log("insertParams", insertParams);
