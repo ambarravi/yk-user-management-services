@@ -19,17 +19,33 @@ const getCorsHeaders = (origin) => ({
 export const handler = async (event) => {
   try {
     console.log("Input event:", JSON.stringify(event));
+    // const form = new formidable();
 
-    const form = new formidable.IncomingForm();
+    const form = formidable({ multiples: true }); // Enable handling multiple files if required
+
     // Parse the multipart/form-data
-    const data = await new Promise((resolve, reject) => {
-      form.parse(event, (err, fields, files) => {
-        if (err) reject(err);
-        resolve({ fields, files });
+    const parseForm = async (event) => {
+      return new Promise((resolve, reject) => {
+        form.parse(event, (err, fields, files) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ fields, files });
+          }
+        });
       });
-    });
+    };
 
-    const { fields, files } = data;
+    // const form = new formidable.IncomingForm();
+    // // Parse the multipart/form-data
+    // const data = await new Promise((resolve, reject) => {
+    //   form.parse(event, (err, fields, files) => {
+    //     if (err) reject(err);
+    //     resolve({ fields, files });
+    //   });
+    // });
+    const { fields, files } = await parseForm(event);
+    // const { fields, files } = data;
     const logoFile = files.logo;
 
     // Generate a UUID for the OrganizerID
