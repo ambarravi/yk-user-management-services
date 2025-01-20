@@ -1,30 +1,13 @@
-const {
-  DynamoDBClient,
-  GetCommand,
-  PutCommand,
-  UpdateCommand,
-} = require("@aws-sdk/client-dynamodb");
-const {
-  S3Client,
-  PutObjectCommand,
-  GetSignedUrlCommand,
-} = require("@aws-sdk/client-s3");
-
+import DynamoDB from "@aws-sdk/client-dynamodb";
+import S3 from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 
 const REGION = process.env.AWS_REGION;
 const TABLE = process.env.ORGANIZER_TABLE;
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-const dynamoDBClient = new DynamoDBClient({ region: REGION });
-const s3Client = new S3Client({ region: REGION });
-
-// Helper function to generate CORS headers
-const getCorsHeaders = (origin) => ({
-  "Access-Control-Allow-Origin": origin || "*",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-});
+const dynamoDBClient = new DynamoDB.DynamoDBClient({ region: REGION });
+const s3Client = new S3.S3Client({ region: REGION });
 
 export const handler = async (event) => {
   try {
@@ -34,7 +17,6 @@ export const handler = async (event) => {
     const inputData = JSON.parse(event.body);
     const { username, logoFileName, logoFileType, ...profileData } = inputData;
 
-    // Check if the record already exists in DynamoDB
     const getParams = {
       TableName: TABLE,
       Key: { OrganizerID: username },
@@ -42,21 +24,18 @@ export const handler = async (event) => {
 
     const existingRecord = await dynamoDBClient.send(new GetCommand(getParams));
 
-    // Generate S3 key for the logo
     const logoKey = `logo/${username}_${logoFileName}`;
     const logoPath = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${logoKey}`;
 
-    // Create a pre-signed URL for the client to upload the logo
     const presignedUrl = await s3Client.send(
       new GetSignedUrlCommand({
         Bucket: S3_BUCKET_NAME,
         Key: logoKey,
-        Expires: 300, // URL expires in 5 minutes
+        Expires: 300,
         ContentType: logoFileType,
       })
     );
 
-    // If record exists, update it; otherwise, insert a new record
     if (existingRecord.Item) {
       console.log(`Record found for username: ${username}. Updating...`);
 
@@ -114,17 +93,25 @@ export const handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: getCorsHeaders(event.headers.origin),
+      headers: {
+        "Access-Control-Allow-Origin": event.headers.origin || "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
       body: JSON.stringify({
         message: "Operation completed successfully",
-        presignedUrl, // Return the URL for the client to upload the logo
+        presignedUrl,
       }),
     };
   } catch (error) {
     console.error("Error processing request:", error);
     return {
       statusCode: 500,
-      headers: getCorsHeaders(event.headers.origin),
+      headers: {
+        "Access-Control-Allow-Origin": event.headers.origin || "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
       body: JSON.stringify({
         message: error.message || "Internal Server Error",
       }),
