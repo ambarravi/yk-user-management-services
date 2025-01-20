@@ -25,13 +25,17 @@ export const handler = async (event) => {
       Key: { OrganizerID: username },
     };
 
+    console.log("Get params:", JSON.stringify(getParams));
     const existingRecord = await dynamoDBClient.send(
       new GetItemCommand(getParams)
     );
 
+    console.log("Existing record:", JSON.stringify(existingRecord));
+
     const logoKey = `logo/${username}_${logoFileName}`;
     const logoPath = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${logoKey}`;
 
+    console.log("Logo key:", logoKey);
     const presignedUrl = await s3Client.send(
       new S3.GetSignedUrlCommand({
         Bucket: S3_BUCKET_NAME,
@@ -41,6 +45,7 @@ export const handler = async (event) => {
       })
     );
 
+    console.log("Presigned URL:", presignedUrl);
     if (existingRecord.Item) {
       console.log(`Record found for username: ${username}. Updating...`);
 
