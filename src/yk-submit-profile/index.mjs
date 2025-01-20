@@ -1,14 +1,15 @@
-import {
+const {
   DynamoDBClient,
   GetCommand,
   PutCommand,
   UpdateCommand,
-} from "@aws-sdk/client-dynamodb";
-import {
+} = require("@aws-sdk/client-dynamodb");
+const {
   S3Client,
   PutObjectCommand,
   GetSignedUrlCommand,
-} from "@aws-sdk/client-s3";
+} = require("@aws-sdk/client-s3");
+
 import { v4 as uuidv4 } from "uuid";
 
 const REGION = process.env.AWS_REGION;
