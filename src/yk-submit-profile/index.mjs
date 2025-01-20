@@ -1,20 +1,22 @@
-import DynamoDB from "@aws-sdk/client-dynamodb";
-import S3 from "@aws-sdk/client-s3";
-import { v4 as uuidv4 } from "uuid";
+import {
+  DynamoDBClient,
+  GetItemCommand,
+  PutItemCommand,
+  UpdateItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import { S3Client, GetSignedUrlCommand } from "@aws-sdk/client-s3";
 
 const REGION = process.env.AWS_REGION;
 const TABLE = process.env.ORGANIZER_TABLE;
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-const dynamoDBClient = new DynamoDB.DynamoDBClient({ region: REGION });
-const s3Client = new S3.S3Client({ region: REGION });
+const dynamoDBClient = new DynamoDBClient({ region: REGION });
+const s3Client = new S3Client({ region: REGION });
 
 export const handler = async (event) => {
   try {
     console.log("Input event:", JSON.stringify(event));
 
-    // Parse JSON input
-    // const inputData = JSON.parse(event);
     const { username, logoFileName, logoFileType, ...profileData } = event;
 
     const getParams = {
@@ -22,7 +24,9 @@ export const handler = async (event) => {
       Key: { OrganizerID: username },
     };
 
-    const existingRecord = await dynamoDBClient.send(new GetCommand(getParams));
+    const existingRecord = await dynamoDBClient.send(
+      new GetItemCommand(getParams)
+    );
 
     const logoKey = `logo/${username}_${logoFileName}`;
     const logoPath = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${logoKey}`;
@@ -66,7 +70,7 @@ export const handler = async (event) => {
         },
       };
 
-      await dynamoDBClient.send(new UpdateCommand(updateParams));
+      await dynamoDBClient.send(new UpdateItemCommand(updateParams));
       console.log("Record updated successfully.");
     } else {
       console.log(`No record found for username: ${username}. Inserting...`);
@@ -87,7 +91,7 @@ export const handler = async (event) => {
         },
       };
 
-      await dynamoDBClient.send(new PutCommand(insertParams));
+      await dynamoDBClient.send(new PutItemCommand(insertParams));
       console.log("Record inserted successfully.");
     }
 
