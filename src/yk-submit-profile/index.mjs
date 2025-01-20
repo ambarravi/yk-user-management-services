@@ -3,7 +3,7 @@ import {
   GetCommand,
   PutCommand,
   UpdateCommand,
-} from "@aws-sdk/lib-dynamodb";
+} from "@aws-sdk/client-dynamodb";
 import {
   S3Client,
   PutObjectCommand,
