@@ -1,112 +1,123 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import fs from "fs";
+import {
+  DynamoDBClient,
+  GetCommand,
+  PutCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetSignedUrlCommand,
+} from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
-import formidable from "formidable";
-import { PutCommand } from "@aws-sdk/lib-dynamodb";
 
 const REGION = process.env.AWS_REGION;
 const TABLE = process.env.ORGANIZER_TABLE;
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
+const s3Client = new S3Client({ region: REGION });
+
 // Helper function to generate CORS headers
 const getCorsHeaders = (origin) => ({
   "Access-Control-Allow-Origin": origin || "*",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 });
+
 export const handler = async (event) => {
   try {
     console.log("Input event:", JSON.stringify(event));
-    // const form = new formidable();
 
-    const form = formidable({ multiples: true }); // Enable handling multiple files if required
+    // Parse JSON input
+    const inputData = JSON.parse(event.body);
+    const { username, logoFileName, logoFileType, ...profileData } = inputData;
 
-    // Parse the multipart/form-data
-    const parseForm = async (event) => {
-      return new Promise((resolve, reject) => {
-        form.parse(event, (err, fields, files) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({ fields, files });
-          }
-        });
-      });
-    };
-
-    // const form = new formidable.IncomingForm();
-    // // Parse the multipart/form-data
-    // const data = await new Promise((resolve, reject) => {
-    //   form.parse(event, (err, fields, files) => {
-    //     if (err) reject(err);
-    //     resolve({ fields, files });
-    //   });
-    // });
-    const { fields, files } = await parseForm(event);
-    // const { fields, files } = data;
-    const logoFile = files.logo;
-
-    // Generate a UUID for the OrganizerID
-    const OrganizerID = uuidv4();
-    console.log("Generated OrganizerID:", OrganizerID);
-
-    // Upload the logo file to S3
-    const s3Client = new S3Client({ region: REGION });
-    const uploadParams = {
-      Bucket: S3_BUCKET_NAME,
-      Key: `logo/${OrganizerID}_${logoFile.originalFilename}`,
-      Body: fs.createReadStream(logoFile.filepath),
-      ContentType: logoFile.mimetype,
-    };
-
-    let uploadResult;
-    try {
-      uploadResult = await s3Client.send(new PutObjectCommand(uploadParams));
-      console.log("Successfully uploaded logo to S3:", uploadParams.Key);
-    } catch (s3Error) {
-      console.error("Failed to upload logo to S3:", s3Error);
-      throw new Error("Error uploading logo to S3");
-    }
-
-    // Construct the logo path (update as per your bucket's URL pattern)
-    const logoPath = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${uploadParams.Key}`;
-
-    // Insert data into DynamoDB
-    const dynamoParams = {
+    // Check if the record already exists in DynamoDB
+    const getParams = {
       TableName: TABLE,
-      Item: {
-        OrganizerID: OrganizerID,
-        OrganizerName: fields.name,
-        contactPerson: fields.contactPerson,
-        contactEmail: fields.contactEmail,
-        contactNumber: fields.contactNumber,
-        alternateNumber: fields.alternateNumber,
-        aboutOrganization: fields.aboutOrganization,
-        termsAccepted: fields.termsAccepted,
-        logoPath: logoPath,
-        metadata: JSON.parse(fields.metadata),
-      },
+      Key: { OrganizerID: username },
     };
 
-    try {
-      console.log("DynamoDB Insert Params:", JSON.stringify(dynamoParams));
-      const putCommand = new PutCommand(dynamoParams);
-      await dynamoDBClient.send(putCommand);
-      console.log(
-        "Successfully inserted data into DynamoDB for OrganizerName:",
-        fields.name
-      );
-    } catch (dynamoError) {
-      console.error("Failed to insert data into DynamoDB:", dynamoError);
-      throw new Error("Error inserting data into DynamoDB");
+    const existingRecord = await dynamoDBClient.send(new GetCommand(getParams));
+
+    // Generate S3 key for the logo
+    const logoKey = `logo/${username}_${logoFileName}`;
+    const logoPath = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${logoKey}`;
+
+    // Create a pre-signed URL for the client to upload the logo
+    const presignedUrl = await s3Client.send(
+      new GetSignedUrlCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: logoKey,
+        Expires: 300, // URL expires in 5 minutes
+        ContentType: logoFileType,
+      })
+    );
+
+    // If record exists, update it; otherwise, insert a new record
+    if (existingRecord.Item) {
+      console.log(`Record found for username: ${username}. Updating...`);
+
+      const updateParams = {
+        TableName: TABLE,
+        Key: { OrganizerID: username },
+        UpdateExpression: `
+          SET OrganizerName = :name,
+              contactPerson = :contactPerson,
+              contactEmail = :contactEmail,
+              contactNumber = :contactNumber,
+              alternateNumber = :alternateNumber,
+              aboutOrganization = :aboutOrganization,
+              termsAccepted = :termsAccepted,
+              logoPath = :logoPath,
+              metadata = :metadata
+        `,
+        ExpressionAttributeValues: {
+          ":name": profileData.name,
+          ":contactPerson": profileData.contactPerson,
+          ":contactEmail": profileData.contactEmail,
+          ":contactNumber": profileData.contactNumber,
+          ":alternateNumber": profileData.alternateNumber,
+          ":aboutOrganization": profileData.aboutOrganization,
+          ":termsAccepted": profileData.termsAccepted,
+          ":logoPath": logoPath,
+          ":metadata": profileData.metadata,
+        },
+      };
+
+      await dynamoDBClient.send(new UpdateCommand(updateParams));
+      console.log("Record updated successfully.");
+    } else {
+      console.log(`No record found for username: ${username}. Inserting...`);
+
+      const insertParams = {
+        TableName: TABLE,
+        Item: {
+          OrganizerID: username,
+          OrganizerName: profileData.name,
+          contactPerson: profileData.contactPerson,
+          contactEmail: profileData.contactEmail,
+          contactNumber: profileData.contactNumber,
+          alternateNumber: profileData.alternateNumber,
+          aboutOrganization: profileData.aboutOrganization,
+          termsAccepted: profileData.termsAccepted,
+          logoPath: logoPath,
+          metadata: profileData.metadata,
+        },
+      };
+
+      await dynamoDBClient.send(new PutCommand(insertParams));
+      console.log("Record inserted successfully.");
     }
-    // Test comment
+
     return {
       statusCode: 200,
       headers: getCorsHeaders(event.headers.origin),
-      body: JSON.stringify({ message: "Data inserted successfully" }),
+      body: JSON.stringify({
+        message: "Operation completed successfully",
+        presignedUrl, // Return the URL for the client to upload the logo
+      }),
     };
   } catch (error) {
     console.error("Error processing request:", error);
