@@ -13,7 +13,7 @@ Resources:
   GetCategoryLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: yk-get-Category-list
+      FunctionName: yk-get-category-list
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 30
@@ -75,7 +75,7 @@ Resources:
     Properties:
       RestApiId: !Ref ApiGatewayRestApiId
       ParentId: !Ref ApiGatewayRootResourceId
-      PathPart: get-Category-list
+      PathPart: get-category-list
 
   GetCategoryGETMethod:
     Type: AWS::ApiGateway::Method

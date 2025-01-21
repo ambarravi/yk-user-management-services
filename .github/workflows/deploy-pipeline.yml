@@ -64,7 +64,8 @@ jobs:
               ApiGatewayRestApiId=${{ github.ref == 'refs/heads/main' && '27sqbwaad7' || '27sqbwaad7' }} \
               ApiGatewayRootResourceId=${{ github.ref == 'refs/heads/main' && '78iwchywp5' || '78iwchywp5' }} \
             --capabilities CAPABILITY_NAMED_IAM
-
+      - name: Wait for resources to be available
+        run: sleep 30
       # Step 7: Update Lambda function code
       - name: Update Lambda function code
         run: |
