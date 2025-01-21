@@ -21,7 +21,7 @@ Resources:
       Environment:
         Variables:
           ORGANIZER_TABLE: "Organizer"
-          S3_BUCKET_NAME: "tikto-orgnizer-${StageName}"
+          S3_BUCKET_NAME: !Sub "tikto-orgnizer-${StageName}"
 
       Code:
         ZipFile: |
