@@ -1,4 +1,10 @@
 AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    Description: The stage name for API Gateway deployment (e.g., dev, prod)
+
 Resources:
   GetProfileByIDLambda:
     Type: AWS::Lambda::Function
@@ -63,19 +69,19 @@ Resources:
       FunctionName: !Ref GetProfileByIDLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:27sqbwaad7/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
 
   GetProfileResource:
     Type: AWS::ApiGateway::Resource
     Properties:
-      RestApiId: 27sqbwaad7
-      ParentId: 78iwchywp5
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
       PathPart: get-profile-by-id
 
   GetProfilePOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: 27sqbwaad7
+      RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref GetProfileResource
       HttpMethod: POST
       AuthorizationType: NONE
@@ -95,7 +101,7 @@ Resources:
   GetProfileOPTIONSMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: 27sqbwaad7
+      RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref GetProfileResource
       HttpMethod: OPTIONS
       AuthorizationType: NONE
@@ -116,8 +122,20 @@ Resources:
             method.response.header.Access-Control-Allow-Methods: true
             method.response.header.Access-Control-Allow-Headers: true
 
+  ApiGatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: tikto-api
+
+  ApiGatewayRootResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      ParentId: !Ref ApiGatewayRestApiRootResourceId
+      PathPart: ""
+
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
     Properties:
-      RestApiId: 27sqbwaad7
-      StageName: dev
+      RestApiId: !Ref ApiGatewayRestApi
+      StageName: !Ref StageName

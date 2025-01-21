@@ -58,6 +58,7 @@ jobs:
             --template-file src/${{ matrix.function }}/cloudformation/lambda-setup.yml \
             --stack-name user-management-${{ matrix.function }}-stack \
             --parameter-overrides \
+              StageName=${{ github.ref == 'refs/heads/main' && 'Prod' || 'Dev' }} \
               Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
             --capabilities CAPABILITY_NAMED_IAM
 
