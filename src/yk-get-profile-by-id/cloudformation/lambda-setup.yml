@@ -22,7 +22,7 @@ Resources:
       Environment:
         Variables:
           ORGANIZER_TABLE: "Organizer"
-          S3_BUCKET_NAME: "tikto-orgnizer-dev"
+          S3_BUCKET_NAME: "tikto-orgnizer-${StageName}"
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -56,7 +56,7 @@ Resources:
                   - s3:PutObject
                   - s3:GetObject
                   - s3:DeleteObject
-                Resource: !Sub arn:aws:s3:::tikto-orgnizer-dev/*
+                Resource: !Sub arn:aws:s3:::tikto-orgnizer-${StageName}/*
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
