@@ -7,7 +7,11 @@ export const handler = async (event) => {
     console.log("Input event:", JSON.stringify(event));
     const REGION = process.env.AWS_REGION;
     const TABLE = process.env.ORGANIZER_TABLE;
-    username = event.username;
+    let body = JSON.parse(event.body);
+
+    // Access the 'username' field
+    let username = body.username;
+
     console.log("TABLE:", TABLE);
 
     const getParams = {
