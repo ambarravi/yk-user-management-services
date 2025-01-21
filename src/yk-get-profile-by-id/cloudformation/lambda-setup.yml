@@ -61,55 +61,49 @@ Resources:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: 27sqbwaad7 # Replace with your existing API Gateway ID
-      ParentId: 78iwchywp5 # Parent resource ID (root ID for adding a new resource)
-      PathPart: get-profile-by-id # Path for the new resource (e.g., /get-profile)
+      ParentId: 78iwchywp5 # Replace with the parent resource ID (usually the root ID)
+      PathPart: get-profile-by-id
 
   GetProfilePOSTMethod:
-  Type: AWS::ApiGateway::Method
-  Properties:
-    RestApiId: 27sqbwaad7 # Replace with your existing API Gateway ID
-    ResourceId: !Ref GetProfileResource
-    HttpMethod: POST
-    AuthorizationType: NONE
-    Integration:
-      Type: AWS_PROXY
-      IntegrationHttpMethod: POST
-      Uri: !Sub
-        - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-        - { LambdaArn: !GetAtt GetProfileByIDLambda.Arn }
-      IntegrationResponses:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: 27sqbwaad7
+      ResourceId: !Ref GetProfileResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt GetProfileByIDLambda.Arn }
+      MethodResponses:
         - StatusCode: 200
           ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: "http://localhost:3000, https://dom5rgdes5ko4.cloudfront.net"
+            method.response.header.Access-Control-Allow-Origin: "'http://localhost:3000, https://dom5rgdes5ko4.cloudfront.net'"
             method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
             method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
-    MethodResponses:
-      - StatusCode: 200
-        ResponseParameters:
-          method.response.header.Access-Control-Allow-Origin: true
-          method.response.header.Access-Control-Allow-Methods: true
-          method.response.header.Access-Control-Allow-Headers: true
 
-GetProfileOPTIONSMethod:
-  Type: AWS::ApiGateway::Method
-  Properties:
-    RestApiId: 27sqbwaad7 # Replace with your existing API Gateway ID
-    ResourceId: !Ref GetProfileResource
-    HttpMethod: OPTIONS
-    AuthorizationType: NONE
-    Integration:
-      Type: MOCK
-      RequestTemplates:
-        application/json: '{ "statusCode": 200 }'
-      IntegrationResponses:
+  GetProfileOPTIONSMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: 27sqbwaad7
+      ResourceId: !Ref GetProfileResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{ "statusCode": 200 }'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'http://localhost:3000, https://dom5rgdes5ko4.cloudfront.net'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+      MethodResponses:
         - StatusCode: 200
           ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: "http://localhost:3000, https://dom5rgdes5ko4.cloudfront.net"
-            method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
-            method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
-    MethodResponses:
-      - StatusCode: 200
-        ResponseParameters:
-          method.response.header.Access-Control-Allow-Origin: true
-          method.response.header.Access-Control-Allow-Methods: true
-          method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
