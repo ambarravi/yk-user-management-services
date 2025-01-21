@@ -58,7 +58,7 @@ jobs:
             --template-file src/${{ matrix.function }}/cloudformation/lambda-setup.yml \
             --stack-name user-management-${{ matrix.function }}-stack \
             --parameter-overrides \
-              StageName=${{ github.ref == 'refs/heads/main' && 'Prod' || 'Dev' }} \
+              StageName=${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }} \
               Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
               ApiGatewayRestApiId=${{ github.ref == 'refs/heads/main' && '27sqbwaad7' || '27sqbwaad7' }} \
               ApiGatewayRootResourceId=${{ github.ref == 'refs/heads/main' && '78iwchywp5' || '78iwchywp5' }} \
