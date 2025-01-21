@@ -80,7 +80,7 @@ Resources:
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: "'http://localhost:3000, https://dom5rgdes5ko4.cloudfront.net'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
             method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
             method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
 
@@ -98,7 +98,7 @@ Resources:
         IntegrationResponses:
           - StatusCode: 200
             ResponseParameters:
-              method.response.header.Access-Control-Allow-Origin: "'http://localhost:3000, https://dom5rgdes5ko4.cloudfront.net'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
               method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
               method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
       MethodResponses:
