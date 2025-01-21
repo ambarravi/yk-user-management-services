@@ -58,7 +58,7 @@ export const handler = async (event) => {
     //   }
     // }
 
-    console.log("Logo key:", logoKey);
+    //console.log("Logo key:", logoKey);
 
     return {
       statusCode: 200,
