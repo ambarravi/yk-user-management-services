@@ -19,6 +19,7 @@ jobs:
           - yk-m-update-role-api
           - yk-submit-profile
           - yk-get-profile-by-id
+          - yk-get-category-list
 
     steps:
       # Step 1: Checkout code

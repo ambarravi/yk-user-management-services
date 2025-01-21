@@ -10,10 +10,10 @@ Parameters:
     Type: String
     Description: The stage name (e.g., dev, prod)
 Resources:
-  GetCityLambda:
+  GetCategoryLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: yk-get-city-list
+      FunctionName: yk-get-Category-list
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 30
@@ -23,9 +23,9 @@ Resources:
               console.log("Placeholder Lambda Function");
               return { statusCode: 200, body: "Placeholder" };
           };
-      Role: !GetAtt GetCityLambdaExecutionRole.Arn
+      Role: !GetAtt GetCategoryLambdaExecutionRole.Arn
 
-  GetCityLambdaExecutionRole:
+  GetCategoryLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -36,7 +36,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: GetCityLambdaPolicy
+        - PolicyName: GetCategoryLambdaPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -46,7 +46,7 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:Scan
                   - dynamodb:Query
-                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Category
 
               # Allow writing logs to log groups
               - Effect: Allow
@@ -62,26 +62,26 @@ Resources:
                   - xray:PutTelemetryRecords
                 Resource: "*"
 
-  GetCityLambdaPermission:
+  GetCategoryLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref GetCityLambda
+      FunctionName: !Ref GetCategoryLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
 
-  GetCityResource:
+  GetCategoryResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGatewayRestApiId
       ParentId: !Ref ApiGatewayRootResourceId
-      PathPart: get-city-list
+      PathPart: get-Category-list
 
-  GetCityGETMethod:
+  GetCategoryGETMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGatewayRestApiId
-      ResourceId: !Ref GetCityResource
+      ResourceId: !Ref GetCategoryResource
       HttpMethod: GET
       AuthorizationType: NONE
       Integration:
@@ -89,7 +89,7 @@ Resources:
         IntegrationHttpMethod: GET
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { LambdaArn: !GetAtt GetCityLambda.Arn }
+          - { LambdaArn: !GetAtt GetCategoryLambda.Arn }
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
@@ -101,7 +101,7 @@ Resources:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGatewayRestApiId
-      ResourceId: !Ref GetCityResource
+      ResourceId: !Ref GetCategoryResource
       HttpMethod: OPTIONS
       AuthorizationType: NONE
       Integration:
