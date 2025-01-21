@@ -60,6 +60,8 @@ jobs:
             --parameter-overrides \
               StageName=${{ github.ref == 'refs/heads/main' && 'Prod' || 'Dev' }} \
               Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
+              ApiGatewayRestApiId=${{ github.ref == 'refs/heads/main' && '27sqbwaad7' || '27sqbwaad7' }} \
+              ApiGatewayRootResourceId= ${{ github.ref == 'refs/heads/main' && '78iwchywp5' || '78iwchywp5' }} \
             --capabilities CAPABILITY_NAMED_IAM
 
       # Step 7: Update Lambda function code
