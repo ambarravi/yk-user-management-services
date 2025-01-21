@@ -1,7 +1,6 @@
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 
-const dynamoDBClient = new DynamoDBClient({ region: "eu-west-1" });
-const s3Client = new S3Client({ region: process.env.AWS_REGION });
+const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 export const handler = async (event) => {
   try {
