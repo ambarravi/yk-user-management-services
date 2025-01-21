@@ -4,6 +4,12 @@ Parameters:
     Type: String
     Default: dev
     Description: The stage name for API Gateway deployment (e.g., dev, prod)
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
 
 Resources:
   GetProfileByIDLambda:
