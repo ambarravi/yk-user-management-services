@@ -57,11 +57,19 @@ Resources:
                   - xray:PutTelemetryRecords
                 Resource: "*"
 
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetProfileByIDLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:27sqbwaad7/*
+
   GetProfileResource:
     Type: AWS::ApiGateway::Resource
     Properties:
-      RestApiId: 27sqbwaad7 # Replace with your existing API Gateway ID
-      ParentId: 78iwchywp5 # Replace with the parent resource ID (usually the root ID)
+      RestApiId: 27sqbwaad7
+      ParentId: 78iwchywp5
       PathPart: get-profile-by-id
 
   GetProfilePOSTMethod:
@@ -107,3 +115,9 @@ Resources:
             method.response.header.Access-Control-Allow-Origin: true
             method.response.header.Access-Control-Allow-Methods: true
             method.response.header.Access-Control-Allow-Headers: true
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: 27sqbwaad7
+      StageName: dev
