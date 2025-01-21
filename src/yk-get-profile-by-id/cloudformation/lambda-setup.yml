@@ -137,8 +137,8 @@ Resources:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref ApiGatewayRestApi
-      ParentId: !Ref ApiGatewayRestApiRootResourceId
-      PathPart: ""
+      ParentId: !Ref ApiGatewayRootResourceId
+      PathPart: get-profile-by-id
 
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
