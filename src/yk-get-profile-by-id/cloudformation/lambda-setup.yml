@@ -11,7 +11,6 @@ Resources:
         Variables:
           ORGANIZER_TABLE: "Organizer"
           S3_BUCKET_NAME: "tikto-orgnizer-dev"
-
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -35,41 +34,36 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              # Allow DynamoDB UpdateItem operation
               - Effect: Allow
                 Action:
                   - dynamodb:GetItem
                   - dynamodb:Query
                 Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
-
-              # Allow S3 object operations
               - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:GetObject
                   - s3:DeleteObject
                 Resource: !Sub arn:aws:s3:::tikto-orgnizer-dev/*
-
-              # Allow writing logs to log groups
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
-
-              # Basic AWS Lambda service operations
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                 Resource: "*"
+
   GetProfileResource:
-  Type: AWS::ApiGateway::Resource
-  Properties:
-    RestApiId: 27sqbwaad7 # Your existing API Gateway ID
-    ParentId: 78iwchywp5 # Parent resource ID (root ID for adding a new resource)
-    PathPart: get-profile-by-id # Path for the new resource (e.g., /get-profile)
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: 27sqbwaad7 # Replace with your existing API Gateway ID
+      ParentId: 78iwchywp5 # Parent resource ID (root ID for adding a new resource)
+      PathPart: get-profile-by-id # Path for the new resource (e.g., /get-profile)
+
   GetProfilePOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
