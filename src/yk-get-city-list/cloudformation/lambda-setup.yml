@@ -89,7 +89,8 @@ Resources:
         Type: AWS_PROXY
         IntegrationHttpMethod: GET
         Uri: !Sub
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetCityLambda.Arn}/invocations
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt [GetCityLambda, Arn] }
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
