@@ -3,6 +3,7 @@ import {
   QueryCommand,
   ScanCommand,
 } from "@aws-sdk/client-dynamodb";
+const { unmarshall } = require("@aws-sdk/util-dynamodb");
 
 const region = process.env.AWS_REGION || "eu-west-1";
 const client = new DynamoDBClient({ region });
@@ -57,10 +58,11 @@ export async function handler(event) {
     try {
       const command = new QueryCommand(input);
       const response = await client.send(command);
-      console.log("Query succeeded:", response.Items);
+      const unmarshalledItems = response.Items.map((item) => unmarshall(item));
+      console.log("Query succeeded:", unmarshalledItems);
       return {
         statusCode: 200,
-        body: JSON.stringify(response.Items || []),
+        body: JSON.stringify(unmarshalledItems || []),
       };
     } catch (error) {
       console.error("Error querying DynamoDB:", error);
