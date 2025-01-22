@@ -5,6 +5,10 @@ const region = process.env.AWS_REGION || "eu-west-1"; // Default region
 const dynamoDB = new DynamoDBClient({ region });
 
 export async function handler(event) {
+  function capitalizeCityName(cityName) {
+    return cityName.charAt(0).toUpperCase() + cityName.slice(1).toLowerCase();
+  }
+
   try {
     const params = {
       TableName: "City",
@@ -14,7 +18,13 @@ export async function handler(event) {
 
     // Convert DynamoDB AttributeValue format to plain JSON
     const cities = result.Items
-      ? result.Items.map((item) => unmarshall(item))
+      ? result.Items.map((item) => {
+          const city = unmarshall(item);
+          if (city.CityName) {
+            city.CityName = capitalizeCityName(city.CityName); // Capitalize city name
+          }
+          return city;
+        })
       : [];
 
     console.log("Query result:", cities);

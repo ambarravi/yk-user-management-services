@@ -17,7 +17,7 @@ export async function handler(event) {
       ? result.Items.map((item) => unmarshall(item))
       : [];
 
-    console.log("SCan result:", categories);
+    console.log("Scan result:", categories);
     return {
       statusCode: 200,
       body: JSON.stringify(categories),
