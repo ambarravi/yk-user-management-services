@@ -3,7 +3,8 @@ import {
   QueryCommand,
   ScanCommand,
 } from "@aws-sdk/client-dynamodb";
-const { unmarshall } = require("@aws-sdk/util-dynamodb");
+
+import { unmarshall } from "@aws-sdk/util-dynamodb"; // Import unmarshall utility
 
 const region = process.env.AWS_REGION || "eu-west-1";
 const client = new DynamoDBClient({ region });
