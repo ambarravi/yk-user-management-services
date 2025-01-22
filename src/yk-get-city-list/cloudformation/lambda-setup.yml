@@ -63,7 +63,7 @@ Resources:
                   - lambda:InvokeFunction
                 Resource: "*"
 
-  GetCityLambdaPermission:
+  LambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref GetCityLambda
