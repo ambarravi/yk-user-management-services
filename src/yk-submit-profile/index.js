@@ -87,7 +87,7 @@ export const handler = async (event) => {
           ":alternateNumber": { S: profileData.alternateNumber },
           ":aboutOrganization": { S: profileData.aboutOrganization },
           ":termsAccepted": { BOOL: profileData.termsAccepted },
-          ":cityID": { S: profileData.venueCity },
+          ":cityID": { S: profileData.cityID },
           ":cityName": { S: profileData.venueCityName },
           ":collegeID": profileData.selectedCollegeID
             ? { S: profileData.selectedCollegeID }
@@ -101,7 +101,7 @@ export const handler = async (event) => {
           ":updatedAt": { S: new Date().toISOString() },
         },
       };
-
+      console.log(updateParams);
       await dynamoDBClient.send(new UpdateItemCommand(updateParams));
       console.log("Record updated successfully.");
     } else {
@@ -116,7 +116,7 @@ export const handler = async (event) => {
           alternateNumber: { S: profileData.alternateNumber },
           aboutOrganization: { S: profileData.aboutOrganization },
           termsAccepted: { BOOL: profileData.termsAccepted },
-          cityID: { S: profileData.venueCity },
+          cityID: { S: profileData.cityID },
           cityName: { S: profileData.venueCityName },
           collegeID: profileData.selectedCollegeID
             ? { S: profileData.selectedCollegeID }

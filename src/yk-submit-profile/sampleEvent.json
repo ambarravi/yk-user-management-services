@@ -101,6 +101,6 @@
     "deploymentId": "jw4pzk",
     "apiId": "27sqbwaad7"
   },
-  "body": "{\"username\":\"google_115751856932696261052\",\"name\":\"Ravi\",\"contactPerson\":\"Ravichandra Ambar\",\"contactEmail\":\"ravi.ambar@gmail.com\",\"contactNumber\":\"9860719197\",\"alternateNumber\":\"9860718184\",\"aboutOrganization\":\"About Organization: THis is updated About .. fwewewewewewe\",\"termsAccepted\":\"true\",\"logo\":{},\"venueCity\":\"01947387-3c14-7eef-8c12-a00c0c64d8d5\",\"venueCityName\":\"Pune\",\"address\":\"S T Colony, Tuljapur\",\"associatedCollegeUniversity\":\"Yes\",\"collegeSearchText\":\"COEP\",\"selectedCollege\":\"[object Object]\",\"logoFileName\":\"organizerLogo.jpg\",\"logoFileType\":\"image/jpeg\"}",
+  "body": "{\"username\":\"google_115751856932696261052\",\"name\":\"Ravi\",\"contactPerson\":\"Ravichandra Ambar\",\"contactEmail\":\"ravi.ambar@gmail.com\",\"contactNumber\":\"9860719197\",\"alternateNumber\":\"9860718184\",\"aboutOrganization\":\"About Organization: THis is updated About .. fwewewewewewe\",\"cityID\":\"01947387-3c14-7eef-8c12-a00c0c64d8d5\",\"collegeID\":\"1\",\"address\":\"S T Colony, Tuljapur\",\"associatedCollegeUniversity\":\"Yes\",\"termsAccepted\":\"true\",\"logo\":{},\"collegeSearchText\":\"coep\",\"venueCityName\":\"Pune\",\"logoFileName\":\"organizerLogo.jpg\",\"logoFileType\":\"image/jpeg\"}",
   "isBase64Encoded": false
 }
