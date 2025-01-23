@@ -71,9 +71,13 @@ export const handler = async (event) => {
               alternateNumber = :alternateNumber,
               aboutOrganization = :aboutOrganization,
               termsAccepted = :termsAccepted,
+              cityID = :cityID,
+              cityName = :cityName,
+              collegeID = :collegeID,
+              collegeName = :collegeName
+              address = :address,
               logoPath = :logoPath,
-              updatedAt = :updatedAt
-             
+              updatedAt = :updatedAt            
         `,
         ExpressionAttributeValues: {
           ":name": { S: profileData.name },
@@ -83,6 +87,19 @@ export const handler = async (event) => {
           ":alternateNumber": { S: profileData.alternateNumber },
           ":aboutOrganization": { S: profileData.aboutOrganization },
           ":termsAccepted": { BOOL: profileData.termsAccepted },
+          ":cityID": { S: profileData.venueCity },
+          ":cityName": { S: profileData.venueCityName },
+          ":collegeID": profileData.selectedCollege
+            ? { S: profileData.selectedCollege.CollegeID }
+            : { S: "" },
+          ":collegeName": profileData.selectedCollege
+            ? { S: profileData.selectedCollege.Name }
+            : { S: "" }, // Handle null as empty string { S: profileData.selectedCollege },
+          ":address": { S: profileData.address },
+          ":associatedCollegeUniversity": {
+            BOOL: profileData.associatedCollegeUniversity,
+          },
+
           ":logoPath": { S: logoPath },
           ":updatedAt": { S: new Date().toISOString() },
         },
@@ -102,6 +119,18 @@ export const handler = async (event) => {
           alternateNumber: { S: profileData.alternateNumber },
           aboutOrganization: { S: profileData.aboutOrganization },
           termsAccepted: { BOOL: profileData.termsAccepted },
+          cityID: { S: profileData.venueCity },
+          cityName: { S: profileData.venueCityName },
+          collegeID: profileData.selectedCollege
+            ? { S: profileData.selectedCollege.CollegeID }
+            : { S: "" },
+          collegeName: profileData.selectedCollege
+            ? { S: profileData.selectedCollege.Name }
+            : { S: "" }, // Handle null as empty string { S: profileData.selectedCollege },
+          address: { S: profileData.address },
+          associatedCollegeUniversity: {
+            BOOL: profileData.associatedCollegeUniversity,
+          },
           logoPath: { S: logoPath },
           createdAt: { S: new Date().toISOString() },
         },
