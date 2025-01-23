@@ -12,9 +12,11 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
 export const handler = async (event) => {
   try {
-    console.log("Input event:", JSON.stringify(event));
+    console.log("Input event:", JSON.stringify(event.body));
 
-    const { username, logoFileName, logoFileType, ...profileData } = event.body;
+    const { username, logoFileName, logoFileType, ...profileData } = JSON.parse(
+      event.body
+    );
 
     const REGION = process.env.AWS_REGION;
     const TABLE = process.env.ORGANIZER_TABLE;
