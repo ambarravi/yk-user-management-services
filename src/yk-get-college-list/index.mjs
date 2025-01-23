@@ -10,15 +10,20 @@ const region = process.env.AWS_REGION || "eu-west-1";
 const client = new DynamoDBClient({ region });
 
 export async function handler(event) {
-  console.log(JSON.stringify(event));
+  //console.log(JSON.stringify(event));
 
   const city = event.queryStringParameters?.city || "";
   const searchText = event.queryStringParameters?.searchText || "";
+  console.log(JSON.stringify(event.queryStringParameters));
 
   if (!city) {
     return {
       statusCode: 400,
       body: JSON.stringify({ error: "city is required" }),
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*", // CORS headers
+      },
     };
   }
 
@@ -43,6 +48,7 @@ export async function handler(event) {
   async function queryDynamoDB() {
     try {
       const command = new QueryCommand(input);
+      console.log(command);
       const response = await client.send(command);
       const unmarshalledItems = response.Items.map((item) => unmarshall(item));
       console.log("Query succeeded:", unmarshalledItems);

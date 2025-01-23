@@ -14,7 +14,7 @@ export const handler = async (event) => {
   try {
     console.log("Input event:", JSON.stringify(event));
 
-    const { username, logoFileName, logoFileType, ...profileData } = event;
+    const { username, logoFileName, logoFileType, ...profileData } = event.body;
 
     const REGION = process.env.AWS_REGION;
     const TABLE = process.env.ORGANIZER_TABLE;

@@ -1,0 +1,112 @@
+{
+  "resource": "/get-college",
+  "path": "/get-college",
+  "httpMethod": "GET",
+  "headers": {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Accept-Language": "en-US,en;q=0.9",
+    "CloudFront-Forwarded-Proto": "https",
+    "CloudFront-Is-Desktop-Viewer": "true",
+    "CloudFront-Is-Mobile-Viewer": "false",
+    "CloudFront-Is-SmartTV-Viewer": "false",
+    "CloudFront-Is-Tablet-Viewer": "false",
+    "CloudFront-Viewer-ASN": "24560",
+    "CloudFront-Viewer-Country": "IN",
+    "Host": "27sqbwaad7.execute-api.eu-west-1.amazonaws.com",
+    "priority": "u=0, i",
+    "sec-ch-ua": "\"Not A(Brand\";v=\"8\", \"Chromium\";v=\"132\", \"Microsoft Edge\";v=\"132\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "none",
+    "sec-fetch-user": "?1",
+    "upgrade-insecure-requests": "1",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0.0",
+    "Via": "2.0 9a4b0759c84efb9881f8d98415c78ffe.cloudfront.net (CloudFront)",
+    "X-Amz-Cf-Id": "xR0lStz7m7wB5eQVE2OzbTzWrPx7-QhVgMDRpGdpQJi3nj-c6F_Mjg==",
+    "X-Amzn-Trace-Id": "Root=1-6791ccbb-0e8707f96e4d24e415a48146",
+    "X-Forwarded-For": "106.213.80.254, 15.158.22.209",
+    "X-Forwarded-Port": "443",
+    "X-Forwarded-Proto": "https"
+  },
+  "multiValueHeaders": {
+    "Accept": [
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+    ],
+    "Accept-Encoding": ["gzip, deflate, br, zstd"],
+    "Accept-Language": ["en-US,en;q=0.9"],
+    "CloudFront-Forwarded-Proto": ["https"],
+    "CloudFront-Is-Desktop-Viewer": ["true"],
+    "CloudFront-Is-Mobile-Viewer": ["false"],
+    "CloudFront-Is-SmartTV-Viewer": ["false"],
+    "CloudFront-Is-Tablet-Viewer": ["false"],
+    "CloudFront-Viewer-ASN": ["24560"],
+    "CloudFront-Viewer-Country": ["IN"],
+    "Host": ["27sqbwaad7.execute-api.eu-west-1.amazonaws.com"],
+    "priority": ["u=0, i"],
+    "sec-ch-ua": [
+      "\"Not A(Brand\";v=\"8\", \"Chromium\";v=\"132\", \"Microsoft Edge\";v=\"132\""
+    ],
+    "sec-ch-ua-mobile": ["?0"],
+    "sec-ch-ua-platform": ["\"Windows\""],
+    "sec-fetch-dest": ["document"],
+    "sec-fetch-mode": ["navigate"],
+    "sec-fetch-site": ["none"],
+    "sec-fetch-user": ["?1"],
+    "upgrade-insecure-requests": ["1"],
+    "User-Agent": [
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0.0"
+    ],
+    "Via": ["2.0 9a4b0759c84efb9881f8d98415c78ffe.cloudfront.net (CloudFront)"],
+    "X-Amz-Cf-Id": ["xR0lStz7m7wB5eQVE2OzbTzWrPx7-QhVgMDRpGdpQJi3nj-c6F_Mjg=="],
+    "X-Amzn-Trace-Id": ["Root=1-6791ccbb-0e8707f96e4d24e415a48146"],
+    "X-Forwarded-For": ["106.213.80.254, 15.158.22.209"],
+    "X-Forwarded-Port": ["443"],
+    "X-Forwarded-Proto": ["https"]
+  },
+  "queryStringParameters": {
+    "city": "pune",
+    "searchText": "coep"
+  },
+  "multiValueQueryStringParameters": {
+    "city": ["pune"],
+    "searchText": ["coep"]
+  },
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "resourceId": "8sqzan",
+    "resourcePath": "/get-college",
+    "httpMethod": "GET",
+    "extendedRequestId": "E0ztUEKQjoEEj7A=",
+    "requestTime": "23/Jan/2025:04:59:39 +0000",
+    "path": "/dev/get-college",
+    "accountId": "756157886151",
+    "protocol": "HTTP/1.1",
+    "stage": "dev",
+    "domainPrefix": "27sqbwaad7",
+    "requestTimeEpoch": 1737608379225,
+    "requestId": "917852a4-ee90-4f09-bd00-12d5f1b0b040",
+    "identity": {
+      "cognitoIdentityPoolId": null,
+      "accountId": null,
+      "cognitoIdentityId": null,
+      "caller": null,
+      "sourceIp": "106.213.80.254",
+      "principalOrgId": null,
+      "accessKey": null,
+      "cognitoAuthenticationType": null,
+      "cognitoAuthenticationProvider": null,
+      "userArn": null,
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0.0",
+      "user": null
+    },
+    "domainName": "27sqbwaad7.execute-api.eu-west-1.amazonaws.com",
+    "deploymentId": "jw4pzk",
+    "apiId": "27sqbwaad7"
+  },
+  "body": null,
+  "isBase64Encoded": false
+}
