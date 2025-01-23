@@ -22,21 +22,6 @@ export async function handler(event) {
     };
   }
 
-  // const input = {
-  //   TableName: "College", // Your table name
-  //   IndexName: "City-index", // Name of the GSI
-  //   KeyConditionExpression: "City = :city", // Partition key condition
-  //   ExpressionAttributeValues: {
-  //     ":city": { S: city }, // Replace "pune" with the desired city
-  //     ":searchText": { S: searchText }, // Additional filter condition
-  //   },
-  //   FilterExpression: "contains(#nameAttr, :searchText)", // Filter to check if Name contains "Engineering"
-  //   ExpressionAttributeNames: {
-  //     "#nameAttr": "Name", // Attribute name mapping
-  //   },
-  //   Select: "ALL_ATTRIBUTES", // Retrieve all attributes
-  // };
-
   const input = {
     TableName: "College", // Your table name
     IndexName: "City-index", // Name of the GSI
@@ -63,12 +48,20 @@ export async function handler(event) {
       console.log("Query succeeded:", unmarshalledItems);
       return {
         statusCode: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*", // CORS headers
+        },
         body: JSON.stringify(unmarshalledItems || []),
       };
     } catch (error) {
       console.error("Error querying DynamoDB:", error);
       return {
         statusCode: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*", // CORS headers
+        },
         body: JSON.stringify({ error: "Error querying data" }),
       };
     }
