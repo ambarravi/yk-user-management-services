@@ -74,7 +74,6 @@ export const handler = async (event) => {
               cityID = :cityID,
               cityName = :cityName,
               collegeID = :collegeID,
-              collegeName = :collegeName
               address = :address,
               logoPath = :logoPath,
               updatedAt = :updatedAt            
@@ -89,12 +88,9 @@ export const handler = async (event) => {
           ":termsAccepted": { BOOL: profileData.termsAccepted },
           ":cityID": { S: profileData.venueCity },
           ":cityName": { S: profileData.venueCityName },
-          ":collegeID": profileData.selectedCollege
-            ? { S: profileData.selectedCollege.CollegeID }
+          ":collegeID": profileData.selectedCollegeID
+            ? { S: profileData.selectedCollegeID }
             : { S: "" },
-          ":collegeName": profileData.selectedCollege
-            ? { S: profileData.selectedCollege.Name }
-            : { S: "" }, // Handle null as empty string { S: profileData.selectedCollege },
           ":address": { S: profileData.address },
           ":associatedCollegeUniversity": {
             BOOL: profileData.associatedCollegeUniversity,
@@ -121,12 +117,9 @@ export const handler = async (event) => {
           termsAccepted: { BOOL: profileData.termsAccepted },
           cityID: { S: profileData.venueCity },
           cityName: { S: profileData.venueCityName },
-          collegeID: profileData.selectedCollege
-            ? { S: profileData.selectedCollege.CollegeID }
+          collegeID: profileData.selectedCollegeID
+            ? { S: profileData.selectedCollegeID }
             : { S: "" },
-          collegeName: profileData.selectedCollege
-            ? { S: profileData.selectedCollege.Name }
-            : { S: "" }, // Handle null as empty string { S: profileData.selectedCollege },
           address: { S: profileData.address },
           associatedCollegeUniversity: {
             BOOL: profileData.associatedCollegeUniversity,
