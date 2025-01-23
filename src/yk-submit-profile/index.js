@@ -60,6 +60,10 @@ export const handler = async (event) => {
     console.log("Presigned URL:", presignedUrl);
 
     if (existingRecord.Item) {
+      if (existingRecord.Item.logoPath && !logoFileName) {
+        logoPath = existingRecord.Item.logoPath;
+        presignedUrl = "";
+      }
       const updateParams = {
         TableName: TABLE,
         Key: { OrganizerID: { S: username } },
