@@ -75,6 +75,7 @@ export const handler = async (event) => {
               cityName = :cityName,
               collegeID = :collegeID,
               address = :address,
+              associatedCollegeUniversity =:associatedCollegeUniversity,
               logoPath = :logoPath,
               updatedAt = :updatedAt            
         `,
