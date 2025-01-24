@@ -20,6 +20,7 @@ jobs:
           - yk-submit-profile
           - yk-get-profile-by-id
           - yk-get-category-list
+          - yk-submit-event
 
     steps:
       # Step 1: Checkout code
