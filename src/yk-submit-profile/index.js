@@ -42,7 +42,7 @@ export const handler = async (event) => {
     console.log("Existing record:", existingRecord);
 
     const logoKey = `logo/${username}_${logoFileName}`;
-    const logoPath = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${logoKey}`;
+    let logoPath = `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${logoKey}`;
 
     console.log("Logo key:", logoKey);
 
