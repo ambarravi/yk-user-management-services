@@ -61,7 +61,7 @@ export const handler = async (event) => {
 
     if (existingRecord.Item) {
       if (existingRecord.Item.logoPath && !logoFileName) {
-        logoPath = existingRecord.Item.logoPath;
+        logoPath = existingRecord.Item.logoPath.S;
         console.log("logoPath", logoPath);
         presignedUrl = "";
       }
