@@ -47,7 +47,7 @@ export const handler = async (event) => {
     console.log("Logo key:", logoKey);
 
     // Generate the presigned URL
-    const presignedUrl = await getSignedUrl(
+    let presignedUrl = await getSignedUrl(
       s3Client,
       new PutObjectCommand({
         Bucket: S3_BUCKET_NAME,
