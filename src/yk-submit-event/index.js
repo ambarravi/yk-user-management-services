@@ -1,8 +1,24 @@
+import {
+  DynamoDBClient,
+  GetItemCommand,
+  PutItemCommand,
+  UpdateItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuidv4 } from "uuid";
+
+const dynamoDBClient = new DynamoDBClient({ region: "eu-west-1" });
+const s3Client = new S3Client({ region: process.env.AWS_REGION });
+
 export const submitEvent = async (eventData) => {
   try {
     console.log("Input event:", JSON.stringify(eventData));
 
-    const { username, eventImages, ...eventDetails } = eventData;
+    const { eventID, OrgID, eventImages, ...eventDetails } = eventData;
+    if (!eventID) {
+      eventID = uuidv4();
+    }
     const REGION = process.env.AWS_REGION;
     const TABLE = process.env.EVENTS_TABLE;
     const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
@@ -15,7 +31,7 @@ export const submitEvent = async (eventData) => {
     // Upload images to S3 if provided
     for (let i = 0; i < Math.min(eventImages.length, maxImages); i++) {
       const image = eventImages[i];
-      const imageKey = `event-images/${username}_${Date.now()}_${i + 1}`;
+      const imageKey = `event-images/${EventID}_${Date.now()}_${i + 1}`;
 
       // Generate the presigned URL for image upload
       const presignedUrl = await getSignedUrl(
@@ -37,30 +53,32 @@ export const submitEvent = async (eventData) => {
 
     // Prepare event data for DynamoDB
     const eventPayload = {
-      EventID: { S: username },
-      EventName: { S: eventDetails.eventName || "" },
-      EventDate: { S: eventDetails.eventDate || "" },
+      EventID: { S: eventID },
+      OrgID: { S: OrgID },
+      EventTitle: { S: eventDetails.eventTitle || "" },
+      EventDate: { S: eventDetails.dateTime || "" },
       EventLocation: { S: eventDetails.eventLocation || "" },
-      EventDetails: { S: eventDetails.eventDetails || "" },
+      EventDetails: { S: eventDetails.aboutEvent || "" },
       EventImages: { L: imageUrls.map((url) => ({ S: url })) },
       CityID: { S: eventDetails.CityID || "" },
       CategoryID: { S: eventDetails.CategoryID || "" },
       EventType: { S: eventDetails.eventType || "" },
       CollegeID: { S: eventDetails.CollegeID || "" },
       Tags: { S: eventDetails.tags || "" },
-      EventHighLight: { S: eventDetails.eventHighLight || "" },
-      Price: { N: eventDetails.price || "" },
-      Seats: { N: eventDetails.seats || "" },
-      ReservedSeats: { N: eventDetails.reservedSeats || "" },
+      EventHighLight: { S: eventDetails.highlight || "" },
+      Price: { N: eventDetails.ticketPrice || "" },
+      Seats: { N: eventDetails.noOfSeats || "" },
+      ReservedSeats: { N: eventDetails.reserveSeats || "" },
       AudienceBenefits: { N: eventDetails.audienceBenefits || "" },
-      AdditionalInfo: { N: eventDetails.additionalInfo || "" },
+      AdditionalInfo: { N: eventDetails.specialInstruction || "" },
+      Mode: { N: eventDetails.mode || "" },
     };
 
     // Check if the event already exists
     const getParams = {
       TableName: TABLE,
       Key: {
-        EventID: { S: username },
+        EventID: { S: eventID },
       },
     };
 
@@ -72,9 +90,9 @@ export const submitEvent = async (eventData) => {
     if (existingRecord.Item) {
       const updateParams = {
         TableName: TABLE,
-        Key: { EventID: { S: username } },
+        Key: { EventID: { S: eventID } },
         UpdateExpression: `
-          SET EventName = :eventName,
+          SET EventTitle = :eventTitle,
               EventDate = :eventDate,
               EventLocation = :eventLocation,
               EventDetails = :eventDetails,
@@ -90,11 +108,14 @@ export const submitEvent = async (eventData) => {
               ReservedSeats = :reservedSeats,
               AudienceBenefits = :audienceBenefits,
               AdditionalInfo = :additionalInfo,
-              UpdatedAt = :updatedAt
+              UpdatedAt = :updatedAt,
+                Mode = :mode,
+                OrgID = :orgID
         `,
         ExpressionAttributeValues: {
-          ":eventName": { S: eventDetails.eventName },
-          ":eventDate": { S: eventDetails.eventDate },
+          ":orgID": { S: eventDetails.OrgID },
+          ":eventTitle": { S: eventDetails.eventTitle },
+          ":eventDate": { S: eventDetails.dateTime },
           ":eventLocation": { S: eventDetails.eventLocation },
           ":eventDetails": { S: eventDetails.eventDetails },
           ":eventImages": { L: imageUrls.map((url) => ({ S: url })) },
@@ -110,6 +131,7 @@ export const submitEvent = async (eventData) => {
           ":audienceBenefits": { N: eventDetails.audienceBenefits.toString() },
           ":additionalInfo": { N: eventDetails.additionalInfo.toString() },
           ":updatedAt": { S: new Date().toISOString() },
+          ":mode": { S: eventDetails.mode.toString() },
         },
       };
       await dynamoDBClient.send(new UpdateItemCommand(updateParams));
@@ -118,9 +140,10 @@ export const submitEvent = async (eventData) => {
       const insertParams = {
         TableName: TABLE,
         Item: {
-          EventID: { S: username },
-          EventName: { S: eventDetails.eventName },
-          EventDate: { S: eventDetails.eventDate },
+          EventID: { S: eventID },
+          OrgID: { S: OrgID },
+          EventTitle: { S: eventDetails.eventTitle },
+          EventDate: { S: eventDetails.dateTime },
           EventLocation: { S: eventDetails.eventLocation },
           EventDetails: { S: eventDetails.eventDetails },
           EventImages: { L: imageUrls.map((url) => ({ S: url })) },
@@ -129,12 +152,15 @@ export const submitEvent = async (eventData) => {
           EventType: { S: eventDetails.eventType },
           CollegeID: { S: eventDetails.CollegeID },
           Tags: { S: eventDetails.tags },
-          EventHighLight: { S: eventDetails.eventHighLight },
+          EventHighLight: { S: eventDetails.highlight },
           Price: { N: eventDetails.price.toString() },
           Seats: { N: eventDetails.seats.toString() },
           ReservedSeats: { N: eventDetails.reservedSeats.toString() },
           AudienceBenefits: { N: eventDetails.audienceBenefits.toString() },
           AdditionalInfo: { N: eventDetails.additionalInfo.toString() },
+          CreatedAt: { S: new Date().toISOString() },
+          Mode: { S: eventDetails.mode },
+          Tags: { S: eventDetails.tags },
           CreatedAt: { S: new Date().toISOString() },
         },
       };
