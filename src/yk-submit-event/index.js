@@ -13,162 +13,169 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
 export const handler = async (event) => {
   try {
-    console.log("Input event:", JSON.stringify(event));
-
-    const { eventID, OrgID, eventImages, ...eventDetails } = event;
-    if (!eventID) {
-      eventID = uuidv4();
+    if (!event.body) {
+      throw new Error("Request body is missing.");
     }
+
+    console.log("Input event body:", event.body);
+    const parsedBody = JSON.parse(event.body);
+
+    const { eventID, OrgID, eventImages = [], ...eventDetails } = parsedBody;
+
+    if (!OrgID) {
+      throw new Error("Organization ID (OrgID) is required.");
+    }
+
+    const uniqueEventID = eventID || uuidv4();
     const REGION = process.env.AWS_REGION;
     const TABLE = process.env.EVENTS_TABLE;
     const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-    // Validate and prepare event images
-    const imageUrls = [];
-    const imageKeys = [];
-    const maxImages = 3;
+    const sanitizeString = (value) =>
+      value && value.trim() !== "" ? { S: value } : undefined;
 
-    // Upload images to S3 if provided
+    if (!REGION || !TABLE || !S3_BUCKET_NAME) {
+      throw new Error(
+        "Missing required environment variables: AWS_REGION, EVENTS_TABLE, or S3_BUCKET_NAME."
+      );
+    }
+
+    // Validate and process event images
+    const imageUrls = [];
+    const maxImages = 3;
     for (let i = 0; i < Math.min(eventImages.length, maxImages); i++) {
       const image = eventImages[i];
-      const imageKey = `event-images/${EventID}_${Date.now()}_${i + 1}`;
+      if (!image || !image.type) {
+        console.warn(`Skipping invalid image at index ${i}:`, image);
+        continue;
+      }
 
-      // Generate the presigned URL for image upload
-      const presignedUrl = await getSignedUrl(
-        s3Client,
-        new PutObjectCommand({
-          Bucket: S3_BUCKET_NAME,
-          Key: imageKey,
-          ContentType: image.type,
-        }),
-        { expiresIn: 300 }
-      );
+      const imageKey = `event-images/${uniqueEventID}_${Date.now()}_${i + 1}`;
 
-      // Store image URLs and keys for the response
-      imageUrls.push(
-        `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${imageKey}`
-      );
-      imageKeys.push(imageKey);
+      try {
+        const presignedUrl = await getSignedUrl(
+          s3Client,
+          new PutObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: imageKey,
+            ContentType: image.type,
+          }),
+          { expiresIn: 300 }
+        );
+        imageUrls.push(
+          `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${imageKey}`
+        );
+        console.log(
+          `Generated presigned URL for image ${i + 1}:`,
+          presignedUrl
+        );
+      } catch (err) {
+        console.error(
+          `Failed to generate presigned URL for image ${i + 1}:`,
+          err
+        );
+      }
     }
+
+    console.log("Final image URLs:", imageUrls);
 
     // Prepare event data for DynamoDB
     const eventPayload = {
-      EventID: { S: eventID },
+      EventID: { S: uniqueEventID },
       OrgID: { S: OrgID },
       EventTitle: { S: eventDetails.eventTitle || "" },
       EventDate: { S: eventDetails.dateTime || "" },
       EventLocation: { S: eventDetails.eventLocation || "" },
-      EventDetails: { S: eventDetails.aboutEvent || "" },
-      EventImages: { L: imageUrls.map((url) => ({ S: url })) },
-      CityID: { S: eventDetails.CityID || "" },
-      CategoryID: { S: eventDetails.CategoryID || "" },
+      EventDetails: { S: eventDetails.eventDetails || "" },
+      EventImages: imageUrls.length
+        ? { L: imageUrls.map((url) => ({ S: url })) }
+        : { L: [] }, // Empty list if no images
+      CityID: { S: eventDetails.cityID || "" },
+      CategoryID: { S: eventDetails.categoryID || "" },
       EventType: { S: eventDetails.eventType || "" },
-      CollegeID: { S: eventDetails.CollegeID || "" },
       Tags: { S: eventDetails.tags || "" },
       EventHighLight: { S: eventDetails.highlight || "" },
-      Price: { N: eventDetails.ticketPrice || "" },
-      Seats: { N: eventDetails.noOfSeats || "" },
-      ReservedSeats: { N: eventDetails.reserveSeats || "" },
-      AudienceBenefits: { N: eventDetails.audienceBenefits || "" },
-      AdditionalInfo: { N: eventDetails.specialInstruction || "" },
-      Mode: { N: eventDetails.mode || "" },
+      Price: { N: eventDetails.ticketPrice || "0" },
+      Seats: { N: eventDetails.noOfSeats || "0" },
+      ReservedSeats: { N: eventDetails.reserveSeats || "0" },
+      AudienceBenefits:
+        eventDetails.audienceBenefits &&
+        eventDetails.audienceBenefits.length > 0
+          ? {
+              L: eventDetails.audienceBenefits
+                .filter((benefit) => benefit.trim() !== "") // Remove empty strings
+                .map((benefit) => ({
+                  S: benefit,
+                })),
+            }
+          : { L: [] }, // Empty array if no benefits are provided
+      AdditionalInfo: { S: eventDetails.additionalInfo || "" },
+      Mode: { S: eventDetails.mode || "" },
     };
 
     // Check if the event already exists
     const getParams = {
       TableName: TABLE,
-      Key: {
-        EventID: { S: eventID },
-      },
+      Key: { EventID: { S: uniqueEventID } },
     };
 
     const existingRecord = await dynamoDBClient.send(
       new GetItemCommand(getParams)
     );
 
-    // If event exists, update it; otherwise, insert a new record
     if (existingRecord.Item) {
+      console.log("Event already exists. Updating...");
       const updateParams = {
         TableName: TABLE,
-        Key: { EventID: { S: eventID } },
-        UpdateExpression: `
-          SET EventTitle = :eventTitle,
-              EventDate = :eventDate,
-              EventLocation = :eventLocation,
-              EventDetails = :eventDetails,
-              EventImages = :eventImages,
-              CityID = :cityID,
-              CategoryID = :categoryID,
-              EventType = :eventType,
-              CollegeID = :collegeID,
-              Tags = :tags,
-              EventHighLight = :eventHighLight,
-              Price = :price,
-              Seats = :seats,
-              ReservedSeats = :reservedSeats,
-              AudienceBenefits = :audienceBenefits,
-              AdditionalInfo = :additionalInfo,
-              UpdatedAt = :updatedAt,
-                Mode = :mode,
-                OrgID = :orgID
-        `,
+        Key: { EventID: { S: uniqueEventID } },
+        UpdateExpression: `SET EventTitle = :eventTitle, EventDate = :eventDate, EventLocation = :eventLocation, EventDetails = :eventDetails, EventImages = :eventImages, CityID = :cityID, CategoryID = :categoryID, EventType = :eventType, Tags = :tags, EventHighLight = :eventHighLight, Price = :price, Seats = :seats, ReservedSeats = :reservedSeats, AudienceBenefits = :audienceBenefits, AdditionalInfo = :additionalInfo, Mode = :mode, OrgID = :orgID`,
         ExpressionAttributeValues: {
-          ":orgID": { S: eventDetails.OrgID },
-          ":eventTitle": { S: eventDetails.eventTitle },
-          ":eventDate": { S: eventDetails.dateTime },
-          ":eventLocation": { S: eventDetails.eventLocation },
-          ":eventDetails": { S: eventDetails.eventDetails },
-          ":eventImages": { L: imageUrls.map((url) => ({ S: url })) },
-          ":cityID": { S: eventDetails.CityID },
-          ":categoryID": { S: eventDetails.CategoryID },
-          ":eventType": { S: eventDetails.eventType },
-          ":collegeID": { S: eventDetails.CollegeID },
-          ":tags": { S: eventDetails.tags },
-          ":eventHighLight": { S: eventDetails.eventHighLight },
-          ":price": { N: eventDetails.price.toString() },
-          ":seats": { N: eventDetails.seats.toString() },
-          ":reservedSeats": { N: eventDetails.reservedSeats.toString() },
-          ":audienceBenefits": { N: eventDetails.audienceBenefits.toString() },
-          ":additionalInfo": { N: eventDetails.additionalInfo.toString() },
-          ":updatedAt": { S: new Date().toISOString() },
-          ":mode": { S: eventDetails.mode.toString() },
+          ":eventTitle": { S: eventDetails.eventTitle || "" },
+          ":eventDate": { S: eventDetails.dateTime || "" },
+          ":eventLocation": { S: eventDetails.eventLocation || "" },
+          ":eventDetails": { S: eventDetails.eventDetails || "" },
+          // ":eventImages": { L: imageUrls.map((url) => ({ S: url })) },
+          eventImages: imageUrls.length
+            ? { L: imageUrls.map((url) => ({ S: url })) }
+            : { L: [] }, // Empty list if no images
+          ":cityID": { S: eventDetails.cityID || "" },
+          ":categoryID": { S: eventDetails.categoryID || "" },
+          ":eventType": { S: eventDetails.eventType || "" },
+          ":tags": { S: eventDetails.tags || "" },
+          ":eventHighLight": { S: eventDetails.highlight || "" },
+          ":price": { N: eventDetails.ticketPrice || "0" },
+          ":seats": { N: eventDetails.noOfSeats || "0" },
+          ":reservedSeats": { N: eventDetails.reserveSeats || "0" },
+          ":audienceBenefits":
+            eventDetails.audienceBenefits &&
+            eventDetails.audienceBenefits.length > 0
+              ? {
+                  L: eventDetails.audienceBenefits
+                    .filter((benefit) => benefit.trim() !== "") // Remove empty strings
+                    .map((benefit) => ({
+                      S: benefit,
+                    })),
+                }
+              : { L: [] },
+          ":additionalInfo": { S: eventDetails.additionalInfo || "" },
+          ":mode": { S: eventDetails.mode || "" },
+          ":orgID": { S: OrgID },
         },
       };
       await dynamoDBClient.send(new UpdateItemCommand(updateParams));
       console.log("Event updated successfully.");
     } else {
+      console.log("Inserting new event...");
       const insertParams = {
         TableName: TABLE,
-        Item: {
-          EventID: { S: eventID },
-          OrgID: { S: OrgID },
-          EventTitle: { S: eventDetails.eventTitle },
-          EventDate: { S: eventDetails.dateTime },
-          EventLocation: { S: eventDetails.eventLocation },
-          EventDetails: { S: eventDetails.eventDetails },
-          EventImages: { L: imageUrls.map((url) => ({ S: url })) },
-          CityID: { S: eventDetails.CityID },
-          CategoryID: { S: eventDetails.CategoryID },
-          EventType: { S: eventDetails.eventType },
-          CollegeID: { S: eventDetails.CollegeID },
-          Tags: { S: eventDetails.tags },
-          EventHighLight: { S: eventDetails.highlight },
-          Price: { N: eventDetails.price.toString() },
-          Seats: { N: eventDetails.seats.toString() },
-          ReservedSeats: { N: eventDetails.reservedSeats.toString() },
-          AudienceBenefits: { N: eventDetails.audienceBenefits.toString() },
-          AdditionalInfo: { N: eventDetails.additionalInfo.toString() },
-          CreatedAt: { S: new Date().toISOString() },
-          Mode: { S: eventDetails.mode },
-          Tags: { S: eventDetails.tags },
-          CreatedAt: { S: new Date().toISOString() },
-        },
+        Item: eventPayload,
       };
+
+      console.log("Insert Params:", JSON.stringify(insertParams, null, 2));
       await dynamoDBClient.send(new PutItemCommand(insertParams));
       console.log("Event inserted successfully.");
     }
 
-    // Return success response with the presigned URLs
     return {
       statusCode: 200,
       headers: {
@@ -178,7 +185,7 @@ export const handler = async (event) => {
       },
       body: JSON.stringify({
         message: "Event submission completed successfully.",
-        presignedUrls: imageUrls, // return the presigned URLs for the images
+        presignedUrls: imageUrls,
       }),
     };
   } catch (error) {
