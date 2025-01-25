@@ -53,7 +53,7 @@ Resources:
                   - dynamodb:Query
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
-                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Event
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
 
               - Effect: Allow
                 Action:
