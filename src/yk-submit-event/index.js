@@ -27,8 +27,9 @@ export const handler = async (event) => {
     }
 
     const uniqueEventID = eventID || uuidv4();
+
     const REGION = process.env.AWS_REGION;
-    const TABLE = process.env.EVENTS_TABLE;
+    const TABLE = process.env.EVENT_TABLE;
     const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
     const sanitizeString = (value) =>
