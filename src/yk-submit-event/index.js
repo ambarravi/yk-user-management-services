@@ -11,11 +11,11 @@ import { v4 as uuidv4 } from "uuid";
 const dynamoDBClient = new DynamoDBClient({ region: "eu-west-1" });
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
-export const submitEvent = async (eventData) => {
+export const handler = async (event) => {
   try {
-    console.log("Input event:", JSON.stringify(eventData));
+    console.log("Input event:", JSON.stringify(event));
 
-    const { eventID, OrgID, eventImages, ...eventDetails } = eventData;
+    const { eventID, OrgID, eventImages, ...eventDetails } = event;
     if (!eventID) {
       eventID = uuidv4();
     }
