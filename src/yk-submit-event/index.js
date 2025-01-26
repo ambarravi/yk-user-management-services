@@ -169,7 +169,10 @@ export const handler = async (event) => {
       console.log("Inserting new event...");
       const readableEventID = await generateReadableEventID();
       console.log("Generated ReadableEventID:", readableEventID);
-      eventPayload.ReadableEventID = readableEventID;
+      eventPayload.ReadableEventID = {
+        S: readableEventID,
+      };
+
       const insertParams = {
         TableName: TABLE,
         Item: eventPayload,
