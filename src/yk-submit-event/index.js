@@ -167,6 +167,8 @@ export const handler = async (event) => {
       console.log("Event updated successfully.");
     } else {
       console.log("Inserting new event...");
+      const readableEventID = await generateReadableEventID();
+      eventPayload.ReadableEventID = readableEventID;
       const insertParams = {
         TableName: TABLE,
         Item: eventPayload,
@@ -202,5 +204,35 @@ export const handler = async (event) => {
         message: error.message || "Internal Server Error",
       }),
     };
+  }
+};
+
+const generateReadableEventID = async () => {
+  const partitionKey = "EventSequence"; // Static or customizable for different types
+  const params = {
+    TableName: "EventIDGenerator",
+    Key: { PartitionKey: partitionKey },
+    UpdateExpression: "SET #seq = if_not_exists(#seq, :start) + :increment",
+    ExpressionAttributeNames: {
+      "#seq": "Sequence",
+    },
+    ExpressionAttributeValues: {
+      ":start": 0, // Initialize sequence if it doesn't exist
+      ":increment": 1,
+    },
+    ReturnValues: "UPDATED_NEW",
+  };
+
+  try {
+    // Increment the sequence number atomically
+    const result = await dynamoDB.update(params).promise();
+    const newSequence = result.Attributes.Sequence;
+
+    // Generate ReadableEventID
+    const readableEventID = `ET-${String(newSequence).padStart(2, "0")}`; // e.g., ET-01, ET-02
+    return readableEventID;
+  } catch (error) {
+    console.error("Error generating ReadableEventID:", error);
+    throw new Error("Failed to generate ReadableEventID");
   }
 };
