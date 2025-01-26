@@ -54,6 +54,7 @@ Resources:
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
                 Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventIDGenerator
 
               - Effect: Allow
                 Action:
