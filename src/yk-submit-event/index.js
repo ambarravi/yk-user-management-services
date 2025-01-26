@@ -168,6 +168,7 @@ export const handler = async (event) => {
     } else {
       console.log("Inserting new event...");
       const readableEventID = await generateReadableEventID();
+      console.log("Generated ReadableEventID:", readableEventID);
       eventPayload.ReadableEventID = readableEventID;
       const insertParams = {
         TableName: TABLE,
@@ -208,31 +209,51 @@ export const handler = async (event) => {
 };
 
 const generateReadableEventID = async () => {
-  const partitionKey = "EventSequence"; // Static or customizable for different types
-  const params = {
-    TableName: "EventIDGenerator",
-    Key: { PartitionKey: partitionKey },
-    UpdateExpression: "SET #seq = if_not_exists(#seq, :start) + :increment",
-    ExpressionAttributeNames: {
-      "#seq": "Sequence",
-    },
-    ExpressionAttributeValues: {
-      ":start": 0, // Initialize sequence if it doesn't exist
-      ":increment": 1,
-    },
-    ReturnValues: "UPDATED_NEW",
-  };
+  const eventSequenceValue = "EventSequenceID"; // This value will always be the same
+  const tableName = "EventIDGenerator"; // Your table name
 
   try {
-    // Increment the sequence number atomically
-    const result = await dynamoDB.update(params).promise();
-    const newSequence = result.Attributes.Sequence;
+    // Step 1: Retrieve the current sequence number
+    const getParams = {
+      TableName: tableName,
+      Key: { EventSequence: { S: eventSequenceValue } },
+    };
+    console.log("Get Params:", getParams);
 
-    // Generate ReadableEventID
-    const readableEventID = `ET-${String(newSequence).padStart(2, "0")}`; // e.g., ET-01, ET-02
-    return readableEventID;
+    const getResult = await dynamoDBClient.send(new GetItemCommand(getParams));
+    console.log("Get Result:", getResult);
+
+    if (!getResult.Item || !getResult.Item.Sequence) {
+      throw new Error(
+        `Sequence attribute is missing in DynamoDB for key: ${eventSequenceValue}`
+      );
+    }
+
+    const currentSequence = parseInt(getResult.Item.Sequence.N, 10);
+    console.log("Current Sequence:", currentSequence);
+
+    // Step 2: Increment the sequence number
+    const newSequence = currentSequence + 1;
+
+    const updateParams = {
+      TableName: tableName,
+      Key: { EventSequence: { S: eventSequenceValue } },
+      UpdateExpression: "SET #seq = :newSeq",
+      ExpressionAttributeNames: { "#seq": "Sequence" },
+      ExpressionAttributeValues: { ":newSeq": { N: newSequence.toString() } },
+      ReturnValues: "UPDATED_NEW",
+    };
+    console.log("Update Params:", updateParams);
+
+    const updateResult = await dynamoDBClient.send(
+      new UpdateItemCommand(updateParams)
+    );
+    console.log("Update Result:", updateResult);
+
+    // Step 3: Return the readable event ID
+    return `EVT-${newSequence.toString().padStart(6, "0")}`;
   } catch (error) {
     console.error("Error generating ReadableEventID:", error);
-    throw new Error("Failed to generate ReadableEventID");
+    throw new Error("Error generating ReadableEventID");
   }
 };
