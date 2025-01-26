@@ -21,7 +21,7 @@ Resources:
       Environment:
         Variables:
           EVENT_TABLE: "EventDetails"
-          S3_BUCKET_NAME: !Sub "tikto-event-${StageName}"
+          S3_BUCKET_NAME: !Sub "tikto-orgnizer-${StageName}"
 
       Code:
         ZipFile: |
