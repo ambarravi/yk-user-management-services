@@ -21,6 +21,7 @@ jobs:
           - yk-get-profile-by-id
           - yk-get-category-list
           - yk-submit-event
+          - yk-get-event-list-by-orgid
 
     steps:
       # Step 1: Checkout code
