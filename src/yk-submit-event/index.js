@@ -42,6 +42,7 @@ export const handler = async (event) => {
     }
 
     // Validate and process event images
+    const readableEventID = await generateReadableEventID();
     const presignedUrlsResult = [];
     const imageUrls = [];
     const maxImages = 3;
@@ -52,7 +53,9 @@ export const handler = async (event) => {
         continue;
       }
 
-      const imageKey = `event-images/${uniqueEventID}_${Date.now()}_${i + 1}`;
+      const imageKey = `event-images/${OrgID}/${readableEventID}_${i + 1}.${
+        image.type
+      }`;
 
       try {
         const presignedUrl = await getSignedUrl(
@@ -169,7 +172,7 @@ export const handler = async (event) => {
       console.log("Event updated successfully.");
     } else {
       console.log("Inserting new event...");
-      const readableEventID = await generateReadableEventID();
+
       console.log("Generated ReadableEventID:", readableEventID);
       eventPayload.ReadableEventID = {
         S: readableEventID,
