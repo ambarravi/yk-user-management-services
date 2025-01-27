@@ -52,7 +52,7 @@ export const handler = async (event) => {
       }
 
       const imageKey = `event-images/${uniqueEventID}_${Date.now()}_${i + 1}`;
-
+      const presignedUrlsResult = [];
       try {
         const presignedUrl = await getSignedUrl(
           s3Client,
@@ -66,6 +66,7 @@ export const handler = async (event) => {
         imageUrls.push(
           `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${imageKey}`
         );
+        presignedUrlsResult.push(presignedUrl);
         console.log(
           `Generated presigned URL for image ${i + 1}:`,
           presignedUrl
@@ -192,7 +193,7 @@ export const handler = async (event) => {
       },
       body: JSON.stringify({
         message: "Event submission completed successfully.",
-        presignedUrls: imageUrls,
+        presignedUrls: presignedUrlsResult,
       }),
     };
   } catch (error) {
