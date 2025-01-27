@@ -53,9 +53,7 @@ export const handler = async (event) => {
         continue;
       }
 
-      const imageKey = `event-images/${OrgID}/${readableEventID}_${i + 1}.${
-        image.type
-      }`;
+      const imageKey = `event-images/${readableEventID}`;
 
       try {
         const presignedUrl = await getSignedUrl(
