@@ -62,7 +62,7 @@ Resources:
                   - s3:PutObject
                   - s3:GetObject
                   - s3:DeleteObject
-                Resource: !Sub arn:aws:s3:::tikto-event-${StageName}/*
+                Resource: !Sub arn:aws:s3:::tikto-orgnizer-${StageName}/*
 
               - Effect: Allow
                 Action:
