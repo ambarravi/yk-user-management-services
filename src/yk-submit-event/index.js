@@ -42,6 +42,7 @@ export const handler = async (event) => {
     }
 
     // Validate and process event images
+    const presignedUrlsResult = [];
     const imageUrls = [];
     const maxImages = 3;
     for (let i = 0; i < Math.min(eventImages.length, maxImages); i++) {
@@ -52,7 +53,7 @@ export const handler = async (event) => {
       }
 
       const imageKey = `event-images/${uniqueEventID}_${Date.now()}_${i + 1}`;
-      const presignedUrlsResult = [];
+
       try {
         const presignedUrl = await getSignedUrl(
           s3Client,
