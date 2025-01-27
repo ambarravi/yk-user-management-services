@@ -28,7 +28,7 @@ export async function handler(event) {
     };
   }
   const params = {
-    TableName: "eventDetails", // Your table name
+    TableName: "EventDetails", // Your table name
     IndexName: "OrgID-CreatedDate-index", // Name of the GSI
     KeyConditionExpression: "OrgID = :orgID", // Partition key condition
     ExpressionAttributeValues: {
