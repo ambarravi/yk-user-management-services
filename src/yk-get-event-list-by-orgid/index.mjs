@@ -39,6 +39,7 @@ export async function handler(event) {
       "#eventID, #eventTitle, #eventDate, #status, #ticketsBooked, #seats", // Fetch only required attributes
     ExpressionAttributeNames: {
       "#eventID": "EventID",
+      "#readableEventID": "ReadableEventID",
       "#eventTitle": "EventTitle",
       "#eventDate": "EventDate",
       "#status": "Status",
