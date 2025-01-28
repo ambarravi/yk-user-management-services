@@ -1,5 +1,5 @@
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb"; // Import unmarshall utility
+import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 const region = process.env.AWS_REGION || "eu-west-1";
 const client = new DynamoDBClient({ region });
@@ -12,10 +12,9 @@ export async function handler(event) {
   console.log("Input event body:", event.body);
   const parsedBody = JSON.parse(event.body);
   const orgID = parsedBody.orgID;
-  const limit = parseInt(parsedBody.limit) || 10; // Default to 10
+  const limit = parseInt(parsedBody.limit) || 100; // Default to 10
   const lastEvaluatedKey = parsedBody?.lastEvaluatedKey || null;
-
-  console.log("Received event:", JSON.stringify(event.queryStringParameters));
+  console.log(lastEvaluatedKey);
 
   if (!orgID) {
     return {
@@ -29,12 +28,13 @@ export async function handler(event) {
   }
   const params = {
     TableName: "EventDetails", // Your table name
-    IndexName: "OrgID-CreatedDate-index", // Name of the GSI
-    KeyConditionExpression: "OrgID = :orgID", // Partition key condition
+    IndexName: "OrgID-index", // Name of the GSI
+    KeyConditionExpression: "OrgID = :orgID", // Query by OrgID
+    FilterExpression: "#status <> :status", // Exclude records where Status is "Deleted"
     ExpressionAttributeValues: {
-      ":orgID": { S: orgID }, // Replace with the desired OrgID
+      ":orgID": { S: orgID }, // Properly format the orgID as a string
+      ":status": { S: "Deleted" }, // The status to exclude
     },
-
     ProjectionExpression:
       "#eventID, #eventTitle, #eventDate, #status, #ticketsBooked, #seats", // Fetch only required attributes
     ExpressionAttributeNames: {
@@ -46,17 +46,19 @@ export async function handler(event) {
       "#seats": "Seats",
     },
     Limit: limit, // Pagination limit
-    ExclusiveStartKey: lastEvaluatedKey
-      ? JSON.parse(lastEvaluatedKey)
-      : undefined, // Continue from the last evaluated key
+    ExclusiveStartKey: lastEvaluatedKey ? JSON.parse(lastEvaluatedKey) : null, // Continue from the last evaluated key
   };
 
   // Query DynamoDB with pagination
   async function queryDynamoDB() {
     try {
       const command = new QueryCommand(params);
-      console.log(command);
       const response = await client.send(command);
+      console.log("DynamoDB Response:", response.Items.length);
+      if (response.Items.length === 0) {
+        console.log("No items found for orgID:", orgID);
+      }
+      console.log("unmarshalledItems");
       const unmarshalledItems = response.Items.map((item) => unmarshall(item));
 
       // Ensure default values for Status and TicketsBooked if not found
