@@ -36,7 +36,7 @@ export async function handler(event) {
       ":status": { S: "Deleted" }, // The status to exclude
     },
     ProjectionExpression:
-      "#eventID, #eventTitle, #eventDate, #status, #ticketsBooked, #seats", // Fetch only required attributes
+      "#eventID, #eventTitle, #eventDate, #status, #ticketsBooked, #seats,#readableEventID", // Fetch only required attributes
     ExpressionAttributeNames: {
       "#eventID": "EventID",
       "#readableEventID": "ReadableEventID",
