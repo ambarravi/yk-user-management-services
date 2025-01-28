@@ -22,6 +22,7 @@ jobs:
           - yk-get-category-list
           - yk-submit-event
           - yk-get-event-list-by-orgid
+          - yk-fetch-event-by-id
 
     steps:
       # Step 1: Checkout code

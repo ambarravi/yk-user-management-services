@@ -1,4 +1,5 @@
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -6,19 +7,19 @@ export const handler = async (event) => {
   try {
     console.log("Input event:", JSON.stringify(event));
     const REGION = process.env.AWS_REGION;
-    const TABLE = process.env.ORGANIZER_TABLE;
+    const TABLE = process.env.EVENT_TABLE;
     let body = JSON.parse(event.body);
 
     // Access the 'username' field
-    let username = body.username;
+    let eventID = body.eventID;
 
     console.log("TABLE:", TABLE);
 
     const getParams = {
       TableName: TABLE,
       Key: {
-        OrganizerID: {
-          S: username,
+        EventID: {
+          S: eventID,
         },
       },
     };
@@ -31,6 +32,12 @@ export const handler = async (event) => {
 
     console.log("Existing record:", existingRecord);
 
+    const unmarshalledItem = existingRecord.Item
+      ? unmarshall(existingRecord.Item)
+      : null;
+
+    console.log("Unmarshalled Item:", unmarshalledItem);
+
     return {
       statusCode: 200,
       headers: {
@@ -39,7 +46,7 @@ export const handler = async (event) => {
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
       body: JSON.stringify({
-        record: existingRecord.Item,
+        record: unmarshalledItem,
       }),
     };
   } catch (error) {
