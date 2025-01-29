@@ -24,6 +24,8 @@ Resources:
               return { statusCode: 200, body: "Placeholder" };
           };
       Role: !GetAtt GetCategoryLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
 
   GetCategoryLambdaExecutionRole:
     Type: AWS::IAM::Role

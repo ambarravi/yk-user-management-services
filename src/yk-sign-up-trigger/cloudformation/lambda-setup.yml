@@ -6,7 +6,7 @@ Resources:
       FunctionName: yk-sign-up-trigger
       Handler: index.handler
       Runtime: nodejs20.x
-      Timeout : 30
+      Timeout: 30
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -14,6 +14,8 @@ Resources:
               return { statusCode: 200, body: "Placeholder" };
           };
       Role: !GetAtt SignUpLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
 
   SignUpLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -34,8 +36,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:UpdateItem
-                Resource:
-                  !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
 
               # Allow writing logs to log groups
               - Effect: Allow
@@ -43,8 +44,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource:
-                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
 
               # Allow invocation by Cognito
               - Effect: Allow

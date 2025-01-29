@@ -30,6 +30,8 @@ Resources:
               return { statusCode: 200, body: "Event Submitted Successfully" };
           };
       Role: !GetAtt SubmitEventLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
 
   SubmitEventLambdaExecutionRole:
     Type: AWS::IAM::Role

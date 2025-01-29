@@ -3,7 +3,7 @@ Parameters:
   Env:
     Type: String
     Default: Development
-    AllowedValues: 
+    AllowedValues:
       - Development
       - Production
 
@@ -21,12 +21,11 @@ Mappings:
       ApiGatewayRootResourceId: 78iwchywp5
 
 Resources:
-
   UpdateRoleApiResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId] 
+      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]
       PathPart: update-role
 
   CognitoAuthorizer:
@@ -37,9 +36,9 @@ Resources:
       RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
       IdentitySource: method.request.header.Authorization
       ProviderARNs:
-        - !Sub 
-            - "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
-            - UserPoolId: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
+        - !Sub
+          - "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
+          - UserPoolId: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
 
   UpdateRoleApiPostMethod:
     Type: AWS::ApiGateway::Method
@@ -74,6 +73,8 @@ Resources:
           ROLE_CONFIG: "user,organizer"
           USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
       Role: !GetAtt UpdateRoleApiExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
 
   # Lambda Execution Role
   UpdateRoleApiExecutionRole:

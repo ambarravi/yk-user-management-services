@@ -24,6 +24,8 @@ Resources:
               return { statusCode: 200, body: "Placeholder" };
           };
       Role: !GetAtt GetEventLlistByORgIDExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
 
   GetEventLlistByORgIDExecutionRole:
     Type: AWS::IAM::Role

@@ -36,6 +36,8 @@ Resources:
               return { statusCode: 200, body: "Placeholder" };
           };
       Role: !GetAtt UpdateMobileRoleLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
       Environment:
         Variables:
           USERS_TABLE: "UsersTable"

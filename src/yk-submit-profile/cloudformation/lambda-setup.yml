@@ -30,6 +30,8 @@ Resources:
               return { statusCode: 200, body: "Placeholder" };
           };
       Role: !GetAtt SubmitProfileLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
 
   SubmitProfileLambdaExecutionRole:
     Type: AWS::IAM::Role

@@ -30,6 +30,8 @@ Resources:
               return { statusCode: 200, body: "Placeholder" };
           };
       Role: !GetAtt FetchEventByIdLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
 
   FetchEventByIdLambdaExecutionRole:
     Type: AWS::IAM::Role
