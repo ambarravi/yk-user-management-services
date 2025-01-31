@@ -22,11 +22,12 @@ export const handler = async (event) => {
 
     const {
       EventID,
-      readableEventID,
+
       OrgID,
       eventImages = [],
       ...eventDetails
     } = parsedBody;
+    let readableEventID = parsedBody.ReadableEventID;
 
     if (!OrgID) {
       throw new Error("Organization ID (OrgID) is required.");
@@ -49,7 +50,7 @@ export const handler = async (event) => {
     }
 
     // Validate and process event images
-    if (!readableEventID) {
+    if (!EventID) {
       readableEventID = await generateReadableEventID();
       console.log(" ReadableEventID not found :", readableEventID);
     }
