@@ -126,7 +126,7 @@ export const handler = async (event) => {
             }
           : { L: [] }, // Empty array if no benefits are provided
       AdditionalInfo: { S: eventDetails.additionalInfo || "" },
-      EventMode: { S: eventDetails.mode || "" },
+      EventMode: { S: eventDetails.eventMode || "" },
     };
 
     // Check if the event already exists
@@ -189,7 +189,7 @@ export const handler = async (event) => {
                 }
               : { L: [] },
           ":additionalInfo": { S: eventDetails.additionalInfo || "" },
-          ":mode": { S: eventDetails.mode || "" },
+          ":mode": { S: eventDetails.eventMode || "" },
           ":orgID": { S: OrgID },
         },
       };
