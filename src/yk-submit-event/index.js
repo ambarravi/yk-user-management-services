@@ -4,7 +4,13 @@ import {
   PutItemCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+} from "@aws-sdk/client-s3";
+
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
 
@@ -97,7 +103,10 @@ export const handler = async (event) => {
       }
     }
 
+    console.log("Check for Old images", oldImages);
+
     oldImages.map((x) => {
+      console.log("old image url", x.url);
       imageUrls.push(x.url);
     });
     console.log("Final image URLs:", imageUrls);
@@ -203,6 +212,32 @@ export const handler = async (event) => {
 
       console.log("Update Params:", JSON.stringify(updateParams, null, 2));
       await dynamoDBClient.send(new UpdateItemCommand(updateParams));
+
+      // Remove old images from S3 if they are not in DynamoDB
+      const listParams = {
+        Bucket: S3_BUCKET_NAME,
+        Prefix: `event-images/${readableEventID}/`,
+      };
+      const listResponse = await s3Client.send(
+        new ListObjectsV2Command(listParams)
+      );
+      console.log(listResponse);
+      if (listResponse.Contents) {
+        const keysToDelete = listResponse.Contents.filter(
+          (item) => !imageUrls.some((url) => url.includes(item.Key))
+        ).map((item) => ({ Key: item.Key }));
+
+        console.log("KeystoDelete", keysToDelete);
+        if (keysToDelete.length > 0) {
+          const deleteParams = {
+            Bucket: S3_BUCKET_NAME,
+            Delete: { Objects: keysToDelete },
+          };
+          await s3Client.send(new DeleteObjectsCommand(deleteParams));
+          console.log("Deleted old images from S3:", keysToDelete);
+        }
+      }
+
       console.log("Event updated successfully.");
     } else {
       console.log("Inserting new event...");
