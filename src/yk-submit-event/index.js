@@ -25,6 +25,8 @@ export const handler = async (event) => {
 
       OrgID,
       eventImages = [],
+      newImages = [],
+      oldImages = [],
       ...eventDetails
     } = parsedBody;
     let readableEventID = parsedBody.readableEventID;
@@ -58,8 +60,8 @@ export const handler = async (event) => {
     const presignedUrlsResult = [];
     const imageUrls = [];
     const maxImages = 3;
-    for (let i = 0; i < Math.min(eventImages.length, maxImages); i++) {
-      const image = eventImages[i];
+    for (let i = 0; i < Math.min(newImages.length, maxImages); i++) {
+      const image = newImages[i];
       // if (!image || !image.type) {
       //   console.warn(`Skipping invalid image at index ${i}:`, image);
       //   continue;
@@ -92,16 +94,12 @@ export const handler = async (event) => {
             err
           );
         }
-      } else if (image.status === "old") {
-        console.log("Existing Image");
-
-        imageUrls.push(image.url);
-      } else {
-        console.warn(`Skipping invalid image at index ${i}:`, image);
-        continue;
       }
     }
 
+    oldImages.map((x) => {
+      imageUrls.push(x.url);
+    });
     console.log("Final image URLs:", imageUrls);
 
     // Prepare event data for DynamoDB
