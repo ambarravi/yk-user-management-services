@@ -101,6 +101,6 @@
     "deploymentId": "jw4pzk",
     "apiId": "27sqbwaad7"
   },
-  "body": "{\"EventID\":\"d1c32f7c-9d5f-4a83-bb09-8ef842cd7ccb\",\"OrgID\":\"google_115751856932696261052\",\"eventTitle\":\"This is event tile\",\"dateTime\":\"2025-01-31T22:32\",\"highlight\":\"10% discount\",\"eventType\":\"open\",\"categoryID\":\"01947391-ed0b-7208-9903-eb093b692f65\",\"cityID\":\"01947387-3c14-7eef-8c12-a00c0c64d8d5\",\"eventLocation\":\"COEP Ground\",\"mode\":\"Offline\",\"eventDetails\":\"This is event Details\",\"ticketPrice\":\"100\",\"noOfSeats\":\"50\",\"reserveSeats\":\"10\",\"additionalInfo\":\"Present 10 Min before\",\"tags\":\"tikto\",\"audienceBenefits\":[\"Get Certificate\",\"Interact with Host\",\"\"],\"eventImages\":[{}]}",
+  "body": "{\"EventID\":\"f8e4e58b-780f-4dad-9b06-a0091fd94431\",\"readableEventID\":\"EVT-000047\",\"OrgID\":\"google_115751856932696261052\",\"eventTitle\":\"AI Summit: The Future of Intelligence - Update\",\"dateTime\":\"2025-02-05T09:24\",\"highlight\":\"10% discount\",\"eventType\":\"open\",\"categoryID\":\"01947391-ed0b-7ca3-b506-0a34a316e309\",\"cityID\":\"01947387-3c14-7eef-8c12-a00c0c64d8d5\",\"eventLocation\":\"COEP Ground\",\"mode\":\"Offline\",\"eventDetails\":\"This is event Details\",\"ticketPrice\":200,\"noOfSeats\":200,\"reserveSeats\":20,\"additionalInfo\":\"Bring your own chairs and blankets.\",\"tags\":\"tikto, Music\",\"audienceBenefits\":[\"Get Certificate\"],\"eventImages\":[]}",
   "isBase64Encoded": false
 }

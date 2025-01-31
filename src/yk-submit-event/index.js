@@ -20,14 +20,21 @@ export const handler = async (event) => {
     console.log("Input event body:", event.body);
     const parsedBody = JSON.parse(event.body);
 
-    const { eventID, OrgID, eventImages = [], ...eventDetails } = parsedBody;
+    const {
+      EventID,
+      readableEventID,
+      OrgID,
+      eventImages = [],
+      ...eventDetails
+    } = parsedBody;
 
     if (!OrgID) {
       throw new Error("Organization ID (OrgID) is required.");
     }
 
-    const uniqueEventID = eventID || uuidv4();
-
+    console.log(EventID);
+    const uniqueEventID = EventID || uuidv4();
+    console.log(uniqueEventID);
     const REGION = process.env.AWS_REGION;
     const TABLE = process.env.EVENT_TABLE;
     const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
@@ -42,7 +49,11 @@ export const handler = async (event) => {
     }
 
     // Validate and process event images
-    const readableEventID = await generateReadableEventID();
+    if (!readableEventID) {
+      readableEventID = await generateReadableEventID();
+      console.log(" ReadableEventID not found :", readableEventID);
+    }
+    console.log("Final ReadableEventID:", readableEventID);
     const presignedUrlsResult = [];
     const imageUrls = [];
     const maxImages = 3;
@@ -114,7 +125,7 @@ export const handler = async (event) => {
             }
           : { L: [] }, // Empty array if no benefits are provided
       AdditionalInfo: { S: eventDetails.additionalInfo || "" },
-      Mode: { S: eventDetails.mode || "" },
+      EventMode: { S: eventDetails.mode || "" },
     };
 
     // Check if the event already exists
@@ -126,30 +137,45 @@ export const handler = async (event) => {
     const existingRecord = await dynamoDBClient.send(
       new GetItemCommand(getParams)
     );
+    //console.log("Existing Record:", existingRecord);
 
     if (existingRecord.Item) {
       console.log("Event already exists. Updating...");
       const updateParams = {
         TableName: TABLE,
         Key: { EventID: { S: uniqueEventID } },
-        UpdateExpression: `SET EventTitle = :eventTitle, EventDate = :eventDate, EventLocation = :eventLocation, EventDetails = :eventDetails, EventImages = :eventImages, CityID = :cityID, CategoryID = :categoryID, EventType = :eventType, Tags = :tags, EventHighLight = :eventHighLight, Price = :price, Seats = :seats, ReservedSeats = :reservedSeats, AudienceBenefits = :audienceBenefits, AdditionalInfo = :additionalInfo, Mode = :mode, OrgID = :orgID`,
+        UpdateExpression: `SET EventTitle = :eventTitle, EventDate = :eventDate, EventLocation = :eventLocation, 
+        EventDetails = :eventDetails, EventImages = :eventImages, CityID = :cityID, CategoryID = :categoryID, 
+        EventType = :eventType, Tags = :tags, EventHighLight = :eventHighLight, Price = :price, Seats = :seats,
+         ReservedSeats = :reservedSeats, AudienceBenefits = :audienceBenefits, AdditionalInfo = :additionalInfo, 
+         EventMode = :mode, OrgID = :orgID`,
         ExpressionAttributeValues: {
           ":eventTitle": { S: eventDetails.eventTitle || "" },
           ":eventDate": { S: eventDetails.dateTime || "" },
           ":eventLocation": { S: eventDetails.eventLocation || "" },
           ":eventDetails": { S: eventDetails.eventDetails || "" },
           // ":eventImages": { L: imageUrls.map((url) => ({ S: url })) },
-          eventImages: imageUrls.length
+          ":eventImages": imageUrls.length
             ? { L: imageUrls.map((url) => ({ S: url })) }
-            : { L: [] }, // Empty list if no images
+            : { L: [] }, // Use `:eventImages` as key instead of `eventImages`
           ":cityID": { S: eventDetails.cityID || "" },
           ":categoryID": { S: eventDetails.categoryID || "" },
           ":eventType": { S: eventDetails.eventType || "" },
           ":tags": { S: eventDetails.tags || "" },
           ":eventHighLight": { S: eventDetails.highlight || "" },
-          ":price": { N: eventDetails.ticketPrice || "0" },
-          ":seats": { N: eventDetails.noOfSeats || "0" },
-          ":reservedSeats": { N: eventDetails.reserveSeats || "0" },
+          ":price": {
+            N: eventDetails.ticketPrice
+              ? eventDetails.ticketPrice.toString()
+              : "0",
+          },
+          ":seats": {
+            N: eventDetails.noOfSeats ? eventDetails.noOfSeats.toString() : "0",
+          },
+          ":reservedSeats": {
+            N: eventDetails.reserveSeats
+              ? eventDetails.reserveSeats.toString()
+              : "0",
+          },
           ":audienceBenefits":
             eventDetails.audienceBenefits &&
             eventDetails.audienceBenefits.length > 0
@@ -166,6 +192,8 @@ export const handler = async (event) => {
           ":orgID": { S: OrgID },
         },
       };
+
+      console.log("Update Params:", JSON.stringify(updateParams, null, 2));
       await dynamoDBClient.send(new UpdateItemCommand(updateParams));
       console.log("Event updated successfully.");
     } else {
