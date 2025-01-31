@@ -60,10 +60,10 @@ export const handler = async (event) => {
     const maxImages = 3;
     for (let i = 0; i < Math.min(eventImages.length, maxImages); i++) {
       const image = eventImages[i];
-      if (!image || !image.type) {
-        console.warn(`Skipping invalid image at index ${i}:`, image);
-        continue;
-      }
+      // if (!image || !image.type) {
+      //   console.warn(`Skipping invalid image at index ${i}:`, image);
+      //   continue;
+      // }
 
       if (image.status === "new") {
         console.log("New Image");
@@ -92,10 +92,13 @@ export const handler = async (event) => {
             err
           );
         }
-      } else {
+      } else if (image.status === "old") {
         console.log("Existing Image");
 
         imageUrls.push(image.url);
+      } else {
+        console.warn(`Skipping invalid image at index ${i}:`, image);
+        continue;
       }
     }
 
