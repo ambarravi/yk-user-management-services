@@ -27,7 +27,7 @@ export const handler = async (event) => {
       eventImages = [],
       ...eventDetails
     } = parsedBody;
-    let readableEventID = parsedBody.ReadableEventID;
+    let readableEventID = parsedBody.readableEventID;
 
     if (!OrgID) {
       throw new Error("Organization ID (OrgID) is required.");
