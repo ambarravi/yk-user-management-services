@@ -65,31 +65,37 @@ export const handler = async (event) => {
         continue;
       }
 
-      const imageKey = `event-images/${readableEventID}/${image.name}`;
+      if (image.status === "new") {
+        console.log("New Image");
+        const imageKey = `event-images/${readableEventID}/${image.name}`;
+        try {
+          const presignedUrl = await getSignedUrl(
+            s3Client,
+            new PutObjectCommand({
+              Bucket: S3_BUCKET_NAME,
+              Key: imageKey,
+              ContentType: image.type,
+            }),
+            { expiresIn: 300 }
+          );
+          imageUrls.push(
+            `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${imageKey}`
+          );
+          presignedUrlsResult.push(presignedUrl);
+          console.log(
+            `Generated presigned URL for image ${i + 1}:`,
+            presignedUrl
+          );
+        } catch (err) {
+          console.error(
+            `Failed to generate presigned URL for image ${i + 1}:`,
+            err
+          );
+        }
+      } else {
+        console.log("Existing Image");
 
-      try {
-        const presignedUrl = await getSignedUrl(
-          s3Client,
-          new PutObjectCommand({
-            Bucket: S3_BUCKET_NAME,
-            Key: imageKey,
-            ContentType: image.type,
-          }),
-          { expiresIn: 300 }
-        );
-        imageUrls.push(
-          `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${imageKey}`
-        );
-        presignedUrlsResult.push(presignedUrl);
-        console.log(
-          `Generated presigned URL for image ${i + 1}:`,
-          presignedUrl
-        );
-      } catch (err) {
-        console.error(
-          `Failed to generate presigned URL for image ${i + 1}:`,
-          err
-        );
+        imageUrls.push(image.url);
       }
     }
 
