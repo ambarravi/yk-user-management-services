@@ -55,7 +55,7 @@ export const handler = async (event) => {
     });
 
     console.log("Decoded Token Payload:", payload);
-    const existingRole = user?.["custom:role"] || "";
+    const existingRole = payload?.["custom:role"] || "";
     console.log("Existing Role:", existingRole);
 
     const UserID = payload.sub;
