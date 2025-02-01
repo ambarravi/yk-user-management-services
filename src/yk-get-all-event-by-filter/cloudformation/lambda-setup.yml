@@ -13,7 +13,7 @@ Resources:
   GetEventByfilterLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: yk-get-event-list-by-filter
+      FunctionName: yk-get-all-event-by-filter
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 20
