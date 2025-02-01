@@ -21,13 +21,6 @@ const JWKS_URL = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.w
 export const handler = async (event) => {
   const origin = event.headers.origin || event.headers.Origin;
   let newRole;
-  if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers: getCorsHeaders(origin),
-      body: JSON.stringify({ message: "CORS preflight request success" }),
-    };
-  }
 
   try {
     console.log("Input event:", JSON.stringify(event));
@@ -75,7 +68,7 @@ export const handler = async (event) => {
     tempRole = tempRole.toLowerCase();
 
     console.log("Decoded Token tempRole:", tempRole);
-    if (!ROLE_CONFIG.includes(tempRole) {
+    if (!ROLE_CONFIG.includes(tempRole)) {
       console.error(`Invalid role name: ${tempRole}`);
       return {
         statusCode: 400,
