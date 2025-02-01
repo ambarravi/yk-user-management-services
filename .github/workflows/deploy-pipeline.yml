@@ -23,7 +23,7 @@ jobs:
           - yk-submit-event
           - yk-get-event-list-by-orgid
           - yk-fetch-event-by-id
-          - yk-get-all-event-by-filters
+          - yk-get-all-event-by-filter
 
     steps:
       # Step 1: Checkout code
