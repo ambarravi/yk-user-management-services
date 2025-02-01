@@ -1,5 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
   Env:
     Type: String
     Default: Development
@@ -137,11 +140,10 @@ Resources:
                   - logs:PutLogEvents
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
 
-  # API Gateway Lambda Integration
   UpdateRoleApiGatewayPermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt UpdateRoleLambda.Arn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${!FindInMap [EnvToResources, !Ref Env, ApiGatewayId]}/*/POST/update-role"
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
