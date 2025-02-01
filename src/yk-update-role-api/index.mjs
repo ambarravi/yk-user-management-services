@@ -13,7 +13,7 @@ const ROLE_CONFIG = process.env.ROLE_CONFIG?.split(",") || [
   "organizer",
 ];
 const USERS_TABLE = process.env.USERS_TABLE;
-
+console.log(process.env.AWS_REGION);
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 const JWKS_URL = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/jwks.json`;
@@ -55,8 +55,8 @@ export const handler = async (event) => {
     });
 
     console.log("Decoded Token Payload:", payload);
-    const existingRole = user["custom:role"];
-    console.log(existingRole); // Output: 'organizer'
+    const existingRole = user?.["custom:role"] || "";
+    console.log("Existing Role:", existingRole);
 
     const UserID = payload.sub;
 
@@ -77,7 +77,7 @@ export const handler = async (event) => {
       };
     }
 
-    if (existingRole.includes === tempRole) {
+    if (existingRole.includes(tempRole)) {
       return {
         statusCode: 200,
         headers: getCorsHeaders(origin),
