@@ -104,6 +104,11 @@ export const handler = async (event) => {
     );
     return {
       statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
       body: JSON.stringify({
         message: "Status updated successfully.",
         eventID,
@@ -130,9 +135,37 @@ export const handler = async (event) => {
 
     return {
       statusCode: 400,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
       body: JSON.stringify({
         error: errorMessage,
       }),
     };
   }
 };
+
+function getCorsHeaders(origin) {
+  console.log("in getCorsHeaders function");
+
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "https://dom5rgdes5ko4.cloudfront.net",
+    "*",
+  ];
+
+  const isOriginAllowed = allowedOrigins.includes(origin);
+
+  console.log("Allowed Origin:", isOriginAllowed);
+  return {
+    "Access-Control-Allow-Origin": isOriginAllowed
+      ? origin
+      : "http://localhost:3000",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, X-Amz-Date, X-Api-Key, X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "OPTIONS, POST, GET, PUT, DELETE",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
