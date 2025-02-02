@@ -16,6 +16,7 @@ const STATUS_TRANSITIONS = {
 };
 
 const ADMIN_OVERRIDES = {
+  AwaitingApproval: ["UnderReview", "Cancelled", "Deleted", "Approved"],
   Published: ["Cancelled"],
   Cancelled: ["Deleted"],
 };
