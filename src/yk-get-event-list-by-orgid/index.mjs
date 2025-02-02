@@ -65,7 +65,7 @@ export async function handler(event) {
       // Ensure default values for Status and TicketsBooked if not found
       const itemsWithDefaults = unmarshalledItems.map((item) => ({
         ...item,
-        Status: item.Status || "Pending for Approval", // Default to "Pending for Approval" if Status is not found
+        Status: item.Status || "AwaitingApproval", // Default to "AwaitingApproval" if Status is not found
         TicketsBooked: item.TicketsBooked || 0, // Default to 0 if TicketsBooked is not found
       }));
 
