@@ -61,7 +61,7 @@ export const handler = async (event) => {
 
     const currentStatus = existingRecord.Item.EventStatus?.S;
     console.log(
-      `Current status: ${currentStatus}, Requested status: ${EventStatus}, Role: ${role}`
+      `Current status: ${currentStatus}, Requested status: ${eventStatus}, Role: ${role}`
     );
 
     let allowedTransitions = STATUS_TRANSITIONS[currentStatus] || [];
@@ -75,9 +75,9 @@ export const handler = async (event) => {
     }
 
     // If the requested status isn't allowed based on current status, throw an error
-    if (!allowedTransitions.includes(EventStatus)) {
+    if (!allowedTransitions.includes(eventStatus)) {
       throw new Error(
-        `Invalid status transition: Cannot change from ${currentStatus} to ${EventStatus}.`
+        `Invalid status transition: Cannot change from ${currentStatus} to ${eventStatus}.`
       );
     }
 
@@ -89,10 +89,10 @@ export const handler = async (event) => {
         "SET #eventstatus = :eventStatus, #timestamp = :timestamp",
       ExpressionAttributeNames: {
         "#eventstatus": "EventStatus",
-        "#timestamp": `${EventStatus}Timestamp`,
+        "#timestamp": `${eventStatus}Timestamp`,
       },
       ExpressionAttributeValues: {
-        ":eventStatus": { S: EventStatus },
+        ":eventStatus": { S: eventStatus },
         ":timestamp": { S: new Date().toISOString() },
       },
     };
@@ -100,14 +100,14 @@ export const handler = async (event) => {
     await dynamoDBClient.send(new UpdateItemCommand(updateParams));
 
     console.log(
-      `Successfully updated event ${eventID} to status ${EventStatus}.`
+      `Successfully updated event ${eventID} to status ${eventStatus}.`
     );
     return {
       statusCode: 200,
       body: JSON.stringify({
         message: "Status updated successfully.",
         eventID,
-        EventStatus,
+        eventStatus,
       }),
     };
   } catch (error) {
