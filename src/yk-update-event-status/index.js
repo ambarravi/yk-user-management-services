@@ -67,11 +67,13 @@ export const handler = async (event) => {
 
     let allowedTransitions = STATUS_TRANSITIONS[currentStatus] || [];
 
-    // Apply admin override logic
-    if (role === "Admin" && ADMIN_OVERRIDES[currentStatus]) {
+    const roles = role.split(",").map((r) => r.trim().toLowerCase()); // Normalize roles
+    const isAdmin = roles.includes("admin");
+
+    if (isAdmin) {
       allowedTransitions = [
         ...allowedTransitions,
-        ...ADMIN_OVERRIDES[currentStatus],
+        ...(ADMIN_OVERRIDES[currentStatus] || []),
       ];
     }
 
