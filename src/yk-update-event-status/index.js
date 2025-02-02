@@ -22,15 +22,19 @@ const ADMIN_OVERRIDES = {
 
 export const handler = async (event) => {
   try {
+    // Check if the body is missing
     if (!event.body) {
-      throw new Error("Request body is missing.");
+      throw new Error(
+        "Request body is missing. Ensure the request has a body."
+      );
     }
 
     console.log("Received event:", event.body);
     const { eventID, status, role } = JSON.parse(event.body);
 
+    // Ensure all required fields are present in the request
     if (!eventID || !status || !role) {
-      throw new Error("eventID, status, and role are required.");
+      throw new Error("Missing required fields: eventID, status, and role.");
     }
 
     const TABLE = process.env.EVENT_TABLE;
@@ -38,7 +42,7 @@ export const handler = async (event) => {
       throw new Error("EVENT_TABLE environment variable is missing.");
     }
 
-    // Fetch existing event
+    // Fetch the existing event to check its current status
     const getParams = {
       TableName: TABLE,
       Key: { EventID: { S: eventID } },
@@ -47,8 +51,12 @@ export const handler = async (event) => {
     const existingRecord = await dynamoDBClient.send(
       new GetItemCommand(getParams)
     );
+
+    // If the event doesn't exist, return a specific error message
     if (!existingRecord.Item) {
-      throw new Error("Event not found.");
+      throw new Error(
+        `Event with ID ${eventID} not found. Please check the eventID.`
+      );
     }
 
     const currentStatus = existingRecord.Item.Status?.S;
@@ -66,12 +74,14 @@ export const handler = async (event) => {
       ];
     }
 
+    // If the requested status isn't allowed based on current status, throw an error
     if (!allowedTransitions.includes(status)) {
       throw new Error(
-        `Invalid status transition from ${currentStatus} to ${status}.`
+        `Invalid status transition: Cannot change from ${currentStatus} to ${status}.`
       );
     }
 
+    // Update the event's status in the database
     const updateParams = {
       TableName: TABLE,
       Key: { EventID: { S: eventID } },
@@ -92,16 +102,34 @@ export const handler = async (event) => {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: "Status updated successfully",
+        message: "Status updated successfully.",
         eventID,
         status,
       }),
     };
   } catch (error) {
-    console.error("Error updating status:", error);
+    console.error("Error updating status:", error.message);
+
+    // Provide detailed error messages for different cases
+    let errorMessage = "An unexpected error occurred.";
+    if (error.message.includes("Missing required fields")) {
+      errorMessage = error.message;
+    } else if (error.message.includes("Event with ID")) {
+      errorMessage = error.message;
+    } else if (error.message.includes("Invalid status transition")) {
+      errorMessage = error.message;
+    } else if (error.message.includes("environment variable is missing")) {
+      errorMessage = error.message;
+    } else {
+      errorMessage =
+        "An unexpected error occurred while processing your request.";
+    }
+
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({
+        error: errorMessage,
+      }),
     };
   }
 };
