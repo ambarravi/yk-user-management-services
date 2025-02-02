@@ -18,18 +18,18 @@ export async function handler(event) {
 
   const params = {
     TableName: "EventDetails", // Table name
-    FilterExpression: "#status <> :status", // Exclude records where Status is "Deleted"
-    ExpressionAttributeValues: {
-      ":status": { S: "Deleted" },
-    },
+    //  FilterExpression: "#status <> :status", // Exclude records where Status is "Deleted"
+    // ExpressionAttributeValues: {
+    //   ":status": { S: "Deleted" },
+    // },
     ProjectionExpression:
-      "#eventID, #eventTitle, #eventDate, #status, #ticketsBooked, #seats, #readableEventID", // Required attributes
+      "#eventID, #eventTitle, #eventDate, #eventStatus, #ticketsBooked, #seats, #readableEventID", // Required attributes
     ExpressionAttributeNames: {
       "#eventID": "EventID",
       "#readableEventID": "ReadableEventID",
       "#eventTitle": "EventTitle",
       "#eventDate": "EventDate",
-      "#status": "Status",
+      "#eventStatus": "EventStatus",
       "#ticketsBooked": "TicketsBooked",
       "#seats": "Seats",
     },
