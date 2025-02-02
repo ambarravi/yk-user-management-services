@@ -48,7 +48,7 @@ export async function handler(event) {
     // Ensure default values
     const itemsWithDefaults = unmarshalledItems.map((item) => ({
       ...item,
-      Status: item.Status || "Pending for Approval",
+      Status: item.EventStatus || "AwaitingApproval",
       TicketsBooked: item.TicketsBooked || 0,
     }));
 
