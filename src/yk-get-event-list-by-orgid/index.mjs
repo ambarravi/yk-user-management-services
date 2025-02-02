@@ -30,19 +30,19 @@ export async function handler(event) {
     TableName: "EventDetails", // Your table name
     IndexName: "OrgID-index", // Name of the GSI
     KeyConditionExpression: "OrgID = :orgID", // Query by OrgID
-    FilterExpression: "#status <> :status", // Exclude records where Status is "Deleted"
+    FilterExpression: "#eventstatus <> :eventStatus", // Exclude records where Status is "Deleted"
     ExpressionAttributeValues: {
       ":orgID": { S: orgID }, // Properly format the orgID as a string
-      ":status": { S: "Deleted" }, // The status to exclude
+      ":eventStatus": { S: "Deleted" }, // The status to exclude
     },
     ProjectionExpression:
-      "#eventID, #eventTitle, #eventDate, #status, #ticketsBooked, #seats,#readableEventID", // Fetch only required attributes
+      "#eventID, #eventTitle, #eventDate, #eventstatus, #ticketsBooked, #seats,#readableEventID", // Fetch only required attributes
     ExpressionAttributeNames: {
       "#eventID": "EventID",
       "#readableEventID": "ReadableEventID",
       "#eventTitle": "EventTitle",
       "#eventDate": "EventDate",
-      "#status": "Status",
+      "#eventstatus": "EventStatus",
       "#ticketsBooked": "TicketsBooked",
       "#seats": "Seats",
     },

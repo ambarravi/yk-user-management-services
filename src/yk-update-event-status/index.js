@@ -30,10 +30,10 @@ export const handler = async (event) => {
     }
 
     console.log("Received event:", event.body);
-    const { eventID, status, role } = JSON.parse(event.body);
+    const { eventID, eventStatus, role } = JSON.parse(event.body);
 
     // Ensure all required fields are present in the request
-    if (!eventID || !status || !role) {
+    if (!eventID || !eventStatus || !role) {
       throw new Error("Missing required fields: eventID, status, and role.");
     }
 
@@ -59,9 +59,9 @@ export const handler = async (event) => {
       );
     }
 
-    const currentStatus = existingRecord.Item.Status?.S;
+    const currentStatus = existingRecord.Item.EventStatus?.S;
     console.log(
-      `Current status: ${currentStatus}, Requested status: ${status}, Role: ${role}`
+      `Current status: ${currentStatus}, Requested status: ${EventStatus}, Role: ${role}`
     );
 
     let allowedTransitions = STATUS_TRANSITIONS[currentStatus] || [];
@@ -75,9 +75,9 @@ export const handler = async (event) => {
     }
 
     // If the requested status isn't allowed based on current status, throw an error
-    if (!allowedTransitions.includes(status)) {
+    if (!allowedTransitions.includes(EventStatus)) {
       throw new Error(
-        `Invalid status transition: Cannot change from ${currentStatus} to ${status}.`
+        `Invalid status transition: Cannot change from ${currentStatus} to ${EventStatus}.`
       );
     }
 
@@ -85,26 +85,29 @@ export const handler = async (event) => {
     const updateParams = {
       TableName: TABLE,
       Key: { EventID: { S: eventID } },
-      UpdateExpression: "SET #status = :status, #timestamp = :timestamp",
+      UpdateExpression:
+        "SET #eventstatus = :eventStatus, #timestamp = :timestamp",
       ExpressionAttributeNames: {
-        "#status": "Status",
-        "#timestamp": `${status}Timestamp`,
+        "#eventstatus": "EventStatus",
+        "#timestamp": `${EventStatus}Timestamp`,
       },
       ExpressionAttributeValues: {
-        ":status": { S: status },
+        ":eventStatus": { S: EventStatus },
         ":timestamp": { S: new Date().toISOString() },
       },
     };
 
     await dynamoDBClient.send(new UpdateItemCommand(updateParams));
 
-    console.log(`Successfully updated event ${eventID} to status ${status}.`);
+    console.log(
+      `Successfully updated event ${eventID} to status ${EventStatus}.`
+    );
     return {
       statusCode: 200,
       body: JSON.stringify({
         message: "Status updated successfully.",
         eventID,
-        status,
+        EventStatus,
       }),
     };
   } catch (error) {

@@ -143,7 +143,7 @@ export const handler = async (event) => {
           : { L: [] }, // Empty array if no benefits are provided
       AdditionalInfo: { S: eventDetails.additionalInfo || "" },
       EventMode: { S: eventDetails.eventMode || "" },
-      Status: { S: "AwaitingApproval" },
+      EventStatus: { S: "AwaitingApproval" },
     };
 
     // Check if the event already exists
@@ -166,7 +166,7 @@ export const handler = async (event) => {
         EventDetails = :eventDetails, EventImages = :eventImages, CityID = :cityID, CategoryID = :categoryID, 
         EventType = :eventType, Tags = :tags, EventHighLight = :eventHighLight, Price = :price, Seats = :seats,
          ReservedSeats = :reservedSeats, AudienceBenefits = :audienceBenefits, AdditionalInfo = :additionalInfo, 
-         EventMode = :mode, OrgID = :orgID, Status = :status`,
+         EventMode = :mode, OrgID = :orgID, EventStatus = :eventStatus`,
         ExpressionAttributeValues: {
           ":eventTitle": { S: eventDetails.eventTitle || "" },
           ":eventDate": { S: eventDetails.dateTime || "" },
@@ -208,7 +208,7 @@ export const handler = async (event) => {
           ":additionalInfo": { S: eventDetails.additionalInfo || "" },
           ":mode": { S: eventDetails.eventMode || "" },
           ":orgID": { S: OrgID },
-          ":status": { S: "AwaitingApproval" },
+          ":eventStatus": { S: "AwaitingApproval" },
         },
       };
 
