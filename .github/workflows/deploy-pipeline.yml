@@ -25,6 +25,7 @@ jobs:
           - yk-fetch-event-by-id
           - yk-get-all-event-by-filter
           - yk-update-event-status
+          - yk-get-all-event-by-criteria
 
     steps:
       # Step 1: Checkout code

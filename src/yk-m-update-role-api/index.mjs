@@ -2,18 +2,14 @@ import {
   CognitoIdentityProviderClient,
   AdminUpdateUserAttributesCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = process.env.USER_POOL_ID;
 const USERS_TABLE = process.env.USERS_TABLE;
-const ROLE_CONFIG = process.env.ROLE_CONFIG?.split(",") || [
-  "user",
-  "organizer",
-];
-
+const CITY_TABLE = process.env.CITY_TABLE;
+const CITY_INDEX = "CityName-index";
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
@@ -21,8 +17,6 @@ export const handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
 
   try {
-    //const body = JSON.parse(event.body);
-    console.log("eventDetails: ", event);
     const {
       userName,
       userID,
@@ -40,7 +34,7 @@ export const handler = async (event) => {
         statusCode: 400,
         body: JSON.stringify({
           message:
-            "Invalid input: userName, tempRole, custom:role, and city are required.",
+            "Invalid input: userID, tempRole, currentRole, and city are required.",
         }),
       };
     }
@@ -54,40 +48,54 @@ export const handler = async (event) => {
         }),
       };
     } else {
-      newRole = currentRole.toLowerCase() + "," + tempRole.toLowerCase();
+      newRole = `${currentRole.toLowerCase()},${tempRole.toLowerCase()}`;
     }
-    console.log("newRole: ", newRole);
-    const updatedAttributes = [
-      {
-        Name: "custom:role",
-        Value: newRole,
-      },
-      {
-        Name: "custom:City",
-        Value: city,
-      },
-    ];
 
-    console.log("USER_POOL_ID: ", USER_POOL_ID);
-    console.log("username: ", userName);
-    console.log("updatedAttributes: ", updatedAttributes);
+    console.log("Fetching CityID for city:", city.toLowerCase());
+    let cityID;
+    const cityQueryResult = await dynamoDBClient.send(
+      new QueryCommand({
+        TableName: CITY_TABLE,
+        IndexName: CITY_INDEX,
+        KeyConditionExpression: "#city = :city",
+        ExpressionAttributeNames: { "#city": "CityName" },
+        ExpressionAttributeValues: { ":city": city.toLowerCase() },
+      })
+    );
 
-    const resultCognito = await cognitoClient.send(
+    if (cityQueryResult.Items.length > 0) {
+      cityID = cityQueryResult.Items[0].CityID;
+      console.log("Found CityID:", cityID);
+    }
+
+    let updatedAttributes = [{ Name: "custom:role", Value: newRole }];
+    if (cityID)
+      updatedAttributes.push({ Name: "custom:CityID", Value: cityID });
+
+    if (collegeDetails && collegeDetails.CollegeID) {
+      updatedAttributes.push({
+        Name: "custom:CollegeID",
+        Value: collegeDetails.CollegeID,
+      });
+    }
+
+    console.log("Updating Cognito attributes:", updatedAttributes);
+    await cognitoClient.send(
       new AdminUpdateUserAttributesCommand({
         UserPoolId: USER_POOL_ID,
         Username: userName,
         UserAttributes: updatedAttributes,
       })
     );
-    console.log("resultCognito: ", resultCognito);
+
     const updateExpression = ["set #role = :role"];
     const expressionAttributeNames = { "#role": "role" };
     const expressionAttributeValues = { ":role": newRole };
 
-    if (city) {
-      updateExpression.push("#city = :city");
-      expressionAttributeNames["#city"] = "city";
-      expressionAttributeValues[":city"] = city;
+    if (cityID) {
+      updateExpression.push("#cityID = :cityID");
+      expressionAttributeNames["#cityID"] = "CityID";
+      expressionAttributeValues[":cityID"] = cityID;
     }
 
     if (collegeDetails) {
@@ -111,7 +119,8 @@ export const handler = async (event) => {
       expressionAttributeValues[":email"] = email;
     }
 
-    const dbResult = await dynamoDBClient.send(
+    console.log("Updating USERS_TABLE with cityID and other details");
+    await dynamoDBClient.send(
       new UpdateCommand({
         TableName: USERS_TABLE,
         Key: { UserID: userID },
@@ -120,10 +129,12 @@ export const handler = async (event) => {
         ExpressionAttributeValues: expressionAttributeValues,
       })
     );
-    console.log("dbResult: ", dbResult);
+
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Role updated successfully" }),
+      body: JSON.stringify({
+        message: "Role and attributes updated successfully",
+      }),
     };
   } catch (error) {
     console.error("Error: ", error);

@@ -42,6 +42,7 @@ Resources:
         Variables:
           USERS_TABLE: "UsersTable"
           ROLE_CONFIG: "user,organizer"
+          CITY_TABLE: "City"
           USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
 
   UpdateMobileRoleLambdaExecutionRole:
