@@ -94,8 +94,8 @@ export const handler = async (event) => {
           ":termsAccepted": { BOOL: profileData.termsAccepted },
           ":cityID": { S: profileData.cityID },
           ":cityName": { S: profileData.venueCityName },
-          ":collegeID": profileData.selectedCollegeID
-            ? { S: profileData.selectedCollegeID }
+          ":collegeID": profileData.collegeID
+            ? { S: profileData.collegeID }
             : { S: "" },
           ":address": { S: profileData.address },
           ":associatedCollegeUniversity": {
@@ -123,8 +123,8 @@ export const handler = async (event) => {
           termsAccepted: { BOOL: profileData.termsAccepted },
           cityID: { S: profileData.cityID },
           cityName: { S: profileData.venueCityName },
-          collegeID: profileData.selectedCollegeID
-            ? { S: profileData.selectedCollegeID }
+          collegeID: profileData.collegeID
+            ? { S: profileData.collegeID }
             : { S: "" },
           address: { S: profileData.address },
           associatedCollegeUniversity: {
