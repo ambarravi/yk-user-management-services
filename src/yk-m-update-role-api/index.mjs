@@ -4,11 +4,12 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
 const REGION = process.env.AWS_REGION;
-const USER_POOL_ID = process.env.USER_POOL_ID;
-const USERS_TABLE = process.env.USERS_TABLE;
-const CITY_TABLE = process.env.CITY_TABLE;
+const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // process.env.USER_POOL_ID;
+const USERS_TABLE = "UsersTable"; // process.env.USERS_TABLE;
+const CITY_TABLE = "City"; //  process.env.CITY_TABLE;
 const CITY_INDEX = "CityName-index";
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
@@ -29,18 +30,20 @@ export const handler = async (event) => {
       lastName,
     } = event;
 
-    if (!userID || !tempRole || !currentRole || !city) {
+    if (!userID || !tempRole || !city) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          message:
-            "Invalid input: userID, tempRole, currentRole, and city are required.",
+          message: "Invalid input: userID, tempRole, and city are required.",
         }),
       };
     }
 
     let newRole;
-    if (currentRole.toLowerCase().includes(tempRole.toLowerCase())) {
+    if (
+      currentRole &&
+      currentRole.toLowerCase().includes(tempRole.toLowerCase())
+    ) {
       return {
         statusCode: 200,
         body: JSON.stringify({
@@ -48,24 +51,21 @@ export const handler = async (event) => {
         }),
       };
     } else {
-      newRole = `${currentRole.toLowerCase()},${tempRole.toLowerCase()}`;
+      newRole = currentRole
+        ? `${currentRole.toLowerCase()},${tempRole.toLowerCase()}`
+        : tempRole.toLowerCase();
     }
-
+    console.log(newRole);
     console.log("Fetching CityID for city:", city.toLowerCase());
-    let cityID;
-    const cityQueryResult = await dynamoDBClient.send(
-      new QueryCommand({
-        TableName: CITY_TABLE,
-        IndexName: CITY_INDEX,
-        KeyConditionExpression: "#city = :city",
-        ExpressionAttributeNames: { "#city": "CityName" },
-        ExpressionAttributeValues: { ":city": city.toLowerCase() },
-      })
-    );
+    console.log("City Table:", CITY_TABLE);
+    console.log("City CITY_INDEX:", CITY_INDEX);
+    console.log(QueryCommand);
 
-    if (cityQueryResult.Items.length > 0) {
-      cityID = cityQueryResult.Items[0].CityID;
+    let cityID = await queryCityTable(city);
+    if (cityID) {
       console.log("Found CityID:", cityID);
+    } else {
+      console.log("City not found in DynamoDB.");
     }
 
     let updatedAttributes = [{ Name: "custom:role", Value: newRole }];
@@ -147,3 +147,35 @@ export const handler = async (event) => {
     };
   }
 };
+
+async function queryCityTable(city) {
+  try {
+    const params = {
+      TableName: CITY_TABLE,
+      IndexName: CITY_INDEX,
+      KeyConditionExpression: "#city = :city",
+      ExpressionAttributeNames: { "#city": "CityName" },
+      ExpressionAttributeValues: marshall({ ":city": city.toLowerCase() }),
+    };
+
+    const command = new QueryCommand(params);
+    const response = await dynamoDBClient.send(command);
+
+    console.log("DynamoDB Response:", response.Items.length);
+
+    if (response.Items.length === 0) {
+      console.log("No city found for:", city);
+      return null; // Return null if no city is found
+    }
+
+    // Unmarshall the response items
+    const unmarshalledItems = response.Items.map((item) => unmarshall(item));
+
+    console.log("Query succeeded:", unmarshalledItems);
+
+    return unmarshalledItems[0]?.CityID || null; // Return CityID or null
+  } catch (error) {
+    console.error("Error querying CITY_TABLE:", error);
+    return null;
+  }
+}
