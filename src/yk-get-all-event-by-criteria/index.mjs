@@ -55,13 +55,15 @@ const fetchEventsFromDDB = async (
 };
 
 export const handler = async (event) => {
-  console.log("Received Event:", JSON.stringify(event));
+  // console.log("Received Event:", JSON.stringify(event));
+  let ParsedEvent = JSON.parse(event.body);
+  console.log(ParsedEvent);
 
   const { CityID, CollegeID, CityLastEvaluatedKey, CollegeLastEvaluatedKey } =
-    event;
+    ParsedEvent;
   let cityEvents = [];
   let collegeEvents = [];
-
+  console.log(CityID);
   // Fetch City-based events
   if (CityID) {
     const cityCondition = {
