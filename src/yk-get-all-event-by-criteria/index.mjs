@@ -7,6 +7,7 @@ const client = new DynamoDBClient({ region });
 
 // Function to format event details for frontend
 const formatEventDetails = (event) => ({
+  id: event.EventID || "0",
   title: event.EventTitle || "Untitled Event",
   date: new Date(event.EventDate).toDateString(),
   time: new Date(event.EventDate).toLocaleTimeString(),
