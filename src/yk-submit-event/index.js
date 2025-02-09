@@ -124,6 +124,7 @@ export const handler = async (event) => {
         : { L: [] }, // Empty list if no images
       CityID: { S: eventDetails.cityID || "" },
       CategoryID: { S: eventDetails.categoryID || "" },
+      CategoryName: { S: eventDetails.categoryName || "" },
       EventType: { S: eventDetails.eventType || "" },
       Tags: { S: eventDetails.tags || "" },
       EventHighLight: { S: eventDetails.highlight || "" },
@@ -142,6 +143,7 @@ export const handler = async (event) => {
             }
           : { L: [] }, // Empty array if no benefits are provided
       AdditionalInfo: { S: eventDetails.additionalInfo || "" },
+      OrganizerName: { S: eventDetails.OrganizerName || "" },
       EventMode: { S: eventDetails.eventMode || "" },
       EventStatus: { S: "AwaitingApproval" },
     };
@@ -163,9 +165,9 @@ export const handler = async (event) => {
         TableName: TABLE,
         Key: { EventID: { S: uniqueEventID } },
         UpdateExpression: `SET EventTitle = :eventTitle, EventDate = :eventDate, EventLocation = :eventLocation, 
-        EventDetails = :eventDetails, EventImages = :eventImages, CityID = :cityID, CategoryID = :categoryID, 
+        EventDetails = :eventDetails, EventImages = :eventImages, CityID = :cityID, CategoryID = :categoryID, CategoryName = :categoryName, 
         EventType = :eventType, Tags = :tags, EventHighLight = :eventHighLight, Price = :price, Seats = :seats,
-         ReservedSeats = :reservedSeats, AudienceBenefits = :audienceBenefits, AdditionalInfo = :additionalInfo, 
+         ReservedSeats = :reservedSeats, AudienceBenefits = :audienceBenefits, AdditionalInfo = :additionalInfo, OrganizerName = :organizerName, 
          EventMode = :mode, OrgID = :orgID, EventStatus = :eventStatus`,
         ExpressionAttributeValues: {
           ":eventTitle": { S: eventDetails.eventTitle || "" },
@@ -178,6 +180,7 @@ export const handler = async (event) => {
             : { L: [] }, // Use `:eventImages` as key instead of `eventImages`
           ":cityID": { S: eventDetails.cityID || "" },
           ":categoryID": { S: eventDetails.categoryID || "" },
+          ":categoryName": { S: eventDetails.categoryName || "" },
           ":eventType": { S: eventDetails.eventType || "" },
           ":tags": { S: eventDetails.tags || "" },
           ":eventHighLight": { S: eventDetails.highlight || "" },
@@ -206,6 +209,7 @@ export const handler = async (event) => {
                 }
               : { L: [] },
           ":additionalInfo": { S: eventDetails.additionalInfo || "" },
+          ":organizerName": { S: eventDetails.OrganizerName || "" },
           ":mode": { S: eventDetails.eventMode || "" },
           ":orgID": { S: OrgID },
           ":eventStatus": { S: "AwaitingApproval" },

@@ -10,13 +10,19 @@ const formatEventDetails = (event) => ({
   id: event.EventID || "0",
   title: event.EventTitle || "Untitled Event",
   date: new Date(event.EventDate).toDateString(),
-  time: new Date(event.EventDate).toLocaleTimeString(),
+  time: new Date(event.EventDate).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }),
   location: event.EventLocation || "No Location",
   price: event.Price || "Free",
   about: event.EventDetails || "No description available.",
   benefits: event.AudienceBenefits || [],
   spl_banner: event.EventHighLight || "",
   images: event.EventImages ? event.EventImages.map((img) => img) : [],
+  organizerName: event.OrganizerName || "",
+  categoryName: event.CategoryName || "",
 });
 
 /**
