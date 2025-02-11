@@ -26,6 +26,7 @@ jobs:
           - yk-get-all-event-by-filter
           - yk-update-event-status
           - yk-get-all-event-by-criteria
+          - yk-submit-booking
 
     steps:
       # Step 1: Checkout code
