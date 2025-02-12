@@ -14,7 +14,7 @@ const ddbClient = new DynamoDBClient({ region: "eu-west-1" });
 export const handler = async (event) => {
   console.log(event);
   try {
-    const requestBody = JSON.parse(event.body.bookingDetails);
+    const requestBody = JSON.parse(event.body);
     const {
       eventId,
       userId,
@@ -25,7 +25,7 @@ export const handler = async (event) => {
       totalPrice,
       contactNumber,
       paymentMethod = "CASH",
-    } = requestBody;
+    } = requestBody.bookingDetails;
 
     if (!eventId || !userId || !ticketCount || ticketCount <= 0) {
       return {

@@ -101,6 +101,6 @@
     "deploymentId": "jw4pzk",
     "apiId": "27sqbwaad7"
   },
-  "body": "{\"eventId\":\"8dd3e388-a645-422a-a044-7db78c84d96f\",\"userId\":\"google_115751856932696261052\",\"OrganizerID\":\"456e7890-e12b-34d5-c678-910111213141\",\"bookingStatus\":\"Completed\",\"bookingDate\":1707654321000,\"eventDate\":1708744321000,\"paymentMethod\":\"CASH\",\"CreatedAt\":1707654321000,\"ticketCount\":2,\"bookingName\":\"Ravi\",\"contactNumber\":\"9860719197\",\"bookingEmail\":\"ravi.ambar@gmail.com\",\"ticketPrice\":500,\"totalPrice\":1000}",
+  "body": "{\"bookingDetails\":{\"eventId\":\"650d7aa6-d968-441b-93b7-5ee0ef6cfe60\",\"userId\":\"62351484-60b1-70d6-df12-a3395bcf1b20\",\"OrganizerID\":\"google_115751856932696261052\",\"bookingStatus\":\"Completed\",\"bookingDate\":1739334708439,\"paymentMethod\":\"CASH\",\"CreatedAt\":\"\",\"ticketCount\":2,\"bookingName\":\"Fggg\",\"bookingEmail\":\"Fgcv@gmail.com\",\"contactNumber\":\"9860858282\",\"ticketPrice\":400,\"totalPrice\":800}}",
   "isBase64Encoded": false
 }
