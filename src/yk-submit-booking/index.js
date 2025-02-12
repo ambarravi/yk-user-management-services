@@ -14,7 +14,7 @@ const ddbClient = new DynamoDBClient({ region: "eu-west-1" });
 export const handler = async (event) => {
   console.log(event);
   try {
-    const requestBody = JSON.parse(event.body);
+    const requestBody = JSON.parse(event.body.bookingDetails);
     const {
       eventId,
       userId,
