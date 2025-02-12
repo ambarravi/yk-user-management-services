@@ -42,8 +42,8 @@ export const handler = async (event) => {
     const existingBooking = await ddbClient.send(
       new QueryCommand({
         TableName: "BookingDetails",
-        IndexName: "UserID-EventID-index", // Ensure this GSI exists
-        KeyConditionExpression: "EventID  = :eventId AND UserID  = :userId",
+        IndexName: "UserId-EventID-index", // Ensure this GSI exists
+        KeyConditionExpression: "EventID  = :eventId AND UserId  = :userId",
         FilterExpression: "BookingStatus = :completedStatus", // Filters only "Completed" bookings
         ExpressionAttributeValues: {
           ":eventId": { S: eventId },
@@ -99,19 +99,6 @@ export const handler = async (event) => {
     }
 
     // **Step 4: Perform DynamoDB Transaction (Atomic Booking + Seat Update)**
-
-    console.log(bookingID);
-    console.log(eventId);
-    console.log(userId);
-    console.log(eventDetails.Item.OrgID.S);
-    console.log(eventDetails.Item.EventDate.S);
-    console.log(paymentMethod);
-    console.log(ticketCount);
-    console.log(bookingName);
-    console.log(bookingEmail);
-    console.log(ticketPrice);
-    console.log(totalPrice);
-    console.log(contactNumber);
 
     const transactionCommand = new TransactWriteItemsCommand({
       TransactItems: [

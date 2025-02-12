@@ -1,5 +1,5 @@
 {
-  "name": "yojanakaar-fetch-booking-by-user",
+  "name": "yojanakaar-submit-booking",
   "version": "1.0.0",
   "description": "Function to insert/update booking tickets",
   "main": "index.js",
@@ -9,9 +9,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.731.1",
-    "@aws-sdk/client-s3": "^3.731.1",
-    "@aws-sdk/lib-dynamodb": "^3.216.0",
-    "uuid": "^9.0.0"
+    "@aws-sdk/lib-dynamodb": "^3.216.0"
   },
   "author": "Ravi Ambar",
   "license": "MIT"
