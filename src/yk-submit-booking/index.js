@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 const ddbClient = new DynamoDBClient({ region: "eu-west-1" });
 
 export const handler = async (event) => {
-  //  console.log(event);
+  console.log(event);
   try {
     const requestBody = JSON.parse(event.body);
     const {
