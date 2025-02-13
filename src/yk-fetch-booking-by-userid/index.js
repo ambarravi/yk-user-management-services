@@ -33,11 +33,18 @@ export const handler = async (event) => {
 
     console.log("Query response:", queryResponse);
 
+    const currentDate = new Date().toISOString(); // Get current date in ISO format
+
     const records = queryResponse.Items
       ? queryResponse.Items.map((item) => unmarshall(item))
       : [];
 
-    console.log("Unmarshalled Records:", records);
+    // Filter records to include only future events
+    const futureRecords = records.filter(
+      (record) => record.EventDate && record.EventDate > currentDate
+    );
+
+    console.log("Filtered Future Records:", futureRecords);
 
     return {
       statusCode: 200,
@@ -47,7 +54,7 @@ export const handler = async (event) => {
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
       body: JSON.stringify({
-        records: records,
+        records: futureRecords,
       }),
     };
   } catch (error) {
