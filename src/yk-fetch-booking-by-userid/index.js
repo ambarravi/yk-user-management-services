@@ -1,4 +1,8 @@
-import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  QueryCommand,
+  BatchGetItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
@@ -6,18 +10,17 @@ const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 export const handler = async (event) => {
   try {
     console.log("Input event:", JSON.stringify(event));
-    const TABLE = "BookingDetails";
-    const GSI_NAME = "UserId-EventID-index"; // Name of the Global Secondary Index
-    let body = JSON.parse(event.body);
 
-    // Access the 'userId' field
+    const BOOKING_TABLE = "BookingDetails";
+    const EVENT_TABLE = "EventDetails";
+    const GSI_NAME = "UserId-EventID-index";
+
+    let body = JSON.parse(event.body);
     let userId = body.userId;
 
-    console.log("TABLE:", TABLE);
-    console.log("GSI_NAME:", GSI_NAME);
-
+    // Query bookings based on UserId
     const queryParams = {
-      TableName: TABLE,
+      TableName: BOOKING_TABLE,
       IndexName: GSI_NAME,
       KeyConditionExpression: "UserId = :userId",
       ExpressionAttributeValues: {
@@ -26,49 +29,78 @@ export const handler = async (event) => {
     };
 
     console.log("Query params:", JSON.stringify(queryParams));
-
     const queryResponse = await dynamoDBClient.send(
       new QueryCommand(queryParams)
     );
-
-    console.log("Query response:", queryResponse);
-
-    const currentDate = new Date().toISOString(); // Get current date in ISO format
-
     const records = queryResponse.Items
       ? queryResponse.Items.map((item) => unmarshall(item))
       : [];
 
-    // Filter records to include only future events
+    const currentDate = new Date().toISOString();
     const futureRecords = records.filter(
       (record) => record.EventDate && record.EventDate > currentDate
     );
-
     console.log("Filtered Future Records:", futureRecords);
 
-    return {
-      statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    if (futureRecords.length === 0) {
+      return generateResponse(200, { records: [] });
+    }
+
+    // Fetch unique EventIDs
+    const eventIds = [
+      ...new Set(futureRecords.map((record) => record.EventID)),
+    ];
+    console.log("Unique Event IDs:", eventIds);
+
+    // Batch fetch EventDetails for all EventIDs
+    const batchParams = {
+      RequestItems: {
+        [EVENT_TABLE]: {
+          Keys: eventIds.map((eventId) => ({ EventID: { S: eventId } })),
+          ProjectionExpression:
+            "EventID, EventTitle, EventLocation, EventDate, CategoryName, OrganizerName",
+        },
       },
-      body: JSON.stringify({
-        records: futureRecords,
-      }),
     };
+
+    console.log("Batch get params:", JSON.stringify(batchParams));
+    const batchResponse = await dynamoDBClient.send(
+      new BatchGetItemCommand(batchParams)
+    );
+    const eventDetailsMap = batchResponse.Responses[EVENT_TABLE].reduce(
+      (acc, item) => {
+        const event = unmarshall(item);
+        acc[event.EventID] = event;
+        return acc;
+      },
+      {}
+    );
+
+    console.log("Fetched Event Details:", eventDetailsMap);
+
+    // Attach event details to bookings
+    const enrichedRecords = futureRecords.map((record) => ({
+      ...record,
+      EventDetails: eventDetailsMap[record.EventID] || null,
+    }));
+
+    return generateResponse(200, { records: enrichedRecords });
   } catch (error) {
     console.error("Error processing request:", error);
-    return {
-      statusCode: 500,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
-      body: JSON.stringify({
-        message: error.message || "Internal Server Error",
-      }),
-    };
+    return generateResponse(500, {
+      message: error.message || "Internal Server Error",
+    });
   }
+};
+
+const generateResponse = (statusCode, body) => {
+  return {
+    statusCode,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+    body: JSON.stringify(body),
+  };
 };
