@@ -52,9 +52,11 @@ Resources:
                 Action:
                   - dynamodb:GetItem
                   - dynamodb:Query
+                  - dynamodb:BatchGetItem
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/UserId-EventID-index
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
