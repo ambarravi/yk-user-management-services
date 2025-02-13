@@ -56,7 +56,7 @@ export const handler = async (event) => {
     console.log("Existing booking completed ");
     console.log("existingBooking.Item", existingBooking);
 
-    if (existingBooking.Items) {
+    if (existingBooking.Count > 0) {
       return {
         statusCode: 400,
         body: JSON.stringify({
