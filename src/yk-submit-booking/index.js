@@ -138,7 +138,7 @@ export const handler = async (event) => {
               SeatsBooked: { N: ticketCount.toString() },
               BookingName: { S: bookingName },
               BookingEmail: { S: bookingEmail },
-              BookingEmail: { S: contactNumber },
+              BookingContact: { S: contactNumber },
               TicketPrice: { N: ticketPrice.toString() },
               TotalAmountPaid: { N: totalPrice.toString() },
             },
