@@ -106,6 +106,6 @@
     "deploymentId": "bwx6g1",
     "apiId": "27sqbwaad7"
   },
-  "body": "{\"userId\": \"d2b58464-20a1-7057-a466-5ae16421b1d8\", \"orgId\": \"google_114946859978187594600\", \"status\": \"UnFollow\"}",
+  "body": "{\"userId\": \"d2b58464-20a1-7057-a466-5ae16421b1d8\", \"orgId\": \"google_114946859978187594600\", \"status\": \"Follow\"}",
   "isBase64Encoded": false
 }
