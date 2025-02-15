@@ -1,5 +1,5 @@
 {
-  "name": "yojanakaar-update-follow-status",
+  "name": "yojanakaar-update-role",
   "version": "1.0.0",
   "description": "Function to validate role and update it in Cognito and DynamoDB",
   "main": "index.mjs",
@@ -8,10 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.216.0",
     "@aws-sdk/client-dynamodb": "^3.216.0",
-    "@aws-sdk/lib-dynamodb": "^3.216.0",
-    "jose": "^4.14.4"
+    "@aws-sdk/lib-dynamodb": "^3.216.0"
   },
   "author": "Ravi Ambar",
   "license": "MIT"

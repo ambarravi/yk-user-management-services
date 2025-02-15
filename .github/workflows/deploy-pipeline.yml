@@ -29,6 +29,7 @@ jobs:
           - yk-submit-booking
           - yk-fetch-booking-by-userid
           - yk-cancel-booking
+          - yk-update-follow-status
 
     steps:
       # Step 1: Checkout code
