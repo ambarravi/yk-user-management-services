@@ -13,7 +13,7 @@ export const handler = async (event) => {
 
     let body = JSON.parse(event.body);
     let eventID = body.eventID;
-    let userID = body.userID;
+    let userID = body.userId;
 
     console.log("Fetching Event Details...");
 
@@ -65,6 +65,7 @@ export const handler = async (event) => {
 
     // **Step 3: Check if User is Following Organizer**
     let followFlag = "Not Following";
+    console.log("userID", userID);
 
     if (userID) {
       const userPK = `USER#${userID}`;
@@ -81,6 +82,7 @@ export const handler = async (event) => {
       const followResult = await dynamoDBClient.send(
         new GetItemCommand(followParams)
       );
+      console.log("followResult", followResult);
       if (followResult?.Item && Object.keys(followResult.Item).length > 0) {
         followFlag = "Following";
       }

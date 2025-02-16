@@ -101,6 +101,6 @@
     "deploymentId": "jw4pzk",
     "apiId": "27sqbwaad7"
   },
-  "body": "{\"eventID\":\"29d1330f-98c2-40a6-ad0a-970ac1c38181\", \"userID\":\"d2b58464-20a1-7057-a466-5ae16421b1d8\"}",
+  "body": "{\"eventID\":\"29d1330f-98c2-40a6-ad0a-970ac1c38181\",\"userId\":\"02953404-20b1-7087-b521-9c1c15949aa5\"}",
   "isBase64Encoded": false
 }

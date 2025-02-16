@@ -63,8 +63,11 @@ export const handler = async (event) => {
       // ✅ Step 5: Update user’s following count
       console.log("updateCount , User");
       await updateCount(USER_TABLE, "UserID", userId, "FollowingCount", 1);
-
-      return response(200, { message: "Successfully followed the organizer." });
+      const followerCount = await getFollowerCount(orgId);
+      return response(200, {
+        message: `Successfully ${status.toLowerCase()}ed the organizer.`,
+        followerCount,
+      });
     } else if (status === "UnFollow") {
       if (!existingFollow) {
         return response(400, {
@@ -86,9 +89,10 @@ export const handler = async (event) => {
 
       // ✅ Step 8: Decrease user’s following count
       await updateCount(USER_TABLE, "UserID", userId, "FollowingCount", -1);
-
+      const followerCount = await getFollowerCount(orgId);
       return response(200, {
         message: "Successfully unfollowed the organizer.",
+        followerCount,
       });
     }
   } catch (error) {
@@ -229,4 +233,17 @@ function response(statusCode, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   };
+}
+
+async function getFollowerCount(orgId) {
+  const command = new GetItemCommand({
+    TableName: ORGANIZER_TABLE,
+    Key: { OrganizerID: { S: orgId } },
+    ProjectionExpression: "FollowerCount",
+  });
+
+  const result = await ddbClient.send(command);
+  return result.Item?.FollowerCount?.N
+    ? parseInt(result.Item.FollowerCount.N, 10)
+    : 0;
 }
