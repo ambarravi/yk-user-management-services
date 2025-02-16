@@ -69,8 +69,10 @@ export const handler = async (event) => {
     }
 
     let updatedAttributes = [{ Name: "custom:role", Value: newRole }];
-    if (cityID)
+    if (cityID) {
       updatedAttributes.push({ Name: "custom:CityID", Value: cityID });
+      updatedAttributes.push({ Name: "custom:City", Value: city });
+    }
 
     if (collegeDetails && collegeDetails.CollegeID) {
       updatedAttributes.push({
