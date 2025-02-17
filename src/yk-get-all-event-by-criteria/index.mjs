@@ -150,8 +150,6 @@ export const handler = async (event) => {
         "#EventDate": "EventDate",
       },
     };
-  }
-  
 
     collegeEvents = await fetchEventsFromDDB(
       "GSI_College_Date",
