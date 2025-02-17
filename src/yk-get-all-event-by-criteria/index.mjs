@@ -108,6 +108,8 @@ export const handler = async (event) => {
   let cityEvents = [];
   let collegeEvents = [];
   let searchResults = [];
+  let interCollegeEvents = [];
+  let privateCollegeEvents = [];
 
   if (SearchQuery) {
     searchResults = await searchEvents(SearchQuery);
