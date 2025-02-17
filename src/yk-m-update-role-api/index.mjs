@@ -136,7 +136,7 @@ export const handler = async (event) => {
       statusCode: 200,
       body: JSON.stringify({
         message: "Role and attributes updated successfully",
-        cityID : cityID s
+        cityID: cityID,
       }),
     };
   } catch (error) {
