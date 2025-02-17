@@ -131,7 +131,9 @@ export const handler = async (event) => {
       "GSI_City_College_Date",
       cityCondition
     );
-    cityEvents = cityEvents.filter((ev) => ev.EventStatus === "Published");
+    cityEvents = cityEvents.filter(
+      (ev) => ev.EventStatus === "Published" && ev.EventType === "open"
+    );
   }
 
   if (CollegeID) {
@@ -151,8 +153,11 @@ export const handler = async (event) => {
       "GSI_College_Date",
       collegeCondition
     );
-    collegeEvents = collegeEvents.filter(
-      (ev) => ev.EventStatus === "Published"
+    interCollegeEvents = collegeEvents.filter(
+      (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
+    );
+    privateCollegeEvents = collegeEvents.filter(
+      (ev) => ev.EventStatus === "Published" && ev.EventType === "private"
     );
   }
 
@@ -160,7 +165,12 @@ export const handler = async (event) => {
     statusCode: 200,
     body: JSON.stringify({
       CityEvents: CityID ? cityEvents.map(formatEventDetails) : [],
-      CollegeEvents: CollegeID ? collegeEvents.map(formatEventDetails) : [],
+      PrivateCollegeEvents: CollegeID
+        ? privateCollegeEvents.map(formatEventDetails)
+        : [],
+      InterCollegeEvents: CollegeID
+        ? interCollegeEvents.map(formatEventDetails)
+        : [],
       SearchResults: searchResults.map(formatEventDetails),
     }),
   };
