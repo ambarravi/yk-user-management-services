@@ -140,7 +140,7 @@ export const handler = async (event) => {
 
   if (CollegeID) {
     const collegeCondition = {
-      keyexpression: "CollegeID = :collegeId AND EventDate > :currentDate",
+      keyexpression: "#CollegeID = :collegeId AND #EventDate > :currentDate",
       values: {
         ":collegeId": { S: CollegeID },
         ":currentDate": { S: new Date().toISOString() },
@@ -150,6 +150,8 @@ export const handler = async (event) => {
         "#EventDate": "EventDate",
       },
     };
+  }
+  
 
     collegeEvents = await fetchEventsFromDDB(
       "GSI_College_Date",
