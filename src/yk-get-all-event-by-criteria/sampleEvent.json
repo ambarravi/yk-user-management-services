@@ -75,6 +75,6 @@
     "deploymentId": "at98oh",
     "apiId": "27sqbwaad7"
   },
-  "body": "{\"CityID\":\"01947387-3c14-7eef-8c12-a00c0c64d8d5\"}",
+  "body": "{\"CityID\":\"01947387-3c14-7eef-8c12-a00c0c64d8d5\",\"SearchQuery\":\"test\"}",
   "isBase64Encoded": false
 }

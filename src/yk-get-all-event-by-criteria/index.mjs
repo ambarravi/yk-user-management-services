@@ -1,4 +1,8 @@
-import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  QueryCommand,
+  ScanCommand,
+} from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 // AWS Region Configuration
@@ -26,27 +30,42 @@ const formatEventDetails = (event) => ({
 });
 
 /**
- * Query DynamoDB for Events
+ * Fetch Events using Query or Scan based on the SearchQuery option
  * @param {string} indexName - GSI to query
- * @param {object} keyCondition - KeyConditionExpression
+ * @param {object} keyCondition - KeyConditionExpression or Scan parameters
+ * @param {boolean} useScan - Flag to indicate whether to use Scan (true) or Query (false)
  * @returns {Promise<Array>}
  */
-const fetchEventsFromDDB = async (indexName, keyCondition) => {
+const fetchEventsFromDDB = async (indexName, keyCondition, useScan = false) => {
   try {
+    console.log("index name ", indexName);
     const params = {
       TableName: "EventDetails",
       IndexName: indexName,
-      KeyConditionExpression: keyCondition.expression,
       ExpressionAttributeValues: keyCondition.values,
       ScanIndexForward: true, // Sort events by date (oldest to newest)
     };
 
-    const { Items } = await client.send(new QueryCommand(params));
+    if (useScan) {
+      params.FilterExpression = keyCondition.filterexpression;
+    } else {
+      console.log("Query block ", keyCondition.keyexpression);
+      params.KeyConditionExpression = keyCondition.keyexpression;
+      params.ExpressionAttributeNames = keyCondition.names || {};
+    }
+
+    console.log("Executing query with params:", JSON.stringify(params));
+
+    // Use Scan or Query based on the flag
+    const command = useScan
+      ? new ScanCommand(params)
+      : new QueryCommand(params);
+    const { Items } = await client.send(command);
 
     // Convert DynamoDB records to JSON
     return Items ? Items.map((item) => unmarshall(item)) : [];
   } catch (error) {
-    console.error("DynamoDB Query Error:", error);
+    console.error("DynamoDB Error:", error);
     return [];
   }
 };
@@ -57,29 +76,23 @@ const fetchEventsFromDDB = async (indexName, keyCondition) => {
  * @returns {Promise<Array>}
  */
 const searchEvents = async (searchQuery) => {
-  const indexes = [
-    { name: "GSI_EventName", field: "EventTitle" },
-    { name: "GSI_Organizer", field: "OrganizerName" },
-    { name: "GSI_Category", field: "CategoryName" },
-    { name: "GSI_Tags", field: "Tags" },
-  ];
+  const indexes = [{ name: "EventDate-index", field: "Tags" }];
 
   let allResults = [];
 
   for (const index of indexes) {
     const condition = {
-      expression: `${index.field} = :searchVal AND EventDate > :currentDate`,
+      filterexpression: `contains(${index.field}, :searchVal)`,
       values: {
         ":searchVal": { S: searchQuery },
-        ":currentDate": { S: new Date().toISOString() },
       },
     };
 
-    const results = await fetchEventsFromDDB(index.name, condition);
+    const results = await fetchEventsFromDDB(index.name, condition, true);
     allResults = allResults.concat(results);
   }
 
-  // Deduplicate events
+  // Deduplicate events based on EventID
   const uniqueEvents = Array.from(
     new Map(allResults.map((ev) => [ev.EventID, ev])).values()
   );
@@ -89,7 +102,7 @@ const searchEvents = async (searchQuery) => {
 
 export const handler = async (event) => {
   let ParsedEvent = JSON.parse(event.body);
-  console.log(ParsedEvent);
+  console.log("Received Event:", ParsedEvent);
 
   const { CityID, CollegeID, SearchQuery } = ParsedEvent;
   let cityEvents = [];
@@ -98,53 +111,56 @@ export const handler = async (event) => {
 
   if (SearchQuery) {
     searchResults = await searchEvents(SearchQuery);
-  } else {
-    // Fetch City-based events
-    if (CityID) {
-      const cityCondition = {
-        expression: "CityID = :cityId AND EventDate > :currentDate",
-        values: {
-          ":cityId": { S: CityID },
-          ":currentDate": { S: new Date().toISOString() },
-        },
-      };
+  }
+  if (CityID) {
+    const cityCondition = {
+      keyexpression: "#CityID = :cityId AND #EventDate > :currentDate", // Use placeholders
+      values: {
+        ":cityId": { S: CityID },
+        ":currentDate": { S: new Date().toISOString() },
+      },
+      names: {
+        "#CityID": "CityID",
+        "#EventDate": "EventDate",
+      },
+    };
 
-      cityEvents = await fetchEventsFromDDB(
-        "GSI_City_College_Date",
-        cityCondition
-      );
-      cityEvents = cityEvents.filter((ev) => ev.EventStatus === "Published");
-    }
+    console.log("Call for CIty");
+    console.log(cityCondition, "cityCondition");
+    cityEvents = await fetchEventsFromDDB(
+      "GSI_City_College_Date",
+      cityCondition
+    );
+    cityEvents = cityEvents.filter((ev) => ev.EventStatus === "Published");
+  }
 
-    // Fetch College-based events
-    if (CollegeID) {
-      const collegeCondition = {
-        expression: "CollegeID = :collegeId AND EventDate > :currentDate",
-        values: {
-          ":collegeId": { S: CollegeID },
-          ":currentDate": { S: new Date().toISOString() },
-        },
-      };
+  if (CollegeID) {
+    const collegeCondition = {
+      keyexpression: "CollegeID = :collegeId AND EventDate > :currentDate",
+      values: {
+        ":collegeId": { S: CollegeID },
+        ":currentDate": { S: new Date().toISOString() },
+      },
+      names: {
+        "#CollegeID": "CollegeID",
+        "#EventDate": "EventDate",
+      },
+    };
 
-      collegeEvents = await fetchEventsFromDDB(
-        "GSI_College_Date",
-        collegeCondition
-      );
-      collegeEvents = collegeEvents.filter(
-        (ev) => ev.EventStatus === "Published"
-      );
-
-      // Remove duplicates from cityEvents
-      const collegeEventIDs = new Set(collegeEvents.map((ev) => ev.EventID));
-      cityEvents = cityEvents.filter((ev) => !collegeEventIDs.has(ev.EventID));
-    }
+    collegeEvents = await fetchEventsFromDDB(
+      "GSI_College_Date",
+      collegeCondition
+    );
+    collegeEvents = collegeEvents.filter(
+      (ev) => ev.EventStatus === "Published"
+    );
   }
 
   return {
     statusCode: 200,
     body: JSON.stringify({
-      CityEvents: cityEvents.map(formatEventDetails),
-      CollegeEvents: collegeEvents.map(formatEventDetails),
+      CityEvents: CityID ? cityEvents.map(formatEventDetails) : [],
+      CollegeEvents: CollegeID ? collegeEvents.map(formatEventDetails) : [],
       SearchResults: searchResults.map(formatEventDetails),
     }),
   };

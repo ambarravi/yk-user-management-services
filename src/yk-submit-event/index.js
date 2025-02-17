@@ -115,6 +115,7 @@ export const handler = async (event) => {
     const eventPayload = {
       EventID: { S: uniqueEventID },
       OrgID: { S: OrgID },
+
       EventTitle: { S: eventDetails.eventTitle || "" },
       EventDate: { S: eventDetails.dateTime || "" },
       EventLocation: { S: eventDetails.eventLocation || "" },
@@ -148,6 +149,11 @@ export const handler = async (event) => {
       EventStatus: { S: "AwaitingApproval" },
     };
 
+    const collegeID = await getCollegeID(OrgID);
+    if (collegeID) {
+      eventPayload.CollegeID = { S: collegeID };
+    }
+
     // Check if the event already exists
     const getParams = {
       TableName: TABLE,
@@ -161,59 +167,85 @@ export const handler = async (event) => {
 
     if (existingRecord.Item) {
       console.log("Event already exists. Updating...");
+      const updateExpressionParts = [
+        "EventTitle = :eventTitle",
+        "EventDate = :eventDate",
+        "EventLocation = :eventLocation",
+        "EventDetails = :eventDetails",
+        "EventImages = :eventImages",
+        "CityID = :cityID",
+        "CategoryID = :categoryID",
+        "CategoryName = :categoryName",
+        "EventType = :eventType",
+        "Tags = :tags",
+        "EventHighLight = :eventHighLight",
+        "Price = :price",
+        "Seats = :seats",
+        "ReservedSeats = :reservedSeats",
+        "AudienceBenefits = :audienceBenefits",
+        "AdditionalInfo = :additionalInfo",
+        "OrganizerName = :organizerName",
+        "EventMode = :mode",
+        "OrgID = :orgID",
+        "EventStatus = :eventStatus",
+      ];
+
+      const expressionAttributeValues = {
+        ":eventTitle": { S: eventDetails.eventTitle || "" },
+        ":eventDate": { S: eventDetails.dateTime || "" },
+        ":eventLocation": { S: eventDetails.eventLocation || "" },
+        ":eventDetails": { S: eventDetails.eventDetails || "" },
+        ":eventImages": imageUrls.length
+          ? { L: imageUrls.map((url) => ({ S: url })) }
+          : { L: [] },
+        ":cityID": { S: eventDetails.cityID || "" },
+        ":categoryID": { S: eventDetails.categoryID || "" },
+        ":categoryName": { S: eventDetails.categoryName || "" },
+        ":eventType": { S: eventDetails.eventType || "" },
+        ":tags": { S: eventDetails.tags || "" },
+        ":eventHighLight": { S: eventDetails.highlight || "" },
+        ":price": {
+          N: eventDetails.ticketPrice
+            ? eventDetails.ticketPrice.toString()
+            : "0",
+        },
+        ":seats": {
+          N: eventDetails.noOfSeats ? eventDetails.noOfSeats.toString() : "0",
+        },
+        ":reservedSeats": {
+          N: eventDetails.reserveSeats
+            ? eventDetails.reserveSeats.toString()
+            : "0",
+        },
+        ":audienceBenefits":
+          eventDetails.audienceBenefits &&
+          eventDetails.audienceBenefits.length > 0
+            ? {
+                L: eventDetails.audienceBenefits
+                  .filter((benefit) => benefit.trim() !== "")
+                  .map((benefit) => ({
+                    S: benefit,
+                  })),
+              }
+            : { L: [] },
+        ":additionalInfo": { S: eventDetails.additionalInfo || "" },
+        ":organizerName": { S: eventDetails.OrganizerName || "" },
+        ":mode": { S: eventDetails.eventMode || "" },
+        ":orgID": { S: OrgID },
+        ":eventStatus": { S: "AwaitingApproval" },
+      };
+
+      // Check if CollegeID is present
+      if (eventDetails.collegeID) {
+        updateExpressionParts.push("CollegeID = :collegeID");
+        expressionAttributeValues[":collegeID"] = { S: eventDetails.collegeID };
+      }
+
       const updateParams = {
         TableName: TABLE,
         Key: { EventID: { S: uniqueEventID } },
-        UpdateExpression: `SET EventTitle = :eventTitle, EventDate = :eventDate, EventLocation = :eventLocation, 
-        EventDetails = :eventDetails, EventImages = :eventImages, CityID = :cityID, CategoryID = :categoryID, CategoryName = :categoryName, 
-        EventType = :eventType, Tags = :tags, EventHighLight = :eventHighLight, Price = :price, Seats = :seats,
-         ReservedSeats = :reservedSeats, AudienceBenefits = :audienceBenefits, AdditionalInfo = :additionalInfo, OrganizerName = :organizerName, 
-         EventMode = :mode, OrgID = :orgID, EventStatus = :eventStatus`,
-        ExpressionAttributeValues: {
-          ":eventTitle": { S: eventDetails.eventTitle || "" },
-          ":eventDate": { S: eventDetails.dateTime || "" },
-          ":eventLocation": { S: eventDetails.eventLocation || "" },
-          ":eventDetails": { S: eventDetails.eventDetails || "" },
-          // ":eventImages": { L: imageUrls.map((url) => ({ S: url })) },
-          ":eventImages": imageUrls.length
-            ? { L: imageUrls.map((url) => ({ S: url })) }
-            : { L: [] }, // Use `:eventImages` as key instead of `eventImages`
-          ":cityID": { S: eventDetails.cityID || "" },
-          ":categoryID": { S: eventDetails.categoryID || "" },
-          ":categoryName": { S: eventDetails.categoryName || "" },
-          ":eventType": { S: eventDetails.eventType || "" },
-          ":tags": { S: eventDetails.tags || "" },
-          ":eventHighLight": { S: eventDetails.highlight || "" },
-          ":price": {
-            N: eventDetails.ticketPrice
-              ? eventDetails.ticketPrice.toString()
-              : "0",
-          },
-          ":seats": {
-            N: eventDetails.noOfSeats ? eventDetails.noOfSeats.toString() : "0",
-          },
-          ":reservedSeats": {
-            N: eventDetails.reserveSeats
-              ? eventDetails.reserveSeats.toString()
-              : "0",
-          },
-          ":audienceBenefits":
-            eventDetails.audienceBenefits &&
-            eventDetails.audienceBenefits.length > 0
-              ? {
-                  L: eventDetails.audienceBenefits
-                    .filter((benefit) => benefit.trim() !== "") // Remove empty strings
-                    .map((benefit) => ({
-                      S: benefit,
-                    })),
-                }
-              : { L: [] },
-          ":additionalInfo": { S: eventDetails.additionalInfo || "" },
-          ":organizerName": { S: eventDetails.OrganizerName || "" },
-          ":mode": { S: eventDetails.eventMode || "" },
-          ":orgID": { S: OrgID },
-          ":eventStatus": { S: "AwaitingApproval" },
-        },
+        UpdateExpression: `SET ${updateExpressionParts.join(", ")}`,
+        ExpressionAttributeValues: expressionAttributeValues,
       };
 
       console.log("Update Params:", JSON.stringify(updateParams, null, 2));
@@ -338,5 +370,30 @@ const generateReadableEventID = async () => {
   } catch (error) {
     console.error("Error generating ReadableEventID:", error);
     throw new Error("Error generating ReadableEventID");
+  }
+};
+
+export const getCollegeID = async (OrgID) => {
+  if (!OrgID) {
+    throw new Error("Organization ID (OrgID) is required.");
+  }
+
+  const ORGANIZER_TABLE = process.env.ORGANIZER_TABLE;
+  if (!ORGANIZER_TABLE) {
+    throw new Error("Missing required environment variable: ORGANIZER_TABLE.");
+  }
+
+  try {
+    const params = {
+      TableName: ORGANIZER_TABLE,
+      Key: { OrgID: { S: OrgID } },
+      ProjectionExpression: "CollegeID",
+    };
+
+    const response = await dynamoDBClient.send(new GetItemCommand(params));
+    return response.Item?.CollegeID?.S || null;
+  } catch (error) {
+    console.error("Error fetching CollegeID:", error);
+    throw new Error("Failed to retrieve CollegeID from Organizer table.");
   }
 };
