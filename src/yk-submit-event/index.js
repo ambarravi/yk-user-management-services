@@ -378,7 +378,7 @@ export const getCollegeID = async (OrgID) => {
     throw new Error("Organization ID (OrgID) is required.");
   }
 
-  const ORGANIZER_TABLE = process.env.ORGANIZER_TABLE;
+  const ORGANIZER_TABLE = process.env.ORGANIZER_TABLE || "Organizer";
   if (!ORGANIZER_TABLE) {
     throw new Error("Missing required environment variable: ORGANIZER_TABLE.");
   }
@@ -386,12 +386,12 @@ export const getCollegeID = async (OrgID) => {
   try {
     const params = {
       TableName: ORGANIZER_TABLE,
-      Key: { OrgID: { S: OrgID } },
-      ProjectionExpression: "CollegeID",
+      Key: { OrganizerID: { S: OrgID } },
+      ProjectionExpression: "collegeID",
     };
 
     const response = await dynamoDBClient.send(new GetItemCommand(params));
-    return response.Item?.CollegeID?.S || null;
+    return response.Item?.collegeID?.S || null;
   } catch (error) {
     console.error("Error fetching CollegeID:", error);
     throw new Error("Failed to retrieve CollegeID from Organizer table.");
