@@ -27,16 +27,11 @@ const formatEventDetails = (event) => ({
 
 /**
  * Query DynamoDB for Events
- * @param {string} indexName - GSI to query (City/College)
+ * @param {string} indexName - GSI to query
  * @param {object} keyCondition - KeyConditionExpression
- * @param {object} lastEvaluatedKey - For pagination
- * @returns {Promise<{ events: Array, lastKey: object }>}
+ * @returns {Promise<Array>}
  */
-const fetchEventsFromDDB = async (
-  indexName,
-  keyCondition,
-  lastEvaluatedKey
-) => {
+const fetchEventsFromDDB = async (indexName, keyCondition) => {
   try {
     const params = {
       TableName: "EventDetails",
@@ -44,90 +39,113 @@ const fetchEventsFromDDB = async (
       KeyConditionExpression: keyCondition.expression,
       ExpressionAttributeValues: keyCondition.values,
       ScanIndexForward: true, // Sort events by date (oldest to newest)
-      ExclusiveStartKey: lastEvaluatedKey || undefined,
     };
 
-    const { Items, LastEvaluatedKey } = await client.send(
-      new QueryCommand(params)
-    );
+    const { Items } = await client.send(new QueryCommand(params));
 
     // Convert DynamoDB records to JSON
-    const events = Items ? Items.map((item) => unmarshall(item)) : [];
-
-    return { events, lastKey: LastEvaluatedKey };
+    return Items ? Items.map((item) => unmarshall(item)) : [];
   } catch (error) {
     console.error("DynamoDB Query Error:", error);
-    return { events: [], lastKey: null };
+    return [];
   }
 };
 
+/**
+ * Fetch events based on search query
+ * @param {string} searchQuery - User search input
+ * @returns {Promise<Array>}
+ */
+const searchEvents = async (searchQuery) => {
+  const indexes = [
+    { name: "GSI_EventName", field: "EventTitle" },
+    { name: "GSI_Organizer", field: "OrganizerName" },
+    { name: "GSI_Category", field: "CategoryName" },
+    { name: "GSI_Tags", field: "Tags" },
+  ];
+
+  let allResults = [];
+
+  for (const index of indexes) {
+    const condition = {
+      expression: `${index.field} = :searchVal AND EventDate > :currentDate`,
+      values: {
+        ":searchVal": { S: searchQuery },
+        ":currentDate": { S: new Date().toISOString() },
+      },
+    };
+
+    const results = await fetchEventsFromDDB(index.name, condition);
+    allResults = allResults.concat(results);
+  }
+
+  // Deduplicate events
+  const uniqueEvents = Array.from(
+    new Map(allResults.map((ev) => [ev.EventID, ev])).values()
+  );
+
+  return uniqueEvents;
+};
+
 export const handler = async (event) => {
-  // console.log("Received Event:", JSON.stringify(event));
   let ParsedEvent = JSON.parse(event.body);
   console.log(ParsedEvent);
 
-  const { CityID, CollegeID, CityLastEvaluatedKey, CollegeLastEvaluatedKey } =
-    ParsedEvent;
+  const { CityID, CollegeID, SearchQuery } = ParsedEvent;
   let cityEvents = [];
   let collegeEvents = [];
-  console.log(CityID);
-  // Fetch City-based events
-  if (CityID) {
-    const cityCondition = {
-      expression: "CityID = :cityId AND EventDate > :currentDate",
-      values: {
-        ":cityId": { S: CityID },
-        ":currentDate": { S: new Date().toISOString() },
-      },
-    };
+  let searchResults = [];
 
-    const { events, lastKey } = await fetchEventsFromDDB(
-      "GSI_City_College_Date",
-      cityCondition,
-      CityLastEvaluatedKey
-    );
-    cityEvents = events.filter(
-      (ev) =>
-        ev.EventStatus === "Published" &&
-        (ev.EventType === "open" || (CollegeID && ev.EventType === "inter"))
-    );
+  if (SearchQuery) {
+    searchResults = await searchEvents(SearchQuery);
+  } else {
+    // Fetch City-based events
+    if (CityID) {
+      const cityCondition = {
+        expression: "CityID = :cityId AND EventDate > :currentDate",
+        values: {
+          ":cityId": { S: CityID },
+          ":currentDate": { S: new Date().toISOString() },
+        },
+      };
+
+      cityEvents = await fetchEventsFromDDB(
+        "GSI_City_College_Date",
+        cityCondition
+      );
+      cityEvents = cityEvents.filter((ev) => ev.EventStatus === "Published");
+    }
+
+    // Fetch College-based events
+    if (CollegeID) {
+      const collegeCondition = {
+        expression: "CollegeID = :collegeId AND EventDate > :currentDate",
+        values: {
+          ":collegeId": { S: CollegeID },
+          ":currentDate": { S: new Date().toISOString() },
+        },
+      };
+
+      collegeEvents = await fetchEventsFromDDB(
+        "GSI_College_Date",
+        collegeCondition
+      );
+      collegeEvents = collegeEvents.filter(
+        (ev) => ev.EventStatus === "Published"
+      );
+
+      // Remove duplicates from cityEvents
+      const collegeEventIDs = new Set(collegeEvents.map((ev) => ev.EventID));
+      cityEvents = cityEvents.filter((ev) => !collegeEventIDs.has(ev.EventID));
+    }
   }
 
-  // Fetch College-based events (if CollegeID is provided)
-  if (CollegeID) {
-    const collegeCondition = {
-      expression: "CollegeID = :collegeId AND EventDate > :currentDate",
-      values: {
-        ":collegeId": { S: CollegeID },
-        ":currentDate": { S: new Date().toISOString() },
-      },
-    };
-
-    const { events, lastKey } = await fetchEventsFromDDB(
-      "GSI_College_Date",
-      collegeCondition,
-      CollegeLastEvaluatedKey
-    );
-    collegeEvents = events.filter(
-      (ev) =>
-        ev.EventStatus === "Published" &&
-        (ev.EventType === "inter" || ev.EventType === "private")
-    );
-
-    // Exclude CollegeEvents from CityEvents
-    const collegeEventIDs = new Set(collegeEvents.map((ev) => ev.EventID));
-    cityEvents = cityEvents.filter((ev) => !collegeEventIDs.has(ev.EventID));
-  }
-
-  // Format the response
   return {
     statusCode: 200,
     body: JSON.stringify({
       CityEvents: cityEvents.map(formatEventDetails),
       CollegeEvents: collegeEvents.map(formatEventDetails),
-      CityLastEvaluatedKey: cityEvents.length > 0 ? CityLastEvaluatedKey : null,
-      CollegeLastEvaluatedKey:
-        collegeEvents.length > 0 ? CollegeLastEvaluatedKey : null,
+      SearchResults: searchResults.map(formatEventDetails),
     }),
   };
 };
