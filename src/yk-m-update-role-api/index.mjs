@@ -1,16 +1,21 @@
 import {
   CognitoIdentityProviderClient,
   AdminUpdateUserAttributesCommand,
+  AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
-import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBClient,
+  GetItemCommand,
+  UpdateCommand,
+} from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
 const REGION = process.env.AWS_REGION;
-const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // process.env.USER_POOL_ID;
-const USERS_TABLE = "UsersTable"; // process.env.USERS_TABLE;
-const CITY_TABLE = "City"; //  process.env.CITY_TABLE;
+const USER_POOL_ID = "eu-west-1_hgUDdjyRr";
+const USERS_TABLE = "UsersTable";
+const CITY_TABLE = "City";
 const CITY_INDEX = "CityName-index";
+
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
@@ -18,70 +23,46 @@ export const handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
 
   try {
-    const {
-      userName,
-      userID,
-      tempRole,
-      currentRole,
-      city,
-      collegeDetails,
-      name,
-      email,
-      lastName,
-    } = event;
+    const { userName, userID, city, collegeDetails } = event;
 
-    if (!userID || !tempRole || !city) {
+    if (!userID || !city) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          message: "Invalid input: userID, tempRole, and city are required.",
+          message: "Invalid input: userID and city are required.",
         }),
       };
     }
 
-    let newRole;
-    if (
-      currentRole &&
-      currentRole.toLowerCase().includes(tempRole.toLowerCase())
-    ) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          message: "Role is already updated or included",
-        }),
-      };
-    } else {
-      newRole = currentRole
-        ? `${currentRole.toLowerCase()},${tempRole.toLowerCase()}`
-        : tempRole.toLowerCase();
-    }
-    console.log(newRole);
-    console.log("Fetching CityID for city:", city.toLowerCase());
-    console.log("City Table:", CITY_TABLE);
-    console.log("City CITY_INDEX:", CITY_INDEX);
-    console.log(QueryCommand);
+    // Fetch existing user attributes from Cognito
+    const existingCognitoAttributes = await getCognitoAttributes(userName);
+    console.log("Existing Cognito Attributes:", existingCognitoAttributes);
+
+    // Fetch existing user details from DynamoDB
+    const existingDynamoData = await getDynamoUser(userID);
+    console.log("Existing DynamoDB Data:", existingDynamoData);
 
     let cityID = await queryCityTable(city);
-    if (cityID) {
-      console.log("Found CityID:", cityID);
-    } else {
-      console.log("City not found in DynamoDB.");
-    }
+    console.log("Found CityID:", cityID || "City not found");
 
-    let updatedAttributes = [{ Name: "custom:role", Value: newRole }];
+    let updatedAttributes = [];
+
     if (cityID) {
       updatedAttributes.push({ Name: "custom:CityID", Value: cityID });
       updatedAttributes.push({ Name: "custom:City", Value: city });
     }
 
-    if (collegeDetails && collegeDetails.CollegeID) {
+    if (collegeDetails?.CollegeID) {
       updatedAttributes.push({
         Name: "custom:CollegeID",
         Value: collegeDetails.CollegeID,
       });
+    } else if (existingCognitoAttributes["custom:CollegeID"]) {
+      // If CollegeID is removed, remove it from Cognito
+      updatedAttributes.push({ Name: "custom:CollegeID", Value: "" });
     }
 
-    console.log("Updating Cognito attributes:", updatedAttributes);
+    console.log("Updating Cognito Attributes:", updatedAttributes);
     await cognitoClient.send(
       new AdminUpdateUserAttributesCommand({
         UserPoolId: USER_POOL_ID,
@@ -90,38 +71,22 @@ export const handler = async (event) => {
       })
     );
 
-    const updateExpression = ["set #role = :role"];
-    const expressionAttributeNames = { "#role": "role" };
-    const expressionAttributeValues = { ":role": newRole };
+    // Update DynamoDB
+    let updateExpression = ["set #cityID = :cityID"];
+    let expressionAttributeNames = { "#cityID": "CityID" };
+    let expressionAttributeValues = { ":cityID": cityID };
 
-    if (cityID) {
-      updateExpression.push("#cityID = :cityID");
-      expressionAttributeNames["#cityID"] = "CityID";
-      expressionAttributeValues[":cityID"] = cityID;
-    }
-
-    if (collegeDetails) {
+    if (collegeDetails?.CollegeID) {
       updateExpression.push("#collegeDetails = :collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
       expressionAttributeValues[":collegeDetails"] = collegeDetails;
-    }
-    if (name) {
-      updateExpression.push("#name = :FirstName");
-      expressionAttributeNames["#name"] = "FirstName";
-      expressionAttributeValues[":FirstName"] = name;
-    }
-    if (lastName) {
-      updateExpression.push("#lastName = :LastName");
-      expressionAttributeNames["#lastName"] = "LastName";
-      expressionAttributeValues[":LastName"] = lastName;
-    }
-    if (email) {
-      updateExpression.push("#EmailAddress = :email");
-      expressionAttributeNames["#EmailAddress"] = "Email";
-      expressionAttributeValues[":email"] = email;
+    } else if (existingDynamoData.collegeDetails) {
+      // Remove collegeDetails if it existed before
+      updateExpression.push("REMOVE #collegeDetails");
+      expressionAttributeNames["#collegeDetails"] = "collegeDetails";
     }
 
-    console.log("Updating USERS_TABLE with cityID and other details");
+    console.log("Updating DynamoDB...");
     await dynamoDBClient.send(
       new UpdateCommand({
         TableName: USERS_TABLE,
@@ -135,7 +100,7 @@ export const handler = async (event) => {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: "Role and attributes updated successfully",
+        message: "City and College updated successfully",
         cityID: cityID,
       }),
     };
@@ -151,6 +116,42 @@ export const handler = async (event) => {
   }
 };
 
+// Query Cognito to get existing attributes
+async function getCognitoAttributes(userName) {
+  try {
+    const response = await cognitoClient.send(
+      new AdminGetUserCommand({
+        UserPoolId: USER_POOL_ID,
+        Username: userName,
+      })
+    );
+    return response.UserAttributes.reduce((acc, attr) => {
+      acc[attr.Name] = attr.Value;
+      return acc;
+    }, {});
+  } catch (error) {
+    console.error("Error fetching Cognito attributes:", error);
+    return {};
+  }
+}
+
+// Query DynamoDB to get existing user data
+async function getDynamoUser(userID) {
+  try {
+    const response = await dynamoDBClient.send(
+      new GetItemCommand({
+        TableName: USERS_TABLE,
+        Key: marshall({ UserID: userID }),
+      })
+    );
+    return response.Item ? unmarshall(response.Item) : {};
+  } catch (error) {
+    console.error("Error fetching DynamoDB user data:", error);
+    return {};
+  }
+}
+
+// Query DynamoDB for CityID
 async function queryCityTable(city) {
   try {
     const params = {
@@ -161,22 +162,14 @@ async function queryCityTable(city) {
       ExpressionAttributeValues: marshall({ ":city": city.toLowerCase() }),
     };
 
-    const command = new QueryCommand(params);
-    const response = await dynamoDBClient.send(command);
-
+    const response = await dynamoDBClient.send(new QueryCommand(params));
     console.log("DynamoDB Response:", response.Items.length);
 
     if (response.Items.length === 0) {
-      console.log("No city found for:", city);
-      return null; // Return null if no city is found
+      return null;
     }
 
-    // Unmarshall the response items
-    const unmarshalledItems = response.Items.map((item) => unmarshall(item));
-
-    console.log("Query succeeded:", unmarshalledItems);
-
-    return unmarshalledItems[0]?.CityID || null; // Return CityID or null
+    return unmarshall(response.Items[0])?.CityID || null;
   } catch (error) {
     console.error("Error querying CITY_TABLE:", error);
     return null;
