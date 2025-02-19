@@ -25,7 +25,7 @@ export const handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
 
   try {
-    const { userName, userID, city, collegeDetails, CollegeID } = event;
+    const { userName, userID, city, collegeDetails, collegeId } = event;
 
     if (!userID || !city) {
       return {
@@ -57,10 +57,10 @@ export const handler = async (event) => {
 
     let finalCollegeDetails = collegeDetails;
 
-    // Fetch college details if CollegeID is provided but collegeDetails are missing
-    if (CollegeID && !collegeDetails) {
-      console.log(`Fetching details for CollegeID: ${CollegeID}`);
-      finalCollegeDetails = await fetchCollegeDetails(CollegeID);
+    // Fetch college details if collegeId is provided but collegeDetails are missing
+    if (collegeId && !collegeDetails) {
+      console.log(`Fetching details for collegeId: ${collegeId}`);
+      finalCollegeDetails = await fetchCollegeDetails(collegeId);
     }
 
     if (finalCollegeDetails?.CollegeID) {
