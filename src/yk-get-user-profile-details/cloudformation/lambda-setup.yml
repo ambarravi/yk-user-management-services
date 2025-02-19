@@ -12,7 +12,7 @@ Parameters:
     Description: The Root Resource ID for API Gateway deployment
 
 Resources:
-  GetUserUserProfileByIDLambda:
+  GetUserProfileByIDLambda:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: yk-get-user-profile-details
