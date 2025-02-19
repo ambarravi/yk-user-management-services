@@ -2,8 +2,8 @@ import {
   CognitoIdentityProviderClient,
   AdminUpdateUserAttributesCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-//import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { decodeJwt, importJWK, jwtVerify, createRemoteJWKSet } from "jose";
 
 const REGION = process.env.AWS_REGION;
@@ -14,7 +14,7 @@ const ROLE_CONFIG = process.env.ROLE_CONFIG?.split(",") || [
 ];
 const USERS_TABLE = process.env.USERS_TABLE;
 console.log(process.env.AWS_REGION);
-const dynamoDBClient = new DynamoDBDocumentClient({ region: REGION });
+const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 const JWKS_URL = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/jwks.json`;
 

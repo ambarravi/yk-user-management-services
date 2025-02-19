@@ -6,7 +6,7 @@ import {
 import {
   DynamoDBClient,
   GetItemCommand,
-  UpdateCommand,
+  UpdateItemCommand,
   QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -99,7 +99,7 @@ export const handler = async (event) => {
 
     console.log("Updating DynamoDB...");
     await dynamoDBClient.send(
-      new UpdateCommand({
+      new UpdateItemCommand({
         TableName: USERS_TABLE,
         Key: marshall({ UserID: userID }),
         UpdateExpression: updateExpression.join(", "),
