@@ -30,6 +30,7 @@ jobs:
           - yk-fetch-booking-by-userid
           - yk-cancel-booking
           - yk-update-follow-status
+          - yk-get-user-profile-details
 
     steps:
       # Step 1: Checkout code
