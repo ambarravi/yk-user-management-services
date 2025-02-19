@@ -2,8 +2,7 @@ import {
   CognitoIdentityProviderClient,
   AdminUpdateUserAttributesCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { decodeJwt, importJWK, jwtVerify, createRemoteJWKSet } from "jose";
 
 const REGION = process.env.AWS_REGION;
@@ -119,7 +118,7 @@ export const handler = async (event) => {
 
     try {
       console.log("DynamoDB Update Params:", JSON.stringify(dynamoParams));
-      const updateCommand = new UpdateCommand(dynamoParams);
+      const updateCommand = new UpdateItemCommand(dynamoParams);
       await dynamoDBClient.send(updateCommand);
       console.log("Successfully updated role in DynamoDB for UserID:", UserID);
     } catch (dynamoError) {
