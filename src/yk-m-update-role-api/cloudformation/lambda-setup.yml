@@ -70,6 +70,7 @@ Resources:
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City/index/CityName-index
 
               # Allow writing logs to log groups

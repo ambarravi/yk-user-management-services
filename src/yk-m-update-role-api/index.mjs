@@ -7,6 +7,7 @@ import {
   DynamoDBClient,
   GetItemCommand,
   UpdateCommand,
+  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
@@ -15,6 +16,7 @@ const USER_POOL_ID = "eu-west-1_hgUDdjyRr";
 const USERS_TABLE = "UsersTable";
 const CITY_TABLE = "City";
 const CITY_INDEX = "CityName-index";
+const COLLEGE_TABLE = "College";
 
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
@@ -23,7 +25,7 @@ export const handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
 
   try {
-    const { userName, userID, city, collegeDetails } = event;
+    const { userName, userID, city, collegeDetails, CollegeID } = event;
 
     if (!userID || !city) {
       return {
@@ -42,6 +44,7 @@ export const handler = async (event) => {
     const existingDynamoData = await getDynamoUser(userID);
     console.log("Existing DynamoDB Data:", existingDynamoData);
 
+    // Get cityID from City table
     let cityID = await queryCityTable(city);
     console.log("Found CityID:", cityID || "City not found");
 
@@ -52,10 +55,18 @@ export const handler = async (event) => {
       updatedAttributes.push({ Name: "custom:City", Value: city });
     }
 
-    if (collegeDetails?.CollegeID) {
+    let finalCollegeDetails = collegeDetails;
+
+    // Fetch college details if CollegeID is provided but collegeDetails are missing
+    if (CollegeID && !collegeDetails) {
+      console.log(`Fetching details for CollegeID: ${CollegeID}`);
+      finalCollegeDetails = await fetchCollegeDetails(CollegeID);
+    }
+
+    if (finalCollegeDetails?.CollegeID) {
       updatedAttributes.push({
         Name: "custom:CollegeID",
-        Value: collegeDetails.CollegeID,
+        Value: finalCollegeDetails.CollegeID,
       });
     } else if (existingCognitoAttributes["custom:CollegeID"]) {
       // If CollegeID is removed, remove it from Cognito
@@ -76,10 +87,10 @@ export const handler = async (event) => {
     let expressionAttributeNames = { "#cityID": "CityID" };
     let expressionAttributeValues = { ":cityID": cityID };
 
-    if (collegeDetails?.CollegeID) {
+    if (finalCollegeDetails?.CollegeID) {
       updateExpression.push("#collegeDetails = :collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
-      expressionAttributeValues[":collegeDetails"] = collegeDetails;
+      expressionAttributeValues[":collegeDetails"] = finalCollegeDetails;
     } else if (existingDynamoData.collegeDetails) {
       // Remove collegeDetails if it existed before
       updateExpression.push("REMOVE #collegeDetails");
@@ -90,10 +101,10 @@ export const handler = async (event) => {
     await dynamoDBClient.send(
       new UpdateCommand({
         TableName: USERS_TABLE,
-        Key: { UserID: userID },
+        Key: marshall({ UserID: userID }),
         UpdateExpression: updateExpression.join(", "),
         ExpressionAttributeNames: expressionAttributeNames,
-        ExpressionAttributeValues: expressionAttributeValues,
+        ExpressionAttributeValues: marshall(expressionAttributeValues),
       })
     );
 
@@ -102,6 +113,7 @@ export const handler = async (event) => {
       body: JSON.stringify({
         message: "City and College updated successfully",
         cityID: cityID,
+        collegeDetails: finalCollegeDetails,
       }),
     };
   } catch (error) {
@@ -172,6 +184,28 @@ async function queryCityTable(city) {
     return unmarshall(response.Items[0])?.CityID || null;
   } catch (error) {
     console.error("Error querying CITY_TABLE:", error);
+    return null;
+  }
+}
+
+// Fetch College Details from College Table
+async function fetchCollegeDetails(CollegeID) {
+  try {
+    const response = await dynamoDBClient.send(
+      new GetItemCommand({
+        TableName: COLLEGE_TABLE,
+        Key: marshall({ CollegeID }),
+      })
+    );
+
+    if (!response.Item) {
+      console.log(`CollegeID ${CollegeID} not found in College table`);
+      return null;
+    }
+
+    return unmarshall(response.Item);
+  } catch (error) {
+    console.error("Error fetching College details:", error);
     return null;
   }
 }
