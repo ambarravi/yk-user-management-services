@@ -1,7 +1,7 @@
 {
   "name": "yojanakaar-submit-org-profile",
   "version": "1.0.0",
-  "description": "Function to insert/update Organization profile",
+  "description": "Function to insert/update User profile",
   "main": "index.js",
   "type": "module",
   "scripts": {
