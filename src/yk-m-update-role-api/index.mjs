@@ -99,14 +99,13 @@ export const handler = async (event) => {
 
     if (finalCollegeDetails?.CollegeID) {
       //  updateExpression.push("#collegeDetails = :collegeDetails");
-      let setExpressions = ["#cityID = :cityID"];
+      setExpressions.push("#collegeDetails = :collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
       expressionAttributeValues[":collegeDetails"] = finalCollegeDetails;
     } else if (existingDynamoData.collegeDetails) {
       // Remove collegeDetails if it existed before
       //updateExpression.push("REMOVE #collegeDetails");
-      let removeExpressions = [];
-      expressionAttributeNames["#collegeDetails"] = "collegeDetails";
+      removeExpressions.push("#collegeDetails");
     }
 
     // Add tempRole to DynamoDB update
@@ -115,6 +114,13 @@ export const handler = async (event) => {
       setExpressions.push("#role = :role");
       expressionAttributeNames["#role"] = "role";
       expressionAttributeValues[":role"] = tempRole;
+    }
+
+    if (
+      !setExpressions.includes("#collegeDetails = :collegeDetails") &&
+      !removeExpressions.includes("#collegeDetails")
+    ) {
+      delete expressionAttributeNames["#collegeDetails"];
     }
 
     let updateExpression = [];
@@ -132,8 +138,14 @@ export const handler = async (event) => {
         TableName: USERS_TABLE,
         Key: marshall({ UserID: userID }),
         UpdateExpression: updateExpression.join(" "),
-        ExpressionAttributeNames: expressionAttributeNames,
-        ExpressionAttributeValues: marshall(expressionAttributeValues),
+        ExpressionAttributeNames:
+          Object.keys(expressionAttributeNames).length > 0
+            ? expressionAttributeNames
+            : undefined,
+        ExpressionAttributeValues:
+          Object.keys(expressionAttributeValues).length > 0
+            ? marshall(expressionAttributeValues)
+            : undefined,
       })
     );
 
