@@ -80,13 +80,15 @@ export const handler = async (event) => {
     }
 
     console.log("Updating Cognito Attributes:", updatedAttributes);
-    await cognitoClient.send(
-      new AdminUpdateUserAttributesCommand({
-        UserPoolId: USER_POOL_ID,
-        Username: userName,
-        UserAttributes: updatedAttributes,
-      })
-    );
+    if (updatedAttributes.length > 0) {
+      await cognitoClient.send(
+        new AdminUpdateUserAttributesCommand({
+          UserPoolId: USER_POOL_ID,
+          Username: userName,
+          UserAttributes: updatedAttributes,
+        })
+      );
+    }
 
     // Update DynamoDB
     //  let updateExpression = ["set #cityID = :cityID"];
@@ -102,7 +104,7 @@ export const handler = async (event) => {
       setExpressions.push("#collegeDetails = :collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
       expressionAttributeValues[":collegeDetails"] = finalCollegeDetails;
-    } else if (existingDynamoData.collegeDetails) {
+    } else if (existingDynamoData.collegeDetails && !finalCollegeDetails) {
       // Remove collegeDetails if it existed before
       //updateExpression.push("REMOVE #collegeDetails");
       removeExpressions.push("#collegeDetails");
@@ -138,14 +140,10 @@ export const handler = async (event) => {
         TableName: USERS_TABLE,
         Key: marshall({ UserID: userID }),
         UpdateExpression: updateExpression.join(" "),
-        ExpressionAttributeNames:
-          Object.keys(expressionAttributeNames).length > 0
-            ? expressionAttributeNames
-            : undefined,
-        ExpressionAttributeValues:
-          Object.keys(expressionAttributeValues).length > 0
-            ? marshall(expressionAttributeValues)
-            : undefined,
+        ExpressionAttributeNames: expressionAttributeNames || undefined,
+        ExpressionAttributeValues: Object.keys(expressionAttributeValues).length
+          ? marshall(expressionAttributeValues)
+          : undefined,
       })
     );
 
@@ -213,7 +211,7 @@ async function queryCityTable(city) {
       IndexName: CITY_INDEX,
       KeyConditionExpression: "#city = :city",
       ExpressionAttributeNames: { "#city": "CityName" },
-      ExpressionAttributeValues: marshall({ ":city": city.toLowerCase() }),
+      ExpressionAttributeValues: { ":city": { S: city.toLowerCase() } },
     };
 
     const response = await dynamoDBClient.send(new QueryCommand(params));
@@ -234,7 +232,7 @@ const fetchCollegeDetails = async (collegeId) => {
   try {
     const params = {
       TableName: COLLEGE_TABLE,
-      Key: marshall({ CollegeID: collegeId }),
+      Key: { CollegeID: { S: collegeId } },
     };
 
     const { Item } = await dynamoDBClient.send(new GetItemCommand(params));
