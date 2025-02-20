@@ -158,6 +158,25 @@ export const handler = async (event) => {
   }
 };
 
+// Query Cognito to get existing attributes
+async function getCognitoAttributes(userName) {
+  try {
+    const response = await cognitoClient.send(
+      new AdminGetUserCommand({
+        UserPoolId: USER_POOL_ID,
+        Username: userName,
+      })
+    );
+    return response.UserAttributes.reduce((acc, attr) => {
+      acc[attr.Name] = attr.Value;
+      return acc;
+    }, {});
+  } catch (error) {
+    console.error("Error fetching Cognito attributes:", error);
+    return {};
+  }
+}
+
 const fetchCollegeDetails = async (collegeId) => {
   try {
     const params = {
