@@ -115,48 +115,60 @@ export const handler = async (event) => {
       })
     );
 
-    const updateExpression = ["SET  #role = :role"];
+    const setExpressions = ["#role = :role"];
+    const removeExpressions = [];
     const expressionAttributeNames = { "#role": "role" };
     const expressionAttributeValues = { ":role": newRole };
 
+    //   const updateExpression = ["SET  #role = :role"];
+    //  const expressionAttributeNames = { "#role": "role" };
+    //  const expressionAttributeValues = { ":role": newRole };
+
     if (cityID) {
-      updateExpression.push("#cityID = :cityID");
+      setExpressions.push("#cityID = :cityID");
       expressionAttributeNames["#cityID"] = "CityID";
       expressionAttributeValues[":cityID"] = cityID;
     }
 
     if (finalCollegeDetails?.CollegeID) {
-      updateExpression.push("#collegeDetails = :collegeDetails");
+      setExpressions.push("#collegeDetails = :collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
       expressionAttributeValues[":collegeDetails"] = finalCollegeDetails;
     } else if (existingDynamoData.collegeDetails) {
       // Remove collegeDetails if it existed before
-      updateExpression.push("REMOVE #collegeDetails");
+      removeExpressions.push("#collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
     }
 
     if (name) {
-      updateExpression.push("#name = :FirstName");
+      setExpressions.push("#name = :FirstName");
       expressionAttributeNames["#name"] = "FirstName";
       expressionAttributeValues[":FirstName"] = name;
     }
     if (lastName) {
-      updateExpression.push("#lastName = :LastName");
+      setExpressions.push("#lastName = :LastName");
       expressionAttributeNames["#lastName"] = "LastName";
       expressionAttributeValues[":LastName"] = lastName;
     }
     if (email) {
-      updateExpression.push("#EmailAddress = :email");
+      setExpressions.push("#EmailAddress = :email");
       expressionAttributeNames["#EmailAddress"] = "Email";
       expressionAttributeValues[":email"] = email;
     }
+
+    let finalUpdateExpression = "SET " + setExpressions.join(", ");
+    if (removeExpressions.length > 0) {
+      finalUpdateExpression += " REMOVE " + removeExpressions.join(", ");
+    }
+
+    console.log("Final Update Expression:", finalUpdateExpression);
 
     console.log("Updating USERS_TABLE with cityID and other details");
     await dynamoDBClient.send(
       new UpdateCommand({
         TableName: USERS_TABLE,
         Key: { UserID: userID },
-        UpdateExpression: updateExpression.join(", "),
+        UpdateExpression: finalUpdateExpression,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
       })
