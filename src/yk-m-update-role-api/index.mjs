@@ -34,7 +34,7 @@ export const handler = async (event) => {
       name,
       email,
       lastName,
-      ip_collegeId,
+      collegeId,
     } = event;
 
     if (!userID || !city) {
@@ -90,10 +90,10 @@ export const handler = async (event) => {
 
     let finalCollegeDetails = collegeDetails;
 
-    // Fetch college details if ip_collegeId is provided but collegeDetails are missing
-    if (ip_collegeId && Object.keys(collegeDetails).length === 0) {
-      console.log(`Fetching details for ip_collegeId: ${ip_collegeId}`);
-      finalCollegeDetails = (await fetchCollegeDetails(ip_collegeId)) || {};
+    // Fetch college details if collegeId is provided but collegeDetails are missing
+    if (collegeId && Object.keys(collegeDetails).length === 0) {
+      console.log(`Fetching details for collegeId: ${collegeId}`);
+      finalCollegeDetails = (await fetchCollegeDetails(collegeId)) || {};
     }
 
     if (finalCollegeDetails.CollegeID) {
