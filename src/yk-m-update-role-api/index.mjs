@@ -118,7 +118,7 @@ export const handler = async (event) => {
     const setExpressions = ["#role = :role"];
     const removeExpressions = [];
     const expressionAttributeNames = { "#role": "role" };
-    const expressionAttributeValues = { ":role": newRole };
+    const expressionAttributeValues = { ":role": newRole || "user" };
 
     //   const updateExpression = ["SET  #role = :role"];
     //  const expressionAttributeNames = { "#role": "role" };
