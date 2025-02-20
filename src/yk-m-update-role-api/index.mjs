@@ -65,6 +65,7 @@ export const handler = async (event) => {
     console.log("City CITY_INDEX:", CITY_INDEX);
     console.log(QueryCommand);
 
+    console.log("username for Cognito ", userName);
     const existingCognitoAttributes = await getCognitoAttributes(userName);
     console.log("Existing Cognito Attributes:", existingCognitoAttributes);
 
@@ -238,6 +239,7 @@ async function fetchCollegeDetails(CollegeID) {
 // Query Cognito to get existing attributes
 async function getCognitoAttributes(userName) {
   try {
+    console.log("getCognitoAttributes", userName);
     const response = await cognitoClient.send(
       new AdminGetUserCommand({
         UserPoolId: USER_POOL_ID,
