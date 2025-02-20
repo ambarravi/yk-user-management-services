@@ -177,6 +177,47 @@ async function getCognitoAttributes(userName) {
   }
 }
 
+// Query DynamoDB to get existing user data
+async function getDynamoUser(userID) {
+  try {
+    const response = await dynamoDBClient.send(
+      new GetItemCommand({
+        TableName: USERS_TABLE,
+        Key: marshall({ UserID: userID }),
+      })
+    );
+    return response.Item ? unmarshall(response.Item) : {};
+  } catch (error) {
+    console.error("Error fetching DynamoDB user data:", error);
+    return {};
+  }
+}
+
+// Query DynamoDB for CityID
+async function queryCityTable(city) {
+  try {
+    const params = {
+      TableName: CITY_TABLE,
+      IndexName: CITY_INDEX,
+      KeyConditionExpression: "#city = :city",
+      ExpressionAttributeNames: { "#city": "CityName" },
+      ExpressionAttributeValues: marshall({ ":city": city.toLowerCase() }),
+    };
+
+    const response = await dynamoDBClient.send(new QueryCommand(params));
+    console.log("DynamoDB Response:", response.Items.length);
+
+    if (response.Items.length === 0) {
+      return null;
+    }
+
+    return unmarshall(response.Items[0])?.CityID || null;
+  } catch (error) {
+    console.error("Error querying CITY_TABLE:", error);
+    return null;
+  }
+}
+
 const fetchCollegeDetails = async (collegeId) => {
   try {
     const params = {
