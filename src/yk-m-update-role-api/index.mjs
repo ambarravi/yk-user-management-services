@@ -34,7 +34,7 @@ export const handler = async (event) => {
       name,
       email,
       lastName,
-      collegeId,
+      ip_collegeId,
     } = event;
 
     if (!userID || !city) {
@@ -90,13 +90,13 @@ export const handler = async (event) => {
 
     let finalCollegeDetails = collegeDetails;
 
-    // Fetch college details if collegeId is provided but collegeDetails are missing
-    if (collegeId && !collegeDetails) {
-      console.log(`Fetching details for collegeId: ${collegeId}`);
-      finalCollegeDetails = await fetchCollegeDetails(collegeId);
+    // Fetch college details if ip_collegeId is provided but collegeDetails are missing
+    if (ip_collegeId && Object.keys(collegeDetails).length === 0) {
+      console.log(`Fetching details for ip_collegeId: ${ip_collegeId}`);
+      finalCollegeDetails = (await fetchCollegeDetails(ip_collegeId)) || {};
     }
 
-    if (finalCollegeDetails && finalCollegeDetails.CollegeID) {
+    if (finalCollegeDetails.CollegeID) {
       updatedAttributes.push({
         Name: "custom:CollegeID",
         Value: finalCollegeDetails.CollegeID,
@@ -238,13 +238,13 @@ async function fetchCollegeDetails(CollegeID) {
 
     if (!response.Item) {
       console.log(`CollegeID ${CollegeID} not found in College table`);
-      return null;
+      return {};
     }
 
-    return unmarshall(response.Item);
+    return unmarshall(response.Item) || {};
   } catch (error) {
     console.error("Error fetching College details:", error);
-    return null;
+    return {};
   }
 }
 
