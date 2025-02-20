@@ -253,3 +253,19 @@ async function getCognitoAttributes(userName) {
     return {};
   }
 }
+
+// Query DynamoDB to get existing user data
+async function getDynamoUser(userID) {
+  try {
+    const response = await dynamoDBClient.send(
+      new GetItemCommand({
+        TableName: USERS_TABLE,
+        Key: marshall({ UserID: userID }),
+      })
+    );
+    return response.Item ? unmarshall(response.Item) : {};
+  } catch (error) {
+    console.error("Error fetching DynamoDB user data:", error);
+    return {};
+  }
+}
