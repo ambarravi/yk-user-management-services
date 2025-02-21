@@ -97,6 +97,9 @@ export const handler = async (event) => {
         FollowerCount: followerCount,
         logoPath: logoPath,
         FollowFlag: followFlag,
+        aboutOrganization: orgDetails.aboutOrganization,
+        contactPerson: orgDetails.contactPerson,
+        contactNumber: orgDetails.contactNumber,
       },
     };
 
