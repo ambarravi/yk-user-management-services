@@ -180,6 +180,8 @@ export const handler = async (event) => {
         message: "Role and attributes updated successfully",
         cityID: cityID,
         collegeDetails: finalCollegeDetails,
+        followingCount: existingDynamoData.FollowingCount ?? 0,
+        eventAttended: existingDynamoData.EventAttended ?? 0,
       }),
     };
   } catch (error) {
