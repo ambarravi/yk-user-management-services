@@ -36,15 +36,15 @@ export const handler = async (event) => {
 
     const bookingID = uuidv4();
     console.log("BookingID", bookingID);
-    const createdAt = Math.floor(Date.now() / 1000); // Unix timestamp
+    const createdAt = Math.floor(Date.now() / 1000);
 
-    // **Step 1: Check if the user already booked this event**
+    // Step 1: Check if the user already booked this event (existing functionality)
     const existingBooking = await ddbClient.send(
       new QueryCommand({
         TableName: "BookingDetails",
-        IndexName: "UserId-EventID-index", // Ensure this GSI exists
-        KeyConditionExpression: "EventID  = :eventId AND UserId  = :userId",
-        FilterExpression: "BookingStatus = :completedStatus", // Filters only "Completed" bookings
+        IndexName: "UserId-EventID-index",
+        KeyConditionExpression: "EventID = :eventId AND UserId = :userId",
+        FilterExpression: "BookingStatus = :completedStatus",
         ExpressionAttributeValues: {
           ":eventId": { S: eventId },
           ":userId": { S: userId },
@@ -53,9 +53,6 @@ export const handler = async (event) => {
       })
     );
 
-    console.log("Existing booking completed ");
-    console.log("existingBooking.Item", existingBooking);
-
     if (existingBooking.Count > 0) {
       return {
         statusCode: 400,
@@ -63,11 +60,9 @@ export const handler = async (event) => {
           message: "User has already booked this event.",
         }),
       };
-    } else {
-      console.log("User Can book Ticket");
     }
 
-    // **Step 2: Fetch Event Details to Check Seat Availability**
+    // Step 2: Fetch Event Details (existing functionality)
     const eventDetails = await ddbClient.send(
       new GetItemCommand({
         TableName: "EventDetails",
@@ -75,7 +70,6 @@ export const handler = async (event) => {
       })
     );
 
-    console.log("Get event Details", eventDetails);
     if (!eventDetails.Item) {
       return {
         statusCode: 404,
@@ -89,21 +83,18 @@ export const handler = async (event) => {
       ? parseInt(eventDetails.Item.SeatsBooked.N)
       : 0;
 
-    // **Step 3: Check Seat Availability**
+    // Step 3: Check Seat Availability (existing functionality)
     if (bookedSeats + ticketCount > totalSeats) {
       return {
         statusCode: 400,
         body: JSON.stringify({ message: "Not enough seats available." }),
       };
-    } else {
-      console.log("Proceed  with seat booking ");
     }
 
-    // **Step 4: Perform DynamoDB Transaction (Atomic Booking + Seat Update)**
-
+    // Step 4: Enhanced Transaction with UsersTable Update
     const transactionCommand = new TransactWriteItemsCommand({
       TransactItems: [
-        // Update SeatsBooked in EventDetails
+        // Update SeatsBooked in EventDetails (existing)
         {
           Update: {
             TableName: "EventDetails",
@@ -113,15 +104,13 @@ export const handler = async (event) => {
             ConditionExpression:
               "attribute_not_exists(SeatsBooked) OR SeatsBooked <= :remainingSeats",
             ExpressionAttributeValues: {
-              ":zero": { N: "0" }, // Default value if SeatsBooked is missing
+              ":zero": { N: "0" },
               ":count": { N: ticketCount.toString() },
-              ":remainingSeats": { N: (totalSeats - ticketCount).toString() }, // Compute in backend
+              ":remainingSeats": { N: (totalSeats - ticketCount).toString() },
             },
           },
         },
-
-        // Insert New Booking Record
-
+        // Insert New Booking Record (existing)
         {
           Put: {
             TableName: "BookingDetails",
@@ -144,11 +133,23 @@ export const handler = async (event) => {
             },
           },
         },
+        // New: Update UsersTable to increment eventsAttended
+        {
+          Update: {
+            TableName: "UsersTable",
+            Key: { UserID: { S: userId } },
+            UpdateExpression:
+              "SET eventsAttended = if_not_exists(eventsAttended, :zero) + :increment",
+            ExpressionAttributeValues: {
+              ":zero": { N: "0" },
+              ":increment": { N: "1" },
+            },
+          },
+        },
       ],
     });
 
-    const transactionReult = await ddbClient.send(transactionCommand);
-    console.log("Transaction Result");
+    await ddbClient.send(transactionCommand);
 
     return {
       statusCode: 200,
@@ -159,6 +160,82 @@ export const handler = async (event) => {
     };
   } catch (error) {
     console.error("Error processing booking:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        message: "Internal server error",
+        error: error.message,
+      }),
+    };
+  }
+};
+
+// New function to handle booking cancellation
+export const cancelBookingHandler = async (event) => {
+  try {
+    const requestBody = JSON.parse(event.body);
+    const { bookingId, eventId, userId, ticketCount } = requestBody;
+
+    if (!bookingId || !eventId || !userId || !ticketCount) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ message: "Invalid cancellation details." }),
+      };
+    }
+
+    const transactionCommand = new TransactWriteItemsCommand({
+      TransactItems: [
+        // Update EventDetails to reduce SeatsBooked
+        {
+          Update: {
+            TableName: "EventDetails",
+            Key: { EventID: { S: eventId } },
+            UpdateExpression: "SET SeatsBooked = SeatsBooked - :count",
+            ConditionExpression: "SeatsBooked >= :count",
+            ExpressionAttributeValues: {
+              ":count": { N: ticketCount.toString() },
+            },
+          },
+        },
+        // Update BookingDetails status to Cancelled
+        {
+          Update: {
+            TableName: "BookingDetails",
+            Key: { BookingID: { S: bookingId } },
+            UpdateExpression: "SET BookingStatus = :cancelled",
+            ConditionExpression: "BookingStatus = :completed",
+            ExpressionAttributeValues: {
+              ":cancelled": { S: "Cancelled" },
+              ":completed": { S: "Completed" },
+            },
+          },
+        },
+        // Reduce eventsAttended count in UsersTable
+        {
+          Update: {
+            TableName: "UsersTable",
+            Key: { UserID: { S: userId } },
+            UpdateExpression:
+              "SET eventsAttended = eventsAttended - :decrement",
+            ConditionExpression: "eventsAttended >= :decrement",
+            ExpressionAttributeValues: {
+              ":decrement": { N: "1" },
+            },
+          },
+        },
+      ],
+    });
+
+    await ddbClient.send(transactionCommand);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Booking cancelled successfully",
+      }),
+    };
+  } catch (error) {
+    console.error("Error cancelling booking:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({
