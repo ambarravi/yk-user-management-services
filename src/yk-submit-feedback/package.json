@@ -1,0 +1,17 @@
+{
+  "name": "submit-feedback-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda function to submit event feedback and update booking status",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "zip -r submit-feedback-lambda.zip . -x '*.git*'"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.645.0",
+    "uuid": "^10.0.0"
+  },
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}
