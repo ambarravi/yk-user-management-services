@@ -49,22 +49,30 @@ export const handler = async (event) => {
     const booking = existingBooking.Items[0];
     const bookingID = booking.BookingID.S;
     const ticketCount = parseInt(booking.SeatsBooked.N);
+    const eventDate = new Date(booking.EventDate.S);
 
-    // Step 2: Update BookingStatus and Adjust SeatsBooked in EventDetails
+    // Calculate TTL: Event date + 7 days in epoch seconds
+    const ttlDate = new Date(eventDate);
+    ttlDate.setDate(eventDate.getDate() + 7);
+    const ttlTimestamp = Math.floor(ttlDate.getTime() / 1000);
+
+    // Step 2: Update BookingStatus, set TTL and soft delete flag
     const transactionCommand = new TransactWriteItemsCommand({
       TransactItems: [
-        // Update Booking Status to "Cancelled"
+        // Update Booking Details
         {
           Update: {
             TableName: "BookingDetails",
             Key: { BookingID: { S: bookingID } },
-            UpdateExpression: "SET BookingStatus = :cancelledStatus",
+            UpdateExpression:
+              "SET BookingStatus = :cancelledStatus, IsDeleted = :isDeleted, TTL = :ttl",
             ExpressionAttributeValues: {
               ":cancelledStatus": { S: "Cancelled" },
+              ":isDeleted": { BOOL: false }, // Initially false, frontend can set to true
+              ":ttl": { N: ttlTimestamp.toString() },
             },
           },
         },
-
         // Decrease booked seats count in EventDetails
         {
           Update: {
@@ -87,7 +95,10 @@ export const handler = async (event) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Booking cancelled successfully." }),
+      body: JSON.stringify({
+        message: "Booking cancelled successfully.",
+        bookingId: bookingID,
+      }),
     };
   } catch (error) {
     console.error("Error processing cancellation:", error);

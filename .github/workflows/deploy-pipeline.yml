@@ -32,6 +32,7 @@ jobs:
           - yk-update-follow-status
           - yk-get-user-profile-details
           - yk-submit-feedback
+          - yk-soft-delete-booking
 
     steps:
       # Step 1: Checkout code
