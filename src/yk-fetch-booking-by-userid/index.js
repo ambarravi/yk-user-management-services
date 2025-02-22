@@ -17,6 +17,7 @@ export const handler = async (event) => {
 
     let body = JSON.parse(event.body);
     let userId = body.userId;
+    let review = body.review || false; // Read 'review' flag, default is false
 
     // Query bookings based on UserId
     const queryParams = {
@@ -37,18 +38,30 @@ export const handler = async (event) => {
       : [];
 
     const currentDate = new Date().toISOString();
-    const futureRecords = records.filter(
-      (record) => record.EventDate && record.EventDate > currentDate
-    );
-    console.log("Filtered Future Records:", futureRecords);
 
-    if (futureRecords.length === 0) {
+    let filteredRecords;
+
+    if (review) {
+      // Fetch only past events for review
+      filteredRecords = records.filter(
+        (record) => record.EventDate && record.EventDate <= currentDate
+      );
+    } else {
+      // Continue with existing logic for future bookings
+      filteredRecords = records.filter(
+        (record) => record.EventDate && record.EventDate > currentDate
+      );
+    }
+
+    console.log("Filtered Records:", filteredRecords);
+
+    if (filteredRecords.length === 0) {
       return generateResponse(200, { records: [] });
     }
 
     // Fetch unique EventIDs
     const eventIds = [
-      ...new Set(futureRecords.map((record) => record.EventID)),
+      ...new Set(filteredRecords.map((record) => record.EventID)),
     ];
     console.log("Unique Event IDs:", eventIds);
 
@@ -58,7 +71,7 @@ export const handler = async (event) => {
         [EVENT_TABLE]: {
           Keys: eventIds.map((eventId) => ({ EventID: { S: eventId } })),
           ProjectionExpression:
-            "EventID, EventTitle, EventLocation, EventDate, CategoryName, OrganizerName,ReadableEventID",
+            "EventID, EventTitle, EventLocation, EventDate, CategoryName, OrganizerName, ReadableEventID",
         },
       },
     };
@@ -79,7 +92,7 @@ export const handler = async (event) => {
     console.log("Fetched Event Details:", eventDetailsMap);
 
     // Attach event details to bookings
-    const enrichedRecords = futureRecords.map((record) => ({
+    const enrichedRecords = filteredRecords.map((record) => ({
       ...record,
       EventDetails: eventDetailsMap[record.EventID] || null,
     }));
