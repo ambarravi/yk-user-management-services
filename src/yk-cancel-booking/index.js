@@ -65,10 +65,13 @@ export const handler = async (event) => {
             TableName: "BookingDetails",
             Key: { BookingID: { S: bookingID } },
             UpdateExpression:
-              "SET BookingStatus = :cancelledStatus, IsDeleted = :isDeleted, TTL = :ttl",
+              "SET BookingStatus = :cancelledStatus, IsDeleted = :isDeleted, #ttlAttr = :ttl",
+            ExpressionAttributeNames: {
+              "#ttlAttr": "TTL", // Alias for reserved keyword TTL
+            },
             ExpressionAttributeValues: {
               ":cancelledStatus": { S: "Cancelled" },
-              ":isDeleted": { BOOL: false }, // Initially false, frontend can set to true
+              ":isDeleted": { BOOL: false },
               ":ttl": { N: ttlTimestamp.toString() },
             },
           },
