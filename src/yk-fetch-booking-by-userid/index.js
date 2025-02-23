@@ -24,7 +24,8 @@ export const handler = async (event) => {
       TableName: BOOKING_TABLE,
       IndexName: GSI_NAME,
       KeyConditionExpression: "UserId = :userId",
-      FilterExpression: "IsDeleted = :notDeleted",
+      FilterExpression:
+        "(attribute_not_exists(IsDeleted) OR IsDeleted = :notDeleted)",
       ExpressionAttributeValues: {
         ":userId": { S: userId },
         ":notDeleted": { BOOL: false },
