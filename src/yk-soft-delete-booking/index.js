@@ -7,7 +7,7 @@ import {
 
 const ddbClient = new DynamoDBClient({ region: "eu-west-1" });
 
-export const softDeleteHandler = async (event) => {
+export const handler = async (event) => {
   try {
     const requestBody = JSON.parse(event.body);
     const { bookingId } = requestBody;
