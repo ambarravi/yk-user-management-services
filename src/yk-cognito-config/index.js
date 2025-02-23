@@ -44,7 +44,7 @@ export const handler = async (event) => {
     const oauthDomain = "eventmgmt.auth.eu-west-1.amazoncognito.com";
     const redirectSignIn = "exp://192.168.1.13:8081/"; // e.g., "exp://192.168.1.13:8081/"
     const redirectSignOut = "exp://192.168.1.13:8081/"; // e.g., "exp://192.168.1.13:8081/"
-
+    console.log("Return success reponse from Lambda");
     return {
       statusCode: 200,
       body: JSON.stringify({
