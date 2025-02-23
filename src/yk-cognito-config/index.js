@@ -10,6 +10,7 @@ async function getParameter(name) {
 }
 
 export const handler = async (event) => {
+  console.log(event);
   const providedSecret = event.headers["x-app-secret"];
   const appToken = event.headers["x-app-token"];
 
