@@ -45,17 +45,17 @@ export const handler = async (event) => {
     };
   }
 
-  if (userAgent !== "MyEventApp/1.0 (Mobile)") {
-    console.log("User-Agent mismatch:", userAgent);
-    return {
-      statusCode: 403,
-      body: JSON.stringify({ error: "Forbidden: Invalid User-Agent" }),
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
-    };
-  }
+  // if (userAgent !== "MyEventApp/1.0 (Mobile)") {
+  //   console.log("User-Agent mismatch:", userAgent);
+  //   return {
+  //     statusCode: 403,
+  //     body: JSON.stringify({ error: "Forbidden: Invalid User-Agent" }),
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //       "Access-Control-Allow-Origin": "*",
+  //     },
+  //   };
+  // }
 
   try {
     const userPoolId = "eu-west-1_hgUDdjyRr";
