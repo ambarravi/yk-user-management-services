@@ -33,6 +33,7 @@ jobs:
           - yk-get-user-profile-details
           - yk-submit-feedback
           - yk-soft-delete-booking
+          - yk-cognito-config
 
     steps:
       # Step 1: Checkout code
