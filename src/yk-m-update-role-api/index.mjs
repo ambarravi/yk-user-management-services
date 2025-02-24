@@ -182,6 +182,8 @@ export const handler = async (event) => {
         collegeDetails: finalCollegeDetails,
         followingCount: existingDynamoData.FollowingCount ?? 0,
         eventsAttended: existingDynamoData.eventsAttended ?? 0,
+        fname : existingDynamoData.FirstName,
+        lname : existingDynamoData.LastName,
       }),
     };
   } catch (error) {
