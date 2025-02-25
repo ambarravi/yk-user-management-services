@@ -72,8 +72,8 @@ export const handler = async (event) => {
     const userPoolId = "eu-west-1_hgUDdjyRr";
     const clientId = "3apts80kiph7bafapf28ltu3vl";
     const oauthDomain = "eventmgmt.auth.eu-west-1.amazoncognito.com";
-    const redirectSignIn = "tikto://auth"; // "exp://192.168.1.13:8081/";
-    const redirectSignOut = "tikto://logout"; // "exp://192.168.1.13:8081/";
+    const redirectSignIn = redirectSignInURL;
+    const redirectSignOut = redirectSignOutURL;
 
     console.log("Returning success response from Lambda");
     return {
