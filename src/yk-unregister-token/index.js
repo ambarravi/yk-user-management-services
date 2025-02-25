@@ -1,7 +1,7 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DeleteCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
-const client = new DynamoDBClient({ region: "us-east-1" }); // Replace with your region
+const client = new DynamoDBClient({ region: "eu-west-1" }); // Replace with your region
 const dynamoDb = DynamoDBDocumentClient.from(client);
 
 export const handler = async (event) => {
