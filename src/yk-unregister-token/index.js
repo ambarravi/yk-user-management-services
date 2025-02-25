@@ -1,7 +1,10 @@
-const AWS = require("aws-sdk");
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DeleteCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
-exports.handler = async (event) => {
+const client = new DynamoDBClient({});
+const dynamoDb = DynamoDBDocumentClient.from(client);
+
+export const handler = async (event) => {
   const { userId } = JSON.parse(event.body);
 
   const params = {
@@ -10,7 +13,7 @@ exports.handler = async (event) => {
   };
 
   try {
-    await dynamoDb.delete(params).promise();
+    await dynamoDb.send(new DeleteCommand(params));
     return {
       statusCode: 200,
       body: JSON.stringify({ message: "Token unregistered" }),
