@@ -58,11 +58,22 @@ export const handler = async (event) => {
   // }
 
   try {
+    let redirectSignInURL;
+    let redirectSignOutURL;
+    console.log("BUILD ENV:", process.env.BUILD);
+    if (process.env.BUILD === "DEV") {
+      redirectSignInURL = "exp://192.168.1.13:8081/";
+      redirectSignOutURL = "exp://192.168.1.13:8081/";
+    } else {
+      redirectSignInURL = "tikto://auth";
+      redirectSignOutURL = "tikto://logout";
+    }
+
     const userPoolId = "eu-west-1_hgUDdjyRr";
     const clientId = "3apts80kiph7bafapf28ltu3vl";
     const oauthDomain = "eventmgmt.auth.eu-west-1.amazoncognito.com";
-    const redirectSignIn = "exp://192.168.1.13:8081/";
-    const redirectSignOut = "exp://192.168.1.13:8081/";
+    const redirectSignIn = "tikto://auth"; // "exp://192.168.1.13:8081/";
+    const redirectSignOut = "tikto://logout"; // "exp://192.168.1.13:8081/";
 
     console.log("Returning success response from Lambda");
     return {
