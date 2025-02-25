@@ -34,6 +34,7 @@ jobs:
           - yk-submit-feedback
           - yk-soft-delete-booking
           - yk-cognito-config
+          - yk-register-token
 
     steps:
       # Step 1: Checkout code
