@@ -35,6 +35,7 @@ jobs:
           - yk-soft-delete-booking
           - yk-cognito-config
           - yk-register-token
+          - yk-unregister-token
 
     steps:
       # Step 1: Checkout code
