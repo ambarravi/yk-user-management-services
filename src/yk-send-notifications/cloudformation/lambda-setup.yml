@@ -23,9 +23,9 @@ Resources:
       ReservedConcurrentExecutions: 10 # Control concurrency
       Environment:
         Variables:
-          EVENT_PUBLISH_QUEUE_URL: "MyQueue";
-          EXPO_ACCESS_TOKEN : "Test";
-          NOTIFICATION_TABLE : "NotificationLogs"
+          EVENT_PUBLISH_QUEUE_URL: "MyQueue"
+          EXPO_ACCESS_TOKEN: "Test"
+          NOTIFICATION_TABLE: "NotificationLogs"
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -79,7 +79,7 @@ Resources:
                   - xray:PutTelemetryRecords
                 Resource: "*"
 
-# SQS Event Source Mapping
+  # SQS Event Source Mapping
   SqsEventSource:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
