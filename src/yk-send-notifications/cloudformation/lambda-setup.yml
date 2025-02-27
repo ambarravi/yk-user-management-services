@@ -79,18 +79,6 @@ Resources:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                 Resource: "*"
-
-  # SQS Event Source Mapping
-  SqsEventSource:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties:
-      EventSourceArn: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:user-management-yk-update-event-status-stack-EventPublishQueue
-      FunctionName: !Ref SendNotificationLambda
-      BatchSize: 5 # Balance concurrency
-      MaximumBatchingWindowInSeconds: 10
-      FunctionResponseTypes:
-        - ReportBatchItemFailures
-
   # Dead Letter Queue
   EventPublishDLQ:
     Type: AWS::SQS::Queue
