@@ -28,10 +28,9 @@ Resources:
           NOTIFICATION_TABLE : "NotificationLogs"
       Code:
         ZipFile: |
-          // Inline code placeholder - replace with actual zipped code in production
           exports.handler = async (event) => {
-              console.log("Send Notification Lambda Function");
-              return { statusCode: 200, body: "Event Status Updated Successfully" };
+              console.log("Submit Event Lambda Function");
+              return { statusCode: 200, body: "Event Submitted Successfully" };
           };
       Role: !GetAtt SendNotificationLambdaExecutionRole.Arn
       TracingConfig:
