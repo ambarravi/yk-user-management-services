@@ -83,7 +83,7 @@ Resources:
   SqsEventSource:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
-      EventSourceArn: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:MyQueue
+      EventSourceArn: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:user-management-yk-update-event-status-stack-EventPublishQueue
       FunctionName: !Ref SendNotificationLambda
       BatchSize: 5 # Balance concurrency
       MaximumBatchingWindowInSeconds: 10
