@@ -66,6 +66,7 @@ Resources:
                 Action:
                   - sqs:ReceiveMessage
                   - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
                 Resource: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:user-management-yk-update-event-status-stack-EventPublishQueue
               - Effect: Allow
                 Action:
