@@ -36,6 +36,7 @@ jobs:
           - yk-cognito-config
           - yk-register-token
           - yk-unregister-token
+          - yk-send-notifications
 
     steps:
       # Step 1: Checkout code

@@ -11,7 +11,16 @@ Parameters:
     Description: The stage name (e.g., dev, prod)
 
 Resources:
-  # New Lambda: Update Event Status
+  # SQS Queue for Published Events
+  EventPublishQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-EventPublishQueue
+      VisibilityTimeout: 60 # Matches Lambda timeout + buffer
+      DelaySeconds: 0
+      MessageRetentionPeriod: 1209600 # 14 days
+
+  # Lambda: Update Event Status
   UpdateEventStatusLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -22,9 +31,10 @@ Resources:
       Environment:
         Variables:
           EVENT_TABLE: "EventDetails"
-
+          EVENT_PUBLISH_QUEUE_URL: !Ref EventPublishQueue
       Code:
         ZipFile: |
+          // Inline code placeholder - replace with actual zipped code in production
           exports.handler = async (event) => {
               console.log("Update Event Status Lambda Function");
               return { statusCode: 200, body: "Event Status Updated Successfully" };
@@ -53,16 +63,17 @@ Resources:
                 Action:
                   - dynamodb:GetItem
                   - dynamodb:UpdateItem
-                Resource:
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
-
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt EventPublishQueue.Arn
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
-
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
@@ -131,3 +142,8 @@ Resources:
             method.response.header.Access-Control-Allow-Origin: true
             method.response.header.Access-Control-Allow-Methods: true
             method.response.header.Access-Control-Allow-Headers: true
+
+Outputs:
+  EventPublishQueueUrl:
+    Description: URL of the SQS queue for published events
+    Value: !Ref EventPublishQueue
