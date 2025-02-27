@@ -23,7 +23,7 @@ Resources:
       ReservedConcurrentExecutions: 10 # Control concurrency
       Environment:
         Variables:
-          EVENT_PUBLISH_QUEUE_URL: "https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/MyQueue";
+          EVENT_PUBLISH_QUEUE_URL: "MyQueue";
           EXPO_ACCESS_TOKEN : "Test";
           NOTIFICATION_TABLE : "NotificationLogs"
       Code:
