@@ -33,7 +33,7 @@ export const handler = async (event) => {
     };
   }
 
-  if (!appToken || appToken.length < 10) {
+  if (!appToken || appToken.length < 6) {
     console.log("Token invalid:", appToken);
     return {
       statusCode: 403,
