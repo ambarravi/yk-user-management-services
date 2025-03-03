@@ -32,7 +32,7 @@ export const handler = async (event) => {
       city,
       collegeDetails,
       name,
-      email: providedEmail, // Rename for clarity
+      email: providedEmail,
       lastName,
       collegeId,
       phoneNumber,
@@ -47,7 +47,6 @@ export const handler = async (event) => {
       };
     }
 
-    // Determine Cognito identifier: prefer provided email, fallback to userName with email lookup
     let cognitoIdentifier = providedEmail;
     if (!cognitoIdentifier && userName) {
       const cognitoAttributes = await getCognitoAttributes(userName);
@@ -113,6 +112,14 @@ export const handler = async (event) => {
 
     if (phoneNumber) {
       updatedAttributes.push({ Name: "phone_number", Value: phoneNumber });
+    }
+
+    // Update Cognito with given_name (name) and family_name (lastName) if provided
+    if (name) {
+      updatedAttributes.push({ Name: "given_name", Value: name });
+    }
+    if (lastName) {
+      updatedAttributes.push({ Name: "family_name", Value: lastName });
     }
 
     let finalCollegeDetails = collegeDetails;
