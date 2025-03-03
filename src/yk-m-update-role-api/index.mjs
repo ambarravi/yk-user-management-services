@@ -14,7 +14,7 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // process.env.USER_POOL_ID;
 const USERS_TABLE = "UsersTable"; // process.env.USERS_TABLE;
-const CITY_TABLE = "City"; //  process.env.CITY_TABLE;
+const CITY_TABLE = "City"; // process.env.CITY_TABLE;
 const CITY_INDEX = "CityName-index";
 const COLLEGE_TABLE = "College";
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
@@ -35,13 +35,14 @@ export const handler = async (event) => {
       email,
       lastName,
       collegeId,
+      phoneNumber, // Already included in event destructuring
     } = event;
 
     if (!userID || !city) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          message: "Invalid input: userID, and city are required.",
+          message: "Invalid input: userID and city are required.",
         }),
       };
     }
@@ -59,13 +60,9 @@ export const handler = async (event) => {
         ? `${currentRole.toLowerCase()},${tempRole.toLowerCase()}`
         : tempRole.toLowerCase();
     }
-    console.log(newRole);
-    console.log("Fetching CityID for city:", city.toLowerCase());
-    console.log("City Table:", CITY_TABLE);
-    console.log("City CITY_INDEX:", CITY_INDEX);
-    console.log(QueryCommand);
+    console.log("New Role:", newRole);
 
-    console.log("username for Cognito ", userName);
+    console.log("Fetching CityID for city:", city.toLowerCase());
     const existingCognitoAttributes = await getCognitoAttributes(userName);
     console.log("Existing Cognito Attributes:", existingCognitoAttributes);
 
@@ -78,14 +75,20 @@ export const handler = async (event) => {
     } else {
       console.log("City not found in DynamoDB.");
     }
+
     let updatedAttributes = [];
     if (roleupdateRequired) {
-      updatedAttributes = [{ Name: "custom:role", Value: newRole }];
+      updatedAttributes.push({ Name: "custom:role", Value: newRole });
     }
 
     if (cityID) {
       updatedAttributes.push({ Name: "custom:CityID", Value: cityID });
       updatedAttributes.push({ Name: "custom:City", Value: city });
+    }
+
+    // Add phoneNumber to Cognito if provided
+    if (phoneNumber) {
+      updatedAttributes.push({ Name: "phone_number", Value: phoneNumber });
     }
 
     let finalCollegeDetails = collegeDetails;
@@ -107,22 +110,20 @@ export const handler = async (event) => {
     }
 
     console.log("Updating Cognito attributes:", updatedAttributes);
-    await cognitoClient.send(
-      new AdminUpdateUserAttributesCommand({
-        UserPoolId: USER_POOL_ID,
-        Username: userName,
-        UserAttributes: updatedAttributes,
-      })
-    );
+    if (updatedAttributes.length > 0) {
+      await cognitoClient.send(
+        new AdminUpdateUserAttributesCommand({
+          UserPoolId: USER_POOL_ID,
+          Username: userName,
+          UserAttributes: updatedAttributes,
+        })
+      );
+    }
 
     const setExpressions = ["#role = :role"];
     const removeExpressions = [];
     const expressionAttributeNames = { "#role": "role" };
     const expressionAttributeValues = { ":role": newRole || "user" };
-
-    //   const updateExpression = ["SET  #role = :role"];
-    //  const expressionAttributeNames = { "#role": "role" };
-    //  const expressionAttributeValues = { ":role": newRole };
 
     if (cityID) {
       setExpressions.push("#cityID = :cityID");
@@ -155,6 +156,12 @@ export const handler = async (event) => {
       expressionAttributeNames["#EmailAddress"] = "Email";
       expressionAttributeValues[":email"] = email;
     }
+    // Add phoneNumber to DynamoDB if provided
+    if (phoneNumber) {
+      setExpressions.push("#phoneNumber = :phoneNumber");
+      expressionAttributeNames["#phoneNumber"] = "PhoneNumber";
+      expressionAttributeValues[":phoneNumber"] = phoneNumber;
+    }
 
     let finalUpdateExpression = "SET " + setExpressions.join(", ");
     if (removeExpressions.length > 0) {
@@ -182,8 +189,9 @@ export const handler = async (event) => {
         collegeDetails: finalCollegeDetails,
         followingCount: existingDynamoData.FollowingCount ?? 0,
         eventsAttended: existingDynamoData.eventsAttended ?? 0,
-        fname : existingDynamoData.FirstName,
-        lname : existingDynamoData.LastName,
+        fname: existingDynamoData.FirstName || name,
+        lname: existingDynamoData.LastName || lastName,
+        phoneNumber: existingDynamoData.PhoneNumber || phoneNumber, // Include phoneNumber in response
       }),
     };
   } catch (error) {
@@ -215,22 +223,19 @@ async function queryCityTable(city) {
 
     if (response.Items.length === 0) {
       console.log("No city found for:", city);
-      return null; // Return null if no city is found
+      return null;
     }
 
-    // Unmarshall the response items
     const unmarshalledItems = response.Items.map((item) => unmarshall(item));
-
     console.log("Query succeeded:", unmarshalledItems);
 
-    return unmarshalledItems[0]?.CityID || null; // Return CityID or null
+    return unmarshalledItems[0]?.CityID || null;
   } catch (error) {
     console.error("Error querying CITY_TABLE:", error);
     return null;
   }
 }
 
-// Fetch College Details from College Table
 async function fetchCollegeDetails(CollegeID) {
   try {
     const response = await dynamoDBClient.send(
@@ -252,7 +257,6 @@ async function fetchCollegeDetails(CollegeID) {
   }
 }
 
-// Query Cognito to get existing attributes
 async function getCognitoAttributes(userName) {
   try {
     console.log("getCognitoAttributes", userName);
@@ -272,7 +276,6 @@ async function getCognitoAttributes(userName) {
   }
 }
 
-// Query DynamoDB to get existing user data
 async function getDynamoUser(userID) {
   try {
     const response = await dynamoDBClient.send(
