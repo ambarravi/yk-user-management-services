@@ -37,6 +37,7 @@ jobs:
           - yk-register-token
           - yk-unregister-token
           - yk-send-notifications
+          - yk-update-profile-pic
 
     steps:
       # Step 1: Checkout code
