@@ -12,9 +12,9 @@ import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
 const REGION = process.env.AWS_REGION;
-const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // process.env.USER_POOL_ID;
-const USERS_TABLE = "UsersTable"; // process.env.USERS_TABLE;
-const CITY_TABLE = "City"; // process.env.CITY_TABLE;
+const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // Ensure this matches your Cognito User Pool ID
+const USERS_TABLE = "UsersTable";
+const CITY_TABLE = "City";
 const CITY_INDEX = "CityName-index";
 const COLLEGE_TABLE = "College";
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
@@ -59,15 +59,8 @@ export const handler = async (event) => {
       }
     }
 
-    if (!cognitoIdentifier) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          message:
-            "Invalid input: email or valid userName with associated email is required for Cognito operations.",
-        }),
-      };
-    }
+    // Proceed even if cognitoIdentifier is missing (Cognito update will be skipped)
+    console.log("Using cognitoIdentifier:", cognitoIdentifier || "None");
 
     let newRole;
     let roleupdateRequired = false;
@@ -85,10 +78,15 @@ export const handler = async (event) => {
     console.log("New Role:", newRole);
 
     console.log("Fetching CityID for city:", city.toLowerCase());
-    const existingCognitoAttributes = await getCognitoAttributes(
-      cognitoIdentifier
-    );
-    console.log("Existing Cognito Attributes:", existingCognitoAttributes);
+    let existingCognitoAttributes = {};
+    if (cognitoIdentifier) {
+      existingCognitoAttributes = await getCognitoAttributes(cognitoIdentifier);
+      console.log("Existing Cognito Attributes:", existingCognitoAttributes);
+    } else {
+      console.warn(
+        "Skipping Cognito attribute fetch due to missing identifier"
+      );
+    }
 
     const existingDynamoData = await getDynamoUser(userID);
     console.log("Existing DynamoDB Data:", existingDynamoData);
@@ -104,17 +102,13 @@ export const handler = async (event) => {
     if (roleupdateRequired) {
       updatedAttributes.push({ Name: "custom:role", Value: newRole });
     }
-
     if (cityID) {
       updatedAttributes.push({ Name: "custom:CityID", Value: cityID });
       updatedAttributes.push({ Name: "custom:City", Value: city });
     }
-
     if (phoneNumber) {
       updatedAttributes.push({ Name: "phone_number", Value: phoneNumber });
     }
-
-    // Update Cognito with given_name (name) and family_name (lastName) if provided
     if (name) {
       updatedAttributes.push({ Name: "given_name", Value: name });
     }
@@ -123,12 +117,10 @@ export const handler = async (event) => {
     }
 
     let finalCollegeDetails = collegeDetails;
-
     if (collegeId && Object.keys(collegeDetails).length === 0) {
       console.log(`Fetching details for collegeId: ${collegeId}`);
       finalCollegeDetails = (await fetchCollegeDetails(collegeId)) || {};
     }
-
     if (finalCollegeDetails.CollegeID) {
       updatedAttributes.push({
         Name: "custom:CollegeID",
@@ -138,18 +130,22 @@ export const handler = async (event) => {
       updatedAttributes.push({ Name: "custom:CollegeID", Value: "" });
     }
 
-    console.log(
-      "Updating Cognito attributes with identifier:",
-      cognitoIdentifier
-    );
-    console.log("Attributes to update:", updatedAttributes);
-    if (updatedAttributes.length > 0) {
+    if (cognitoIdentifier && updatedAttributes.length > 0) {
+      console.log(
+        "Updating Cognito attributes with identifier:",
+        cognitoIdentifier
+      );
+      console.log("Attributes to update:", updatedAttributes);
       await cognitoClient.send(
         new AdminUpdateUserAttributesCommand({
           UserPoolId: USER_POOL_ID,
           Username: cognitoIdentifier,
           UserAttributes: updatedAttributes,
         })
+      );
+    } else {
+      console.warn(
+        "Skipping Cognito update: No identifier or attributes to update"
       );
     }
 
@@ -163,7 +159,6 @@ export const handler = async (event) => {
       expressionAttributeNames["#cityID"] = "CityID";
       expressionAttributeValues[":cityID"] = cityID;
     }
-
     if (finalCollegeDetails?.CollegeID) {
       setExpressions.push("#collegeDetails = :collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
@@ -172,7 +167,6 @@ export const handler = async (event) => {
       removeExpressions.push("#collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
     }
-
     if (name) {
       setExpressions.push("#name = :FirstName");
       expressionAttributeNames["#name"] = "FirstName";
@@ -220,9 +214,9 @@ export const handler = async (event) => {
         collegeDetails: finalCollegeDetails,
         followingCount: existingDynamoData.FollowingCount ?? 0,
         eventsAttended: existingDynamoData.eventsAttended ?? 0,
-        fname: existingDynamoData.FirstName || name,
-        lname: existingDynamoData.LastName || lastName,
-        phoneNumber: existingDynamoData.PhoneNumber || phoneNumber,
+        fname: name || existingDynamoData.FirstName || "N/A",
+        lname: lastName || existingDynamoData.LastName || "N/A",
+        phoneNumber: phoneNumber || existingDynamoData.PhoneNumber,
       }),
     };
   } catch (error) {
