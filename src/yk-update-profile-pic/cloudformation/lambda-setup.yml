@@ -69,7 +69,6 @@ Resources:
                   - cognito-idp:AdminUpdateUserAttributes
                 Resource: "*"
               - Effect: Allow
-              - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:GetObject
