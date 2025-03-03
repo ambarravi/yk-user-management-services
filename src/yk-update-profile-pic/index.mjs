@@ -10,8 +10,8 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 
 const REGION = process.env.AWS_REGION;
-const USER_POOL_ID = "eu-west-1_hgUDdjyRr";
-const BUCKET_NAME = "myapp-profileStorage-<id>-<env>";
+const USER_POOL_ID = process.env.USER_POOL_ID;
+const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 const s3Client = new S3Client({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
