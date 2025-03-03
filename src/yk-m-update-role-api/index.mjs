@@ -12,7 +12,7 @@ import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
 const REGION = process.env.AWS_REGION;
-const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // Ensure this matches your Cognito User Pool ID
+const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // Verify this matches your Cognito User Pool
 const USERS_TABLE = "UsersTable";
 const CITY_TABLE = "City";
 const CITY_INDEX = "CityName-index";
@@ -59,7 +59,6 @@ export const handler = async (event) => {
       }
     }
 
-    // Proceed even if cognitoIdentifier is missing (Cognito update will be skipped)
     console.log("Using cognitoIdentifier:", cognitoIdentifier || "None");
 
     let newRole;
@@ -80,12 +79,19 @@ export const handler = async (event) => {
     console.log("Fetching CityID for city:", city.toLowerCase());
     let existingCognitoAttributes = {};
     if (cognitoIdentifier) {
-      existingCognitoAttributes = await getCognitoAttributes(cognitoIdentifier);
-      console.log("Existing Cognito Attributes:", existingCognitoAttributes);
+      try {
+        existingCognitoAttributes = await getCognitoAttributes(
+          cognitoIdentifier
+        );
+        console.log("Existing Cognito Attributes:", existingCognitoAttributes);
+      } catch (error) {
+        console.warn(
+          "Failed to fetch Cognito attributes, proceeding without:",
+          error
+        );
+      }
     } else {
-      console.warn(
-        "Skipping Cognito attribute fetch due to missing identifier"
-      );
+      console.warn("No cognitoIdentifier provided, skipping Cognito fetch");
     }
 
     const existingDynamoData = await getDynamoUser(userID);
@@ -136,13 +142,20 @@ export const handler = async (event) => {
         cognitoIdentifier
       );
       console.log("Attributes to update:", updatedAttributes);
-      await cognitoClient.send(
-        new AdminUpdateUserAttributesCommand({
-          UserPoolId: USER_POOL_ID,
-          Username: cognitoIdentifier,
-          UserAttributes: updatedAttributes,
-        })
-      );
+      try {
+        await cognitoClient.send(
+          new AdminUpdateUserAttributesCommand({
+            UserPoolId: USER_POOL_ID,
+            Username: cognitoIdentifier,
+            UserAttributes: updatedAttributes,
+          })
+        );
+      } catch (error) {
+        console.warn(
+          "Failed to update Cognito attributes, proceeding without:",
+          error
+        );
+      }
     } else {
       console.warn(
         "Skipping Cognito update: No identifier or attributes to update"
