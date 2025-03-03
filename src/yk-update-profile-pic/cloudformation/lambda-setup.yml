@@ -9,6 +9,9 @@ Parameters:
     AllowedValues:
       - Development
       - Production
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
 
 Mappings:
   EnvToResources:
