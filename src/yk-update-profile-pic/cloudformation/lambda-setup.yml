@@ -103,14 +103,14 @@ Resources:
   UpdateProfilePicResource:
     Type: AWS::ApiGateway::Resource
     Properties:
-      RestApiId: !Ref ApiGatewayRestApiId
-      ParentId: !Ref ApiGatewayRootResourceId
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]
       PathPart: update-profile-pic
 
   UpdateProfilePicPOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: !Ref ApiGatewayRestApiId
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
       ResourceId: !Ref UpdateProfilePicResource
       HttpMethod: POST
       AuthorizationType: NONE
@@ -130,7 +130,7 @@ Resources:
   UpdateProfilePicOPTIONSMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: !Ref ApiGatewayRestApiId
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
       ResourceId: !Ref UpdateProfilePicResource
       HttpMethod: OPTIONS
       AuthorizationType: NONE
