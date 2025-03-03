@@ -32,10 +32,10 @@ export const handler = async (event) => {
       city,
       collegeDetails,
       name,
-      email,
+      email: providedEmail, // Rename for clarity
       lastName,
       collegeId,
-      phoneNumber, // Already included in event destructuring
+      phoneNumber,
     } = event;
 
     if (!userID || !city) {
@@ -43,6 +43,29 @@ export const handler = async (event) => {
         statusCode: 400,
         body: JSON.stringify({
           message: "Invalid input: userID and city are required.",
+        }),
+      };
+    }
+
+    // Determine Cognito identifier: prefer provided email, fallback to userName with email lookup
+    let cognitoIdentifier = providedEmail;
+    if (!cognitoIdentifier && userName) {
+      const cognitoAttributes = await getCognitoAttributes(userName);
+      cognitoIdentifier = cognitoAttributes["email"];
+      if (!cognitoIdentifier) {
+        console.warn(
+          "No email found in Cognito attributes for userName:",
+          userName
+        );
+      }
+    }
+
+    if (!cognitoIdentifier) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          message:
+            "Invalid input: email or valid userName with associated email is required for Cognito operations.",
         }),
       };
     }
@@ -63,7 +86,9 @@ export const handler = async (event) => {
     console.log("New Role:", newRole);
 
     console.log("Fetching CityID for city:", city.toLowerCase());
-    const existingCognitoAttributes = await getCognitoAttributes(userName);
+    const existingCognitoAttributes = await getCognitoAttributes(
+      cognitoIdentifier
+    );
     console.log("Existing Cognito Attributes:", existingCognitoAttributes);
 
     const existingDynamoData = await getDynamoUser(userID);
@@ -86,14 +111,12 @@ export const handler = async (event) => {
       updatedAttributes.push({ Name: "custom:City", Value: city });
     }
 
-    // Add phoneNumber to Cognito if provided
     if (phoneNumber) {
       updatedAttributes.push({ Name: "phone_number", Value: phoneNumber });
     }
 
     let finalCollegeDetails = collegeDetails;
 
-    // Fetch college details if collegeId is provided but collegeDetails are missing
     if (collegeId && Object.keys(collegeDetails).length === 0) {
       console.log(`Fetching details for collegeId: ${collegeId}`);
       finalCollegeDetails = (await fetchCollegeDetails(collegeId)) || {};
@@ -105,16 +128,19 @@ export const handler = async (event) => {
         Value: finalCollegeDetails.CollegeID,
       });
     } else if (existingCognitoAttributes["custom:CollegeID"]) {
-      // If CollegeID is removed, remove it from Cognito
       updatedAttributes.push({ Name: "custom:CollegeID", Value: "" });
     }
 
-    console.log("Updating Cognito attributes:", updatedAttributes);
+    console.log(
+      "Updating Cognito attributes with identifier:",
+      cognitoIdentifier
+    );
+    console.log("Attributes to update:", updatedAttributes);
     if (updatedAttributes.length > 0) {
       await cognitoClient.send(
         new AdminUpdateUserAttributesCommand({
           UserPoolId: USER_POOL_ID,
-          Username: userName,
+          Username: cognitoIdentifier,
           UserAttributes: updatedAttributes,
         })
       );
@@ -136,7 +162,6 @@ export const handler = async (event) => {
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
       expressionAttributeValues[":collegeDetails"] = finalCollegeDetails;
     } else if (existingDynamoData.collegeDetails) {
-      // Remove collegeDetails if it existed before
       removeExpressions.push("#collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
     }
@@ -151,12 +176,11 @@ export const handler = async (event) => {
       expressionAttributeNames["#lastName"] = "LastName";
       expressionAttributeValues[":LastName"] = lastName;
     }
-    if (email) {
+    if (providedEmail) {
       setExpressions.push("#EmailAddress = :email");
       expressionAttributeNames["#EmailAddress"] = "Email";
-      expressionAttributeValues[":email"] = email;
+      expressionAttributeValues[":email"] = providedEmail;
     }
-    // Add phoneNumber to DynamoDB if provided
     if (phoneNumber) {
       setExpressions.push("#phoneNumber = :phoneNumber");
       expressionAttributeNames["#phoneNumber"] = "PhoneNumber";
@@ -191,7 +215,7 @@ export const handler = async (event) => {
         eventsAttended: existingDynamoData.eventsAttended ?? 0,
         fname: existingDynamoData.FirstName || name,
         lname: existingDynamoData.LastName || lastName,
-        phoneNumber: existingDynamoData.PhoneNumber || phoneNumber, // Include phoneNumber in response
+        phoneNumber: existingDynamoData.PhoneNumber || phoneNumber,
       }),
     };
   } catch (error) {
@@ -257,13 +281,13 @@ async function fetchCollegeDetails(CollegeID) {
   }
 }
 
-async function getCognitoAttributes(userName) {
+async function getCognitoAttributes(identifier) {
   try {
-    console.log("getCognitoAttributes", userName);
+    console.log("getCognitoAttributes with identifier:", identifier);
     const response = await cognitoClient.send(
       new AdminGetUserCommand({
         UserPoolId: USER_POOL_ID,
-        Username: userName,
+        Username: identifier,
       })
     );
     return response.UserAttributes.reduce((acc, attr) => {
