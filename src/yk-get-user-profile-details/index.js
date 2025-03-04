@@ -48,6 +48,7 @@ export const handler = async (event) => {
       Email: result.Item.Email?.S || "",
       City: result.Item.city?.S || "",
       Role: result.Item.role?.S || "",
+      PhoneNumber: result.Item.PhoneNumber?.S || "",
       CollegeDetails: result.Item.collegeDetails
         ? {
             City: result.Item.collegeDetails.City?.S || "",
