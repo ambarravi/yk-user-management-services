@@ -26,11 +26,11 @@ export const handler = async (event) => {
   try {
     const {
       userName,
-      userID,
+      userID, // Maps to Cognito sub
       tempRole,
       currentRole,
       city,
-      collegeDetails,
+      collegeDetails = {},
       name,
       email: providedEmail,
       lastName,
@@ -47,36 +47,20 @@ export const handler = async (event) => {
       };
     }
 
-    let cognitoIdentifier = providedEmail;
-    if (!cognitoIdentifier && userName) {
-      const cognitoAttributes = await getCognitoAttributes(userName);
-      cognitoIdentifier = cognitoAttributes["email"];
-      if (!cognitoIdentifier) {
-        console.warn(
-          "No email found in Cognito attributes for userName:",
-          userName
-        );
-      }
+    // Fetch existing DynamoDB data first to get a reliable identifier
+    const existingDynamoData = await getDynamoUser(userID);
+    console.log("Existing DynamoDB Data:", existingDynamoData);
+
+    // Determine Cognito identifier: prefer DynamoDB email, then provided email, then userName
+    let cognitoIdentifier =
+      existingDynamoData.Email || providedEmail || userName;
+    if (cognitoIdentifier === "NA" || cognitoIdentifier === "Unknown") {
+      cognitoIdentifier = null; // Reset if invalid
     }
 
     console.log("Using cognitoIdentifier:", cognitoIdentifier || "None");
 
-    let newRole;
-    let roleupdateRequired = false;
-    if (
-      currentRole &&
-      currentRole.toLowerCase().includes(tempRole.toLowerCase())
-    ) {
-      roleupdateRequired = false;
-    } else {
-      roleupdateRequired = true;
-      newRole = currentRole
-        ? `${currentRole.toLowerCase()},${tempRole.toLowerCase()}`
-        : tempRole.toLowerCase();
-    }
-    console.log("New Role:", newRole);
-
-    console.log("Fetching CityID for city:", city.toLowerCase());
+    // Fetch Cognito attributes if we have a valid identifier
     let existingCognitoAttributes = {};
     if (cognitoIdentifier) {
       try {
@@ -85,27 +69,34 @@ export const handler = async (event) => {
         );
         console.log("Existing Cognito Attributes:", existingCognitoAttributes);
       } catch (error) {
-        console.warn(
-          "Failed to fetch Cognito attributes, proceeding without:",
-          error
-        );
+        console.warn("Failed to fetch Cognito attributes:", error);
       }
-    } else {
-      console.warn("No cognitoIdentifier provided, skipping Cognito fetch");
     }
 
-    const existingDynamoData = await getDynamoUser(userID);
-    console.log("Existing DynamoDB Data:", existingDynamoData);
-
-    let cityID = await queryCityTable(city);
-    if (cityID) {
-      console.log("Found CityID:", cityID);
+    // Role logic
+    let newRole;
+    let roleUpdateRequired = false;
+    if (
+      currentRole &&
+      currentRole.toLowerCase().includes(tempRole.toLowerCase())
+    ) {
+      roleUpdateRequired = false;
     } else {
-      console.log("City not found in DynamoDB.");
+      roleUpdateRequired = true;
+      newRole = currentRole
+        ? `${currentRole.toLowerCase()},${tempRole.toLowerCase()}`
+        : tempRole.toLowerCase();
     }
+    console.log("New Role:", newRole);
 
+    // Fetch CityID
+    console.log("Fetching CityID for city:", city.toLowerCase());
+    const cityID = await queryCityTable(city);
+    console.log("Found CityID:", cityID || "Not found");
+
+    // Prepare Cognito updates
     let updatedAttributes = [];
-    if (roleupdateRequired) {
+    if (roleUpdateRequired) {
       updatedAttributes.push({ Name: "custom:role", Value: newRole });
     }
     if (cityID) {
@@ -122,6 +113,7 @@ export const handler = async (event) => {
       updatedAttributes.push({ Name: "family_name", Value: lastName });
     }
 
+    // Handle college details
     let finalCollegeDetails = collegeDetails;
     if (collegeId && Object.keys(collegeDetails).length === 0) {
       console.log(`Fetching details for collegeId: ${collegeId}`);
@@ -136,11 +128,9 @@ export const handler = async (event) => {
       updatedAttributes.push({ Name: "custom:CollegeID", Value: "" });
     }
 
+    // Update Cognito if we have an identifier and attributes to update
     if (cognitoIdentifier && updatedAttributes.length > 0) {
-      console.log(
-        "Updating Cognito attributes with identifier:",
-        cognitoIdentifier
-      );
+      console.log("Updating Cognito attributes for:", cognitoIdentifier);
       console.log("Attributes to update:", updatedAttributes);
       try {
         await cognitoClient.send(
@@ -151,17 +141,13 @@ export const handler = async (event) => {
           })
         );
       } catch (error) {
-        console.warn(
-          "Failed to update Cognito attributes, proceeding without:",
-          error
-        );
+        console.warn("Failed to update Cognito attributes:", error);
       }
     } else {
-      console.warn(
-        "Skipping Cognito update: No identifier or attributes to update"
-      );
+      console.warn("Skipping Cognito update: No identifier or attributes");
     }
 
+    // Prepare DynamoDB updates
     const setExpressions = ["#role = :role"];
     const removeExpressions = [];
     const expressionAttributeNames = { "#role": "role" };
@@ -178,7 +164,6 @@ export const handler = async (event) => {
       expressionAttributeValues[":collegeDetails"] = finalCollegeDetails;
     } else if (existingDynamoData.collegeDetails) {
       removeExpressions.push("#collegeDetails");
-      expressionAttributeNames["#collegeDetails"] = "collegeDetails";
     }
     if (name) {
       setExpressions.push("#name = :FirstName");
@@ -190,7 +175,7 @@ export const handler = async (event) => {
       expressionAttributeNames["#lastName"] = "LastName";
       expressionAttributeValues[":LastName"] = lastName;
     }
-    if (providedEmail) {
+    if (providedEmail && providedEmail !== "NA") {
       setExpressions.push("#EmailAddress = :email");
       expressionAttributeNames["#EmailAddress"] = "Email";
       expressionAttributeValues[":email"] = providedEmail;
@@ -208,6 +193,7 @@ export const handler = async (event) => {
 
     console.log("Final Update Expression:", finalUpdateExpression);
 
+    // Update DynamoDB
     console.log("Updating USERS_TABLE with cityID and other details");
     await dynamoDBClient.send(
       new UpdateCommand({
@@ -310,7 +296,7 @@ async function getCognitoAttributes(identifier) {
     }, {});
   } catch (error) {
     console.error("Error fetching Cognito attributes:", error);
-    return {};
+    throw error;
   }
 }
 
