@@ -160,13 +160,7 @@ export const handler = async (event) => {
       expressionAttributeNames["#cityID"] = "CityID";
       expressionAttributeValues[":cityID"] = cityID;
     }
-    if (finalCollegeDetails?.CollegeID) {
-      setExpressions.push("#collegeDetails = :collegeDetails");
-      expressionAttributeNames["#collegeDetails"] = "collegeDetails";
-      expressionAttributeValues[":collegeDetails"] = finalCollegeDetails;
-    } else if (existingDynamoData.collegeDetails) {
-      removeExpressions.push("#collegeDetails");
-    }
+
     if (name) {
       setExpressions.push("#name = :FirstName");
       expressionAttributeNames["#name"] = "FirstName";
@@ -188,12 +182,22 @@ export const handler = async (event) => {
       expressionAttributeValues[":phoneNumber"] = phoneNumber;
     }
 
+    if (finalCollegeDetails?.CollegeID) {
+      setExpressions.push("#collegeDetails = :collegeDetails");
+      expressionAttributeNames["#collegeDetails"] = "collegeDetails";
+      expressionAttributeValues[":collegeDetails"] = finalCollegeDetails;
+    } else if (existingDynamoData.collegeDetails) {
+      removeExpressions.push("#collegeDetails");
+      expressionAttributeNames["#collegeDetails"] = "collegeDetails"; // Add this
+    }
+
     let finalUpdateExpression = "SET " + setExpressions.join(", ");
     if (removeExpressions.length > 0) {
       finalUpdateExpression += " REMOVE " + removeExpressions.join(", ");
     }
 
     console.log("Final Update Expression:", finalUpdateExpression);
+    console.log("Expression Attribute Names:", expressionAttributeNames);
 
     // Update DynamoDB
     console.log("Updating USERS_TABLE with cityID and other details");
