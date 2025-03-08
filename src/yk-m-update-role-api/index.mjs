@@ -51,11 +51,13 @@ export const handler = async (event) => {
     const existingDynamoData = await getDynamoUser(userID);
     console.log("Existing DynamoDB Data:", existingDynamoData);
 
-    // Determine Cognito identifier: prefer DynamoDB email, then provided email, then userName
-    let cognitoIdentifier =
-      existingDynamoData.Email || providedEmail || userName;
+    let cognitoIdentifier = userID; // Use sub (22158404-2031-705a-6f55-cf7aef9552b1)
+    if (!cognitoIdentifier) {
+      cognitoIdentifier = existingDynamoData.Email || providedEmail || userName;
+      console.warn("userID not provided, falling back to:", cognitoIdentifier);
+    }
     if (cognitoIdentifier === "NA" || cognitoIdentifier === "Unknown") {
-      cognitoIdentifier = null; // Reset if invalid
+      cognitoIdentifier = null;
     }
 
     console.log("Using cognitoIdentifier:", cognitoIdentifier || "None");
