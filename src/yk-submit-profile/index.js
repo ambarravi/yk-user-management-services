@@ -114,7 +114,6 @@ export const handler = async (event) => {
         TableName: TABLE,
         Item: {
           OrganizerID: { S: username },
-          ReadableOrgID : 
           OrganizerName: { S: profileData.name },
           contactPerson: { S: profileData.contactPerson },
           contactEmail: { S: profileData.contactEmail },
