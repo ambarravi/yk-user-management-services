@@ -97,19 +97,20 @@ export const handler = async (event) => {
     await dynamoDBClient.send(new UpdateItemCommand(updateParams));
     console.log(`Updated event ${eventID} to ${eventStatus}.`);
 
-    let eventDetails {};
+    let eventDetails = {}; // Fixed syntax error
     // If status is "Published", send to SQS
     if (eventStatus === "Published") {
-       eventDetails = {
+      eventDetails = {
         eventID: existingRecord.Item.EventID?.S,
         orgId: existingRecord.Item.OrgID?.S,
         eventTitle: existingRecord.Item.EventTitle?.S,
         dateTime: existingRecord.Item.EventDate?.S,
-        readableEvnetID: existingRecord.Item.ReadableEventID?.S,
-        eventType: existingRecord.Item.EventType?.S, // EventType
+        readableEventID: existingRecord.Item.ReadableEventID?.S, // Fixed typo
+        eventType: existingRecord.Item.EventType?.S,
       };
 
-      if (!orgId) {
+      if (!eventDetails.orgId) {
+        // Fixed runtime issue
         throw new Error("OrgId not found in event record.");
       }
 
