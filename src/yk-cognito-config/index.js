@@ -62,8 +62,8 @@ export const handler = async (event) => {
     let redirectSignOutURL;
     console.log("BUILD ENV:", process.env.BUILD);
     if (process.env.BUILD === "DEV") {
-      redirectSignInURL = "exp://192.168.1.13:8081/";
-      redirectSignOutURL = "exp://192.168.1.13:8081/";
+      redirectSignInURL = "exp://192.168.1.3:8081/";
+      redirectSignOutURL = "exp://192.168.1.3:8081/";
     } else {
       redirectSignInURL = "tikto://auth";
       redirectSignOutURL = "tikto://logout";
