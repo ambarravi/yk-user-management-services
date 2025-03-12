@@ -75,6 +75,9 @@ export const handler = async (event) => {
     const redirectSignIn = redirectSignInURL;
     const redirectSignOut = redirectSignOutURL;
 
+    console.log("redirectSignIn", redirectSignIn);
+    console.log("redirectSignOut", redirectSignOut);
+
     console.log("Returning success response from Lambda");
     return {
       statusCode: 200,
