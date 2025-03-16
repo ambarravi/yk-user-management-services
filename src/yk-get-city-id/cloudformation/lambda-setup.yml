@@ -80,12 +80,12 @@ Resources:
       ParentId: !Ref ApiGatewayRootResourceId
       PathPart: get-city-id
 
-  GetCityIDGETMethod:
+  GetCityIDPOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref GetCityIDResource
-      HttpMethod: GET
+      HttpMethod: POST
       AuthorizationType: NONE
       Integration:
         Type: AWS_PROXY
@@ -97,7 +97,7 @@ Resources:
         - StatusCode: 200
           ResponseParameters:
             method.response.header.Access-Control-Allow-Origin: "'*'"
-            method.response.header.Access-Control-Allow-Methods: "'GET, OPTIONS'"
+            method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
             method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
 
   SubmitProfileOPTIONSMethod:
@@ -115,7 +115,7 @@ Resources:
           - StatusCode: 200
             ResponseParameters:
               method.response.header.Access-Control-Allow-Origin: "'*'"
-              method.response.header.Access-Control-Allow-Methods: "'GET, OPTIONS'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
               method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
       MethodResponses:
         - StatusCode: 200
