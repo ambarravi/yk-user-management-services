@@ -41,6 +41,7 @@ export const handler = async (event) => {
     }
 
     // Extracting values from DynamoDB response
+    console.log("DDB result", JSON.stringify(result));
     const user = {
       UserID: result.Item.UserID?.S || null,
       FirstName: result.Item.FirstName?.S || "",
