@@ -43,28 +43,32 @@ export const handler = async (event) => {
     // Extracting values from DynamoDB response
     console.log("DDB result", JSON.stringify(result));
     const user = {
-      UserID: result.Item.UserID?.S || null,
-      FirstName: result.Item.FirstName?.S || "",
-      LastName: result.Item.LastName?.S || "",
-      Email: result.Item.Email?.S || "",
-      City: result.Item.city?.S || "",
-      Role: result.Item.role?.S || "",
-      PhoneNumber: result.Item.PhoneNumber?.S || "",
-      CollegeDetails: result.Item.collegeDetails
+      userID: result.Item.UserID?.S || null,
+      name: result.Item.FirstName?.S || "",
+      lastName: result.Item.LastName?.S || "",
+      email: result.Item.Email?.S || "",
+      city: result.Item.collegeDetails?.M?.City?.S || "",
+      cityId: result.Item.CityID?.S || "",
+      role: result.Item.role?.S || "",
+      phoneNumber: result.Item.PhoneNumber?.S || "",
+      collegeDetails: result.Item.collegeDetails?.M
         ? {
-            City: result.Item.collegeDetails.City?.S || "",
-            CollegeID: result.Item.collegeDetails.CollegeID?.S || "",
-            Name: result.Item.collegeDetails.Name?.S || "",
-            Shortform: result.Item.collegeDetails.Shortform?.S || "",
-            University: result.Item.collegeDetails.University?.S || "",
+            city: result.Item.collegeDetails.M.City?.S || "",
+            collegeID: result.Item.collegeDetails.M.CollegeID?.S || "",
+            name: result.Item.collegeDetails.M.Name?.S || "",
+            shortform: result.Item.collegeDetails.M.Shortform?.S || "",
+            university: result.Item.collegeDetails.M.University?.S || "",
+            cityID: result.Item.collegeDetails.M.CityID?.S || "",
           }
         : {},
-      FollowingCount: result.Item.FollowingCount?.N
+      followingCount: result.Item.FollowingCount?.N
         ? parseInt(result.Item.FollowingCount.N)
         : 0,
-      EventParticipatedCount: result.Item.EventParticipatedCount?.N
+      eventParticipatedCount: result.Item.EventParticipatedCount?.N
         ? parseInt(result.Item.EventParticipatedCount.N)
         : 0,
+      mobile: result.Item.Mobile?.S || "N/A",
+      createdAt: result.Item.CreatedAt?.S || "",
     };
 
     return {
