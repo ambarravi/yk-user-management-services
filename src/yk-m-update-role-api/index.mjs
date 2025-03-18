@@ -13,9 +13,7 @@ const USERS_TABLE = "UsersTable";
 const CITY_TABLE = "City";
 const COLLEGE_TABLE = "College";
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
-const cognitoClient = new CognitoIdentityServiceProviderClient({
-  region: REGION,
-});
+const cognitoClient = new CognitoIdentityProviderClient({ region: REGION }); // Fixed typo here
 
 export const handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
@@ -35,7 +33,7 @@ export const handler = async (event) => {
       lastName,
       collegeId,
       phoneNumber,
-    } = event; // Changed from event.body to event since it’s not parsed
+    } = event;
 
     if (!userID || !city || !cityId || !state) {
       return {
@@ -91,8 +89,8 @@ export const handler = async (event) => {
     }
     console.log("New Role:", newRole);
 
-    // Step 1: Ensure city exists in City table
-    const finalCityId = await ensureCityExists(city, cityId);
+    // Step 1: Ensure city exists in City table with state
+    const finalCityId = await ensureCityExists(city, cityId, state);
     console.log("Final CityID:", finalCityId);
 
     // Prepare Cognito updates
@@ -157,6 +155,11 @@ export const handler = async (event) => {
     expressionAttributeNames["#cityID"] = "CityID";
     expressionAttributeValues[":cityID"] = finalCityId;
 
+    // Add state to UsersTable
+    setExpressions.push("#state = :state");
+    expressionAttributeNames["#state"] = "State";
+    expressionAttributeValues[":state"] = state;
+
     if (name) {
       setExpressions.push("#name = :FirstName");
       expressionAttributeNames["#name"] = "FirstName";
@@ -210,7 +213,7 @@ export const handler = async (event) => {
       statusCode: 200,
       body: JSON.stringify({
         message: "Role and attributes updated successfully",
-        cityId: finalCityId, // Return GeoNames cityId
+        cityId: finalCityId,
         collegeDetails: finalCollegeDetails,
         followingCount: existingDynamoData.FollowingCount ?? 0,
         eventsAttended: existingDynamoData.eventsAttended ?? 0,
@@ -242,28 +245,32 @@ async function ensureCityExists(cityName, cityId, state) {
     );
 
     if (!response.Item) {
-      // City doesn’t exist, insert it
+      // City doesn’t exist, insert it with state
       await dynamoDBClient.send(
         new PutCommand({
           TableName: CITY_TABLE,
           Item: {
             CityID: cityId, // GeoNames cityId
             CityName: cityName,
-            State: state, // State from GeoNames
+            State: state, // Include state
             CreatedAt: new Date().toISOString(),
           },
           ConditionExpression: "attribute_not_exists(CityID)", // Avoid overwrite
         })
       );
-      console.log(`Inserted new city: ${cityName} with CityID: ${cityId}`);
+      console.log(
+        `Inserted new city: ${cityName}, State: ${state} with CityID: ${cityId}`
+      );
     } else {
       const existingCity = unmarshall(response.Item);
-      if (existingCity.CityName !== cityName) {
+      if (existingCity.CityName !== cityName || existingCity.State !== state) {
         throw new Error(
-          `CityID ${cityId} already exists with a different name: ${existingCity.CityName}`
+          `CityID ${cityId} already exists with different name or state: ${existingCity.CityName}, ${existingCity.State}`
         );
       }
-      console.log(`City ${cityName} already exists with CityID: ${cityId}`);
+      console.log(
+        `City ${cityName}, State: ${state} already exists with CityID: ${cityId}`
+      );
     }
 
     return cityId;
