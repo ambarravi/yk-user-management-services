@@ -47,7 +47,7 @@ export const handler = async (event) => {
       name: result.Item.FirstName?.S || "",
       lastName: result.Item.LastName?.S || "",
       email: result.Item.Email?.S || "",
-      city: result.Item.collegeDetails?.M?.City?.S || "",
+      city: result.Item.City?.S || "",
       cityId: result.Item.CityID?.S || "",
       role: result.Item.role?.S || "",
       phoneNumber: result.Item.PhoneNumber?.S || "",
