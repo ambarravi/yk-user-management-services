@@ -28,6 +28,7 @@ export const handler = async (event) => {
       currentRole,
       city,
       cityId, // GeoNames cityId from frontend
+      state, // State from frontend
       collegeDetails = {},
       name,
       email: providedEmail,
@@ -36,11 +37,12 @@ export const handler = async (event) => {
       phoneNumber,
     } = event; // Changed from event.body to event since it’s not parsed
 
-    if (!userID || !city || !cityId) {
+    if (!userID || !city || !cityId || !state) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          message: "Invalid input: userID, city, and cityId are required.",
+          message:
+            "Invalid input: userID, city, cityId, and state are required.",
         }),
       };
     }
@@ -100,6 +102,7 @@ export const handler = async (event) => {
     }
     updatedAttributes.push({ Name: "custom:CityID", Value: finalCityId });
     updatedAttributes.push({ Name: "custom:City", Value: city });
+    updatedAttributes.push({ Name: "custom:State", Value: state });
     if (phoneNumber) {
       updatedAttributes.push({ Name: "phone_number", Value: phoneNumber });
     }
@@ -228,7 +231,7 @@ export const handler = async (event) => {
   }
 };
 
-async function ensureCityExists(cityName, cityId) {
+async function ensureCityExists(cityName, cityId, state) {
   try {
     // Check if cityId exists in City table
     const response = await dynamoDBClient.send(
@@ -246,6 +249,7 @@ async function ensureCityExists(cityName, cityId) {
           Item: {
             CityID: cityId, // GeoNames cityId
             CityName: cityName,
+            State: state, // State from GeoNames
             CreatedAt: new Date().toISOString(),
           },
           ConditionExpression: "attribute_not_exists(CityID)", // Avoid overwrite
