@@ -98,7 +98,10 @@ export const handler = async (event) => {
     if (roleUpdateRequired) {
       updatedAttributes.push({ Name: "custom:role", Value: newRole });
     }
-    updatedAttributes.push({ Name: "custom:City_Code", Value: finalCityId });
+    updatedAttributes.push({
+      Name: "custom:City_Geo_Code",
+      Value: finalCityId,
+    });
     updatedAttributes.push({ Name: "custom:City", Value: city });
     updatedAttributes.push({ Name: "custom:State", Value: state });
     if (phoneNumber) {
@@ -154,6 +157,10 @@ export const handler = async (event) => {
     setExpressions.push("#cityID = :cityID");
     expressionAttributeNames["#cityID"] = "CityID";
     expressionAttributeValues[":cityID"] = finalCityId;
+
+    setExpressions.push("#city= :city");
+    expressionAttributeNames["#city"] = "City";
+    expressionAttributeValues[":city"] = city;
 
     // Add state to UsersTable
     setExpressions.push("#state = :state");
