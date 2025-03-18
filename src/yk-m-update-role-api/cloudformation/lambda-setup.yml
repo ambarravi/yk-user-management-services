@@ -67,6 +67,7 @@ Resources:
                   - dynamodb:Scan
                   - dynamodb:Query
                   - dynamodb:UpdateItem
+                  - dynamodb:PutItem
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City
