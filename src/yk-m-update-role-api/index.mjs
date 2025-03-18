@@ -98,7 +98,7 @@ export const handler = async (event) => {
     if (roleUpdateRequired) {
       updatedAttributes.push({ Name: "custom:role", Value: newRole });
     }
-    updatedAttributes.push({ Name: "custom:CityID", Value: finalCityId });
+    updatedAttributes.push({ Name: "custom:City_Code", Value: finalCityId });
     updatedAttributes.push({ Name: "custom:City", Value: city });
     updatedAttributes.push({ Name: "custom:State", Value: state });
     if (phoneNumber) {
