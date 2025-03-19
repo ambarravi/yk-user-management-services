@@ -149,11 +149,11 @@ export const handler = async (event) => {
     }
     if (finalCollegeDetails.CollegeID) {
       updatedAttributes.push({
-        Name: "custom:CollegeID",
+        Name: "custom:College_ID",
         Value: finalCollegeDetails.CollegeID,
-      }); // Changed to custom:CollegeID
-    } else if (existingCognitoAttributes["custom:CollegeID"]) {
-      updatedAttributes.push({ Name: "custom:CollegeID", Value: "" });
+      }); // Changed to custom:College_ID
+    } else if (existingCognitoAttributes["custom:College_ID"]) {
+      updatedAttributes.push({ Name: "custom:College_ID", Value: "" });
     }
 
     // Update Cognito if we have an identifier and attributes to update
