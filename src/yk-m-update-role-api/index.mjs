@@ -151,6 +151,7 @@ export const handler = async (event) => {
       updatedAttributes.push({
         Name: "custom:College_ID",
         Value: finalCollegeDetails.CollegeID,
+        status,
       }); // Changed to custom:College_ID
     } else if (existingCognitoAttributes["custom:College_ID"]) {
       updatedAttributes.push({ Name: "custom:College_ID", Value: "" });
