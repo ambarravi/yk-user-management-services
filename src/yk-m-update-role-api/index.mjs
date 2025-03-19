@@ -6,6 +6,7 @@ import {
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { v4 as uuidv4 } from "uuid"; // Add uuid package for UUID generation
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // Verify this matches your Cognito User Pool
@@ -13,7 +14,7 @@ const USERS_TABLE = "UsersTable";
 const CITY_TABLE = "City";
 const COLLEGE_TABLE = "College";
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
-const cognitoClient = new CognitoIdentityProviderClient({ region: REGION }); // Fixed typo here
+const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
 export const handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
@@ -49,7 +50,7 @@ export const handler = async (event) => {
     const existingDynamoData = await getDynamoUser(userID);
     console.log("Existing DynamoDB Data:", existingDynamoData);
 
-    let cognitoIdentifier = userID; // Use sub (e.g., 22158404-2031-705a-6f55-cf7aef9552b1)
+    let cognitoIdentifier = userID;
     if (!cognitoIdentifier) {
       cognitoIdentifier = existingDynamoData.Email || providedEmail || userName;
       console.warn("userID not provided, falling back to:", cognitoIdentifier);
@@ -93,6 +94,39 @@ export const handler = async (event) => {
     const finalCityId = await ensureCityExists(city, cityId, state);
     console.log("Final CityID:", finalCityId);
 
+    // Step 2: Handle college details - Check or create CollegeID
+    let finalCollegeDetails = collegeDetails;
+    if (collegeId && Object.keys(collegeDetails).length === 0) {
+      console.log(`Fetching details for collegeId: ${collegeId}`);
+      finalCollegeDetails = (await fetchCollegeDetails(collegeId)) || {};
+    } else if (!finalCollegeDetails.CollegeID && finalCollegeDetails.Name) {
+      // CollegeID missing, check if college exists or create new
+      const existingCollege = await getCollegeByNameAndCity(
+        finalCollegeDetails.Name,
+        finalCityId
+      );
+      if (existingCollege) {
+        console.log(
+          `Found existing college: ${JSON.stringify(existingCollege)}`
+        );
+        finalCollegeDetails = existingCollege;
+      } else {
+        // Create new college with UUID
+        const newCollegeId = uuidv4();
+        finalCollegeDetails = {
+          CollegeID: newCollegeId,
+          Name: finalCollegeDetails.Name,
+          CityID: finalCityId,
+          City: city,
+          CreatedAt: new Date().toISOString(),
+        };
+        await createCollege(finalCollegeDetails);
+        console.log(
+          `Created new college: ${JSON.stringify(finalCollegeDetails)}`
+        );
+      }
+    }
+
     // Prepare Cognito updates
     let updatedAttributes = [];
     if (roleUpdateRequired) {
@@ -113,18 +147,11 @@ export const handler = async (event) => {
     if (lastName) {
       updatedAttributes.push({ Name: "family_name", Value: lastName });
     }
-
-    // Handle college details
-    let finalCollegeDetails = collegeDetails;
-    if (collegeId && Object.keys(collegeDetails).length === 0) {
-      console.log(`Fetching details for collegeId: ${collegeId}`);
-      finalCollegeDetails = (await fetchCollegeDetails(collegeId)) || {};
-    }
     if (finalCollegeDetails.CollegeID) {
       updatedAttributes.push({
         Name: "custom:CollegeID",
         Value: finalCollegeDetails.CollegeID,
-      });
+      }); // Changed to custom:CollegeID
     } else if (existingCognitoAttributes["custom:CollegeID"]) {
       updatedAttributes.push({ Name: "custom:CollegeID", Value: "" });
     }
@@ -133,17 +160,14 @@ export const handler = async (event) => {
     if (cognitoIdentifier && updatedAttributes.length > 0) {
       console.log("Updating Cognito attributes for:", cognitoIdentifier);
       console.log("Attributes to update:", updatedAttributes);
-      try {
-        await cognitoClient.send(
-          new AdminUpdateUserAttributesCommand({
-            UserPoolId: USER_POOL_ID,
-            Username: cognitoIdentifier,
-            UserAttributes: updatedAttributes,
-          })
-        );
-      } catch (error) {
-        console.warn("Failed to update Cognito attributes:", error);
-      }
+      await cognitoClient.send(
+        new AdminUpdateUserAttributesCommand({
+          UserPoolId: USER_POOL_ID,
+          Username: cognitoIdentifier,
+          UserAttributes: updatedAttributes,
+        })
+      );
+      console.log("Cognito attributes updated successfully");
     } else {
       console.warn("Skipping Cognito update: No identifier or attributes");
     }
@@ -158,11 +182,10 @@ export const handler = async (event) => {
     expressionAttributeNames["#cityID"] = "CityID";
     expressionAttributeValues[":cityID"] = finalCityId;
 
-    setExpressions.push("#city= :city");
+    setExpressions.push("#city = :city");
     expressionAttributeNames["#city"] = "City";
     expressionAttributeValues[":city"] = city;
 
-    // Add state to UsersTable
     setExpressions.push("#state = :state");
     expressionAttributeNames["#state"] = "State";
     expressionAttributeValues[":state"] = state;
@@ -243,7 +266,6 @@ export const handler = async (event) => {
 
 async function ensureCityExists(cityName, cityId, state) {
   try {
-    // Check if cityId exists in City table
     const response = await dynamoDBClient.send(
       new GetItemCommand({
         TableName: CITY_TABLE,
@@ -252,17 +274,16 @@ async function ensureCityExists(cityName, cityId, state) {
     );
 
     if (!response.Item) {
-      // City doesn’t exist, insert it with state
       await dynamoDBClient.send(
         new PutCommand({
           TableName: CITY_TABLE,
           Item: {
-            CityID: cityId, // GeoNames cityId
+            CityID: cityId,
             CityName: cityName,
-            State: state, // Include state
+            State: state,
             CreatedAt: new Date().toISOString(),
           },
-          ConditionExpression: "attribute_not_exists(CityID)", // Avoid overwrite
+          ConditionExpression: "attribute_not_exists(CityID)",
         })
       );
       console.log(
@@ -305,6 +326,42 @@ async function fetchCollegeDetails(CollegeID) {
   } catch (error) {
     console.error("Error fetching College details:", error);
     return {};
+  }
+}
+
+async function getCollegeByNameAndCity(collegeName, cityId) {
+  try {
+    const response = await dynamoDBClient.send(
+      new QueryCommand({
+        TableName: COLLEGE_TABLE,
+        IndexName: "Name-CityID-index",
+        KeyConditionExpression: "#name = :name and #cityId = :cityId",
+        ExpressionAttributeNames: { "#name": "Name", "#cityId": "CityID" },
+        ExpressionAttributeValues: {
+          ":name": collegeName,
+          ":cityId": cityId,
+        },
+      })
+    );
+    return response.Items.length > 0 ? unmarshall(response.Items[0]) : null;
+  } catch (error) {
+    console.error("Error querying college:", error);
+    return null;
+  }
+}
+
+async function createCollege(collegeDetails) {
+  try {
+    await dynamoDBClient.send(
+      new PutCommand({
+        TableName: COLLEGE_TABLE,
+        Item: collegeDetails,
+        ConditionExpression: "attribute_not_exists(CollegeID)",
+      })
+    );
+  } catch (error) {
+    console.error("Error creating college:", error);
+    throw error;
   }
 }
 
