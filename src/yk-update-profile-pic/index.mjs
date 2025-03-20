@@ -69,7 +69,7 @@ export const handler = async (event) => {
       new AdminUpdateUserAttributesCommand({
         UserPoolId: USER_POOL_ID,
         Username: username, // Use username for Cognito
-        UserAttributes: [{ Name: "picture", Value: fileName }],
+        UserAttributes: [{ Name: "custom:picture", Value: fileName }],
       })
     );
     console.log("Cognito update response:", JSON.stringify(cognitoResponse));
