@@ -7,7 +7,6 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
   CognitoIdentityProviderClient,
   AdminUpdateUserAttributesCommand,
-  AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 
@@ -24,32 +23,17 @@ export const handler = async (event) => {
   console.log("Event received:", JSON.stringify(event));
 
   try {
-    const { userId } = JSON.parse(event.body);
-    if (!userId) throw new Error("userId is required");
-    console.log("Processing for userId (sub):", userId);
+    const { userId, username } = JSON.parse(event.body);
+    if (!userId || !username)
+      throw new Error("Both userId and username are required");
+    console.log(
+      "Processing for userId (sub):",
+      userId,
+      "and username:",
+      username
+    );
 
-    // Step 1: Get the Cognito Username using sub
-    console.log("Fetching Cognito user by sub:", userId);
-    const getUserResponse = await cognitoClient
-      .send(
-        new AdminGetUserCommand({
-          UserPoolId: USER_POOL_ID,
-          Username: userId, // Try sub first
-        })
-      )
-      .catch(async (error) => {
-        if (error.name === "UserNotFoundException") {
-          // If sub fails, assume userId is not the Username and search by sub is not direct
-          // This requires a workaround if Cognito Username differs from sub
-          throw new Error(
-            "User not found with provided sub. Ensure userId matches Cognito Username or adjust logic."
-          );
-        }
-        throw error;
-      });
-    const cognitoUsername = getUserResponse.Username;
-    console.log("Cognito Username retrieved:", cognitoUsername);
-
+    // Use userId (sub) for the S3 file path and DynamoDB key
     const fileName = `private/${userId}/profile-pic-${Date.now()}.jpg`;
     console.log("Generated fileName:", fileName);
 
@@ -74,29 +58,34 @@ export const handler = async (event) => {
     });
     console.log("Generated displayUrl:", displayUrl);
 
-    // Update Cognito using the retrieved Username
+    // Update Cognito using username
     console.log(
       "Updating Cognito with picture:",
       fileName,
-      "for Username:",
-      cognitoUsername
+      "for username:",
+      username
     );
     const cognitoResponse = await cognitoClient.send(
       new AdminUpdateUserAttributesCommand({
         UserPoolId: USER_POOL_ID,
-        Username: cognitoUsername, // Use the fetched Username
-        UserAttributes: [{ Name: "picture", Value: fileName }], // Or "custom:picture" if applicable
+        Username: username, // Use username for Cognito
+        UserAttributes: [{ Name: "picture", Value: fileName }],
       })
     );
     console.log("Cognito update response:", JSON.stringify(cognitoResponse));
 
-    // Update DynamoDB Users Table
-    console.log("Updating DynamoDB with picture:", fileName);
+    // Update DynamoDB using userId (sub)
+    console.log(
+      "Updating DynamoDB with picture:",
+      fileName,
+      "for userId:",
+      userId
+    );
     const dynamoResponse = await dynamoClient.send(
       new UpdateItemCommand({
         TableName: TABLE_NAME,
         Key: {
-          UserID: { S: userId }, // Assuming userId (sub) is the partition key
+          userId: { S: userId }, // Use sub as the partition key
         },
         UpdateExpression: "SET picture = :picture",
         ExpressionAttributeValues: {

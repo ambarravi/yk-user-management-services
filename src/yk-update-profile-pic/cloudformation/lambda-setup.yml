@@ -67,6 +67,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - cognito-idp:AdminUpdateUserAttributes
+                  - cognito-idp:AdminGetUser
                 Resource: "*"
               - Effect: Allow
                 Action:
