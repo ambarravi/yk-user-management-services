@@ -39,6 +39,7 @@ jobs:
           - yk-send-notifications
           - yk-update-profile-pic
           - yk-get-city-id
+          - yk-get-profile-pic
 
     steps:
       # Step 1: Checkout code
