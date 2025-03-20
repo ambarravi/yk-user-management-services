@@ -85,7 +85,7 @@ export const handler = async (event) => {
       new UpdateItemCommand({
         TableName: TABLE_NAME,
         Key: {
-          userId: { S: userId }, // Use sub as the partition key
+          UserID: { S: userId }, // Use sub as the partition key
         },
         UpdateExpression: "SET picture = :picture",
         ExpressionAttributeValues: {
