@@ -38,6 +38,7 @@ Resources:
         Variables:
           S3_BUCKET_NAME: !Sub "tikto-orgnizer-${StageName}"
           USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
+          DYNAMODB_TABLE_NAME: "UsersTable"
 
       Code:
         ZipFile: |
