@@ -49,6 +49,7 @@ export const handler = async (event) => {
           CityName: { S: profileData.cityName },
           State: { S: profileData.state || "" },
           CreatedAt: { S: new Date().toISOString() },
+          CreatedBy: { S: username },
         },
       };
       console.log("Insert city params:", JSON.stringify(cityInsertParams));
@@ -98,6 +99,8 @@ export const handler = async (event) => {
             City: { S: profileData.cityName.toLowerCase() },
             CityID: { S: profileData.cityID },
             University: { S: collegeName }, // Default to same as Name
+            CreatedAt: { S: new Date().toISOString() },
+            CreatedBy: { S: username },
           },
         };
         console.log(
