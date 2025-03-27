@@ -31,6 +31,25 @@ export const handler = async (event) => {
 
     console.log("Existing record:", existingRecord);
 
+    if (existingRecord && existingRecord.collegeID) {
+      const collegeGetParams = {
+        TableName: "College",
+        Key: {
+          CollegeID: {
+            S: existingRecord.collegeID,
+          },
+        },
+      };
+
+      const collegeRecord = await dynamoDBClient.send(
+        new GetItemCommand(collegeGetParams)
+      );
+    }
+    console.log("CollegeRecord", collegeRecord);
+    if (collegeRecord && collegeRecord.Item.Name) {
+      existingRecord.collegeName = collegeRecord.Item.CollegeName;
+    }
+
     return {
       statusCode: 200,
       headers: {

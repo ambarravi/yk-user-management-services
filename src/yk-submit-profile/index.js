@@ -59,6 +59,10 @@ export const handler = async (event) => {
 
     console.log("Presigned URL:", presignedUrl);
 
+    // Convert associatedCollegeUniversity from string to boolean
+    const associatedCollegeUniversity =
+      profileData.associatedCollegeUniversity === "Yes";
+
     if (existingRecord.Item) {
       if (existingRecord.Item.logoPath && !logoFileName) {
         logoPath = existingRecord.Item.logoPath.S;
@@ -78,9 +82,10 @@ export const handler = async (event) => {
               termsAccepted = :termsAccepted,
               cityID = :cityID,
               cityName = :cityName,
+              state = :state,
               collegeID = :collegeID,
               address = :address,
-              associatedCollegeUniversity =:associatedCollegeUniversity,
+              associatedCollegeUniversity = :associatedCollegeUniversity,
               logoPath = :logoPath,
               updatedAt = :updatedAt            
         `,
@@ -93,24 +98,22 @@ export const handler = async (event) => {
           ":aboutOrganization": { S: profileData.aboutOrganization },
           ":termsAccepted": { BOOL: profileData.termsAccepted },
           ":cityID": { S: profileData.cityID },
-          ":cityName": { S: profileData.venueCityName },
+          ":cityName": { S: profileData.cityName }, // Changed from venueCityName
+          ":state": { S: profileData.state || "" }, // Added state
           ":collegeID": profileData.collegeID
             ? { S: profileData.collegeID }
             : { S: "" },
           ":address": { S: profileData.address },
-          ":associatedCollegeUniversity": {
-            BOOL: profileData.associatedCollegeUniversity,
-          },
-
+          ":associatedCollegeUniversity": { BOOL: associatedCollegeUniversity },
           ":logoPath": { S: logoPath },
           ":updatedAt": { S: new Date().toISOString() },
         },
       };
-      console.log(updateParams);
+      console.log("Update params:", JSON.stringify(updateParams));
       await dynamoDBClient.send(new UpdateItemCommand(updateParams));
       console.log("Record updated successfully.");
     } else {
-      const eventNummber = 2;
+      const eventNumber = 2;
       const insertParams = {
         TableName: TABLE,
         Item: {
@@ -123,20 +126,19 @@ export const handler = async (event) => {
           aboutOrganization: { S: profileData.aboutOrganization },
           termsAccepted: { BOOL: profileData.termsAccepted },
           cityID: { S: profileData.cityID },
-          cityName: { S: profileData.venueCityName },
+          cityName: { S: profileData.cityName }, // Changed from venueCityName
+          state: { S: profileData.state || "" }, // Added state
           collegeID: profileData.collegeID
             ? { S: profileData.collegeID }
             : { S: "" },
           address: { S: profileData.address },
-          associatedCollegeUniversity: {
-            BOOL: profileData.associatedCollegeUniversity,
-          },
+          associatedCollegeUniversity: { BOOL: associatedCollegeUniversity },
           logoPath: { S: logoPath },
           createdAt: { S: new Date().toISOString() },
-          eventsAllowed: { N: eventNummber },
+          eventsAllowed: { N: eventNumber.toString() }, // Fixed typo: eventNummber -> eventNumber
         },
       };
-      console.log("insertParams", insertParams);
+      console.log("Insert params:", JSON.stringify(insertParams));
       await dynamoDBClient.send(new PutItemCommand(insertParams));
       console.log("Record inserted successfully.");
     }
