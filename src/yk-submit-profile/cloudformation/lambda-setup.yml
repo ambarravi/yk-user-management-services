@@ -22,6 +22,8 @@ Resources:
         Variables:
           ORGANIZER_TABLE: "Organizer"
           S3_BUCKET_NAME: !Sub "tikto-orgnizer-${StageName}"
+          COLLEGE_TABLE: "College"
+          CITY_TABLE: "City"
 
       Code:
         ZipFile: |
@@ -51,11 +53,12 @@ Resources:
               - Effect: Allow
                 Action:
                   - dynamodb:GetItem
-                  - dynamodb:Scan
                   - dynamodb:Query
                   - dynamodb:PutItem
-                  - dynamodb:UpdateItem
-                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College
 
               - Effect: Allow
                 Action:
