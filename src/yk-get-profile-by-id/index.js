@@ -29,8 +29,6 @@ export const handler = async (event) => {
       new GetItemCommand(getParams)
     );
 
-    console.log("Existing record:", existingRecord);
-
     if (existingRecord && existingRecord.Item.collegeID) {
       const collegeGetParams = {
         TableName: "College",
@@ -47,10 +45,10 @@ export const handler = async (event) => {
 
       console.log("CollegeRecord", collegeRecord);
       if (collegeRecord && collegeRecord.Item.Name) {
-        existingRecord.collegeName = collegeRecord.Item.CollegeName;
+        existingRecord.Item.collegeName = collegeRecord.Item.Name;
       }
     }
-
+    console.log("Existing record:", existingRecord);
     return {
       statusCode: 200,
       headers: {
