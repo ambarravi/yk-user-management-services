@@ -44,10 +44,11 @@ export const handler = async (event) => {
       const collegeRecord = await dynamoDBClient.send(
         new GetItemCommand(collegeGetParams)
       );
-    }
-    console.log("CollegeRecord", collegeRecord);
-    if (collegeRecord && collegeRecord.Item.Name) {
-      existingRecord.collegeName = collegeRecord.Item.CollegeName;
+
+      console.log("CollegeRecord", collegeRecord);
+      if (collegeRecord && collegeRecord.Item.Name) {
+        existingRecord.collegeName = collegeRecord.Item.CollegeName;
+      }
     }
 
     return {
