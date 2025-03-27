@@ -6,7 +6,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { v4 as uuidv4 } from "uuid"; // Add uuid package for generating CollegeID
+import { v4 as uuidv4 } from "uuid";
 
 const dynamoDBClient = new DynamoDBClient({ region: "eu-west-1" });
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
@@ -21,8 +21,8 @@ export const handler = async (event) => {
 
     const REGION = process.env.AWS_REGION;
     const ORGANIZER_TABLE = process.env.ORGANIZER_TABLE;
-    const CITY_TABLE = process.env.CITY_TABLE; // Add this environment variable
-    const COLLEGE_TABLE = process.env.COLLEGE_TABLE; // Add this environment variable
+    const CITY_TABLE = process.env.CITY_TABLE;
+    const COLLEGE_TABLE = process.env.COLLEGE_TABLE;
     const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
     console.log("ORGANIZER_TABLE:", ORGANIZER_TABLE);
@@ -80,15 +80,24 @@ export const handler = async (event) => {
       if (!collegeRecord.Item) {
         // College not found, create new college entry
         collegeID = uuidv4(); // Generate new UUID for CollegeID
+
+        // Generate Shortform: First letter of each word in college name
+        const collegeName = profileData.collegeID;
+        const shortform = collegeName
+          .split(/\s+/) // Split by whitespace
+          .map((word) => word.charAt(0)) // Take first letter of each word
+          .join("") // Join without separators
+          .toUpperCase(); // Convert to uppercase
+
         const collegeInsertParams = {
           TableName: COLLEGE_TABLE,
           Item: {
             CollegeID: { S: collegeID },
-            Name: { S: profileData.collegeID }, // Use the custom name as Name
-            Shortform: { S: profileData.collegeID.slice(0, 3).toLowerCase() }, // Simple shortform (first 3 letters)
+            Name: { S: collegeName },
+            Shortform: { S: shortform },
             City: { S: profileData.cityName.toLowerCase() },
             CityID: { S: profileData.cityID },
-            University: { S: profileData.collegeID }, // Default to same as Name
+            University: { S: collegeName }, // Default to same as Name
           },
         };
         console.log(
