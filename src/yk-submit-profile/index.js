@@ -110,6 +110,7 @@ export const handler = async (event) => {
       await dynamoDBClient.send(new UpdateItemCommand(updateParams));
       console.log("Record updated successfully.");
     } else {
+      const eventNummber = 2;
       const insertParams = {
         TableName: TABLE,
         Item: {
@@ -132,6 +133,7 @@ export const handler = async (event) => {
           },
           logoPath: { S: logoPath },
           createdAt: { S: new Date().toISOString() },
+          eventsAllowed: { N: eventNummber },
         },
       };
       console.log("insertParams", insertParams);

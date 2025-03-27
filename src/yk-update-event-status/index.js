@@ -39,6 +39,7 @@ export const handler = async (event) => {
     }
 
     const TABLE = process.env.EVENT_TABLE;
+    const ORGANIZER_TABLE = "Organizer"; // Add Organizer table name
     const QUEUE_URL = process.env.EVENT_PUBLISH_QUEUE_URL;
     if (!TABLE || !QUEUE_URL) {
       throw new Error(
@@ -97,23 +98,44 @@ export const handler = async (event) => {
     await dynamoDBClient.send(new UpdateItemCommand(updateParams));
     console.log(`Updated event ${eventID} to ${eventStatus}.`);
 
-    let eventDetails = {}; // Fixed syntax error
-    // If status is "Published", send to SQS
+    let eventDetails = {};
+    // If status is "Published", handle both SQS and Organizer update
     if (eventStatus === "Published") {
       eventDetails = {
         eventID: existingRecord.Item.EventID?.S,
         orgId: existingRecord.Item.OrgID?.S,
         eventTitle: existingRecord.Item.EventTitle?.S,
         dateTime: existingRecord.Item.EventDate?.S,
-        readableEventID: existingRecord.Item.ReadableEventID?.S, // Fixed typo
+        readableEventID: existingRecord.Item.ReadableEventID?.S,
         eventType: existingRecord.Item.EventType?.S,
       };
 
       if (!eventDetails.orgId) {
-        // Fixed runtime issue
         throw new Error("OrgId not found in event record.");
       }
 
+      // Increment publishedEvent count in Organizer table
+      const updateOrganizerParams = {
+        TableName: ORGANIZER_TABLE,
+        Key: {
+          OrganizerID: { S: eventDetails.orgId },
+        },
+        UpdateExpression:
+          "SET #publishedEvent = if_not_exists(#publishedEvent, :start) + :inc",
+        ExpressionAttributeNames: {
+          "#publishedEvent": "publishedEvent",
+        },
+        ExpressionAttributeValues: {
+          ":start": { N: "0" },
+          ":inc": { N: "1" },
+        },
+      };
+      await dynamoDBClient.send(new UpdateItemCommand(updateOrganizerParams));
+      console.log(
+        `Incremented publishedEvent count for organizer ${eventDetails.orgId}`
+      );
+
+      // Send to SQS (existing functionality)
       const sqsMessage = {
         QueueUrl: QUEUE_URL,
         MessageBody: JSON.stringify(eventDetails),
