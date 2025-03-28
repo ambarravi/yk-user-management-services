@@ -94,6 +94,7 @@ export const handler = async (event) => {
     const response = {
       ...eventDetails,
       OrgDetails: {
+        OrganizerName: orgDetails.OrganizerName,
         FollowerCount: followerCount,
         logoPath: logoPath,
         FollowFlag: followFlag,
