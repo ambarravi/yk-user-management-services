@@ -28,6 +28,7 @@ export const handler = async (event) => {
     const existingRecord = await dynamoDBClient.send(
       new GetItemCommand(getParams)
     );
+    console.log("existingRecord", existingRecord);
 
     if (existingRecord && existingRecord.Item.collegeID) {
       const collegeGetParams = {
