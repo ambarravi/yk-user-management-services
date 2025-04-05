@@ -36,7 +36,7 @@ export const handler = async (event) => {
       phoneNumber,
     } = event;
 
-    if (!userID || !city || !cityId || !state) {
+    if (!userID || !city || !cityId) {
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -147,15 +147,14 @@ export const handler = async (event) => {
     if (lastName) {
       updatedAttributes.push({ Name: "family_name", Value: lastName });
     }
-    if (finalCollegeDetails.CollegeID) {
-      updatedAttributes.push({
-        Name: "custom:College_ID",
-        Value: finalCollegeDetails.CollegeID,
-        status,
-      }); // Changed to custom:College_ID
-    } else if (existingCognitoAttributes["custom:College_ID"]) {
-      updatedAttributes.push({ Name: "custom:College_ID", Value: "" });
-    }
+    // if (finalCollegeDetails.CollegeID) {
+    //   updatedAttributes.push({
+    //     Name: "custom:College_ID",
+    //     Value: finalCollegeDetails.CollegeID,
+    //   }); // Changed to custom:College_ID
+    // } else if (existingCognitoAttributes["custom:College_ID"]) {
+    //   updatedAttributes.push({ Name: "custom:College_ID", Value: "" });
+    // }
 
     // Update Cognito if we have an identifier and attributes to update
     if (cognitoIdentifier && updatedAttributes.length > 0) {

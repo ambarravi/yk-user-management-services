@@ -1,16 +1,25 @@
 {
-  "isSignedIn": true,
-  "userName": "google_101695728987684403495",
-  "role": "",
-  "name": "समय की धारा",
+  "cityId": "1259229",
+  "currentRole": ",user",
+  "collegeDetails": {
+    "University": "Government College of Engineering",
+    "CollegeID": "c1cb54ea-74eb-4c4f-ba5c-7d387336a0c1",
+    "City": "pune",
+    "CreatedBy": "google_115751856932696261052",
+    "Shortform": "GCOE",
+    "CityID": "1259229",
+    "CreatedAt": "2025-03-31T07:10:27.159Z",
+    "Name": "Government College of Engineering"
+  },
+  "followingCount": 0,
+  "eventsAttended": 0,
+  "name": "Ravi",
+  "lastName": "Ambar",
+  "picture": "https://tikto-orgnizer-dev.s3.eu-west-1.amazonaws.com/private/72a504a4-4071-7079-a4d7-c7103a9c7fe2/profile-pic-1742534291979.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIA3ADUFV3DWEFBYFWF%2F20250405%2Feu-west-1%2Fs3%2Faws4_request&X-Amz-Date=20250405T140354Z&X-Amz-Expires=3600&X-Amz-Security-Token=IQoJb3JpZ2luX2VjELb%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCWV1LXdlc3QtMSJIMEYCIQDCSXBkfQlZmW9Sckh0n4ln%2BhkVazHU%2B8G6wocgHArDkwIhAK%2Bye75D0hS4%2FSyNEAXkdmJRF1zzRoccHfzX%2F3QiA9XzKvgCCC8QAxoMNzU2MTU3ODg2MTUxIgzwvgQmUdO3oaskWDEq1QIk3yllEynwzUcokUwI1FjgavrAnE27pMG7hdN27qMhMvGXwrstSoYrBOX1lZxZ8i8SIjNkuYFL7nrBePw3q1KdL8R7x0n8si%2BOErDf%2F8y%2FjharTiUR5O6ZtBE9DzIma0swI2%2FHpFCwpDSVDK%2FjByXfSO%2BOG4UVR5iwIZY7yyqBz2GNo4LLtBq5QE0G8TJmWoBeOQRX4VHeGQh9p9vLyHiVHBcI0dM6T1zRXn2w54CEQFMxC2ZOQuN%2BKxjIOeWVJZk1PX5i2F6blakBJe75yoPWp6f%2FCAkduBmVNm31Vkwi2y7EhR3BX%2F%2BGBNfkgUlE5bDJQWh5d9R542MkLmdnuRasHM7CRsRyDXIOfPzQ8XNkK42tH8QsjPCOBlKV2kMCGDNzxUiJ9jAAKwZ4bJtmqORnZBPzk7wxZjgYEZW2sH9SnMeY%2F6wDR%2Fdq5LSGSzpyOV%2FnZrAvxTDJ8MS%2FBjqdAcMyhmCDOIbxVEIAAofGnQeLfOLUgmchmGoGWRkNfwDq%2BodEVMtx7eu%2FMnHhwzmO4CSL0bVhPsITm9%2FIxcGD%2BsnKX4H6Xb3JWIHHssaSORma7p8Wzg3te4KvkhOnq%2B2JFsaSjgWlKhy05T19vsm0iS24YbsdmcbArYyAbURXVlru71xDkmjHzFLtCE1%2BHUMlb1EYtvJhgYS6P2tAyuw%3D&X-Amz-Signature=a1c3cf3bb6d879b7070aa3b48d67d707dc76ad6ba37c898089ef8482a7974cb1&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
   "city": "Pune",
-  "picture": "https://lh3.googleusercontent.com/a/ACg8ocKn5i1ZL3HNpXHUIOcji8zNGTsC23ufAc5VcHManfjDVsRYu80=s96-c",
-  "collegeDetails": {},
-  "tempRole": "user",
-  "lastName": "NA",
-  "email": "ravi.ambar.yt@gmail.com",
-  "userID": "92f574e4-f051-7048-4207-a0c1d6c706ae",
-  "currentRole": "",
-  "cityId": "01947387-3c14-7eef-8c12-a00c0c64d8d5",
-  "collegeId": "1"
+  "username": "google_115751856932696261052",
+  "phoneNumber": "+919860719197",
+  "userID": "google_115751856932696261052",
+  "collegeId": "c1cb54ea-74eb-4c4f-ba5c-7d387336a0c1",
+  "tempRole": "user"
 }
