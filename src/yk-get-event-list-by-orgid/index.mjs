@@ -43,7 +43,7 @@ export async function handler(event) {
       "#eventTitle": "EventTitle",
       "#eventDate": "EventDate",
       "#eventstatus": "EventStatus",
-      "#ticketsBooked": "TicketsBooked",
+      "#ticketsBooked": "SeatsBooked",
       "#seats": "Seats",
     },
     Limit: limit, // Pagination limit
@@ -66,7 +66,7 @@ export async function handler(event) {
       const itemsWithDefaults = unmarshalledItems.map((item) => ({
         ...item,
         Status: item.Status || "AwaitingApproval", // Default to "AwaitingApproval" if Status is not found
-        TicketsBooked: item.TicketsBooked || 0, // Default to 0 if TicketsBooked is not found
+        TicketsBooked: item.SeatsBooked || 0, // Default to 0 if TicketsBooked is not found
       }));
 
       console.log("Query succeeded:", itemsWithDefaults);

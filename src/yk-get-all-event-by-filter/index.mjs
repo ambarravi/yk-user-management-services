@@ -30,7 +30,7 @@ export async function handler(event) {
       "#eventTitle": "EventTitle",
       "#eventDate": "EventDate",
       "#eventStatus": "EventStatus",
-      "#ticketsBooked": "TicketsBooked",
+      "#ticketsBooked": "SeatsBooked",
       "#seats": "Seats",
     },
     Limit: limit, // Pagination limit
@@ -49,7 +49,7 @@ export async function handler(event) {
     const itemsWithDefaults = unmarshalledItems.map((item) => ({
       ...item,
       Status: item.EventStatus || "AwaitingApproval",
-      TicketsBooked: item.TicketsBooked || 0,
+      TicketsBooked: item.SeatsBooked || 0,
     }));
 
     return {
