@@ -40,6 +40,7 @@ jobs:
           - yk-update-profile-pic
           - yk-get-city-id
           - yk-get-profile-pic
+          - yk-event-reminders
 
     steps:
       # Step 1: Checkout code
