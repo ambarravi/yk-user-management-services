@@ -13,11 +13,15 @@ const expo = new Expo();
 
 const getTimeWindow = (hoursOffset) => {
   const now = new Date();
-  const targetTime = new Date(now.getTime() + hoursOffset * 60 * 60 * 1000);
+  const istOffsetMs = 5.5 * 60 * 60 * 1000; // IST = UTC + 5.5 hrs
+  const nowIST = new Date(now.getTime() + istOffsetMs);
+
+  const targetTime = new Date(nowIST.getTime() + hoursOffset * 60 * 60 * 1000);
   const startTime = new Date(
     targetTime.getTime() - 30 * 60 * 1000
   ).toISOString();
   const endTime = new Date(targetTime.getTime() + 30 * 60 * 1000).toISOString();
+
   return { startTime, endTime };
 };
 
