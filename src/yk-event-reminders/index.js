@@ -1,66 +1,49 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
-  QueryCommand,
   GetCommand,
+  QueryCommand,
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { Expo } from "expo-server-sdk";
-import { setTimeout } from "timers/promises";
 
-// Initialize AWS and Expo clients
-const dynamoDBClient = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(dynamoDBClient);
+const client = new DynamoDBClient();
+const docClient = DynamoDBDocumentClient.from(client);
 const expo = new Expo();
 
-// Configuration
-const BATCH_SIZE = 100; // Expo recommends max 100 notifications per request
-const BATCH_DELAY_MS = 200; // Delay between batches to avoid rate limiting (600/sec = ~1.67ms per notification)
-
-// Utility to get current UTC time and format for DynamoDB
 const getTimeWindow = (hoursOffset) => {
   const now = new Date();
   const targetTime = new Date(now.getTime() + hoursOffset * 60 * 60 * 1000);
-  const startTime = new Date(targetTime.getTime() - 5 * 60 * 1000)
-    .toISOString()
-    .slice(0, 16);
-  const endTime = new Date(targetTime.getTime() + 5 * 60 * 1000)
-    .toISOString()
-    .slice(0, 16);
+  const startTime = new Date(
+    targetTime.getTime() - 30 * 60 * 1000
+  ).toISOString();
+  const endTime = new Date(targetTime.getTime() + 30 * 60 * 1000).toISOString();
   return { startTime, endTime };
 };
 
-// Check if notification was already sent
-const checkNotificationLog = async (notificationId) => {
-  const command = new GetCommand({
-    TableName: "NotificationLogs",
-    Key: { NotificationID: notificationId },
-  });
-  const response = await docClient.send(command);
-  return !!response.Item;
+const getBookings = async (reminderType) => {
+  const hoursOffset = reminderType === "6_hour" ? 6 : 1;
+  const { startTime, endTime } = getTimeWindow(hoursOffset);
+  try {
+    const queryCommand = new QueryCommand({
+      TableName: "BookingDetails",
+      IndexName: "EventDateIndex",
+      KeyConditionExpression: "EventDate BETWEEN :start AND :end",
+      FilterExpression: "BookingStatus = :status",
+      ExpressionAttributeValues: {
+        ":start": startTime.slice(0, 16),
+        ":end": endTime.slice(0, 16),
+        ":status": "Completed",
+      },
+    });
+    const response = await docClient.send(queryCommand);
+    return response.Items || [];
+  } catch (error) {
+    console.error("Error querying bookings:", error);
+    return [];
+  }
 };
 
-// Log sent notification
-const logNotification = async (
-  notificationId,
-  bookingId,
-  userId,
-  reminderType
-) => {
-  const command = new PutCommand({
-    TableName: "NotificationLogs",
-    Item: {
-      NotificationID: notificationId,
-      BookingID: bookingId,
-      UserID: userId,
-      ReminderType: reminderType,
-      SentAt: Math.floor(Date.now() / 1000),
-    },
-  });
-  await docClient.send(command);
-};
-
-// Fetch event details
 const getEventDetails = async (eventId) => {
   try {
     const command = new GetCommand({
@@ -78,85 +61,104 @@ const getEventDetails = async (eventId) => {
   }
 };
 
-// Fetch user details
 const getUserDetails = async (userId) => {
-  const command = new GetCommand({
-    TableName: "UsersTable",
-    Key: { UserID: userId },
-  });
-  const response = await docClient.send(command);
-  return response.Item;
-};
-
-// Fetch push token
-const getPushToken = async (userId) => {
-  const command = new GetCommand({
-    TableName: "TiktoPushTokens",
-    Key: { userId },
-  });
-  const response = await docClient.send(command);
-  return response.Item?.token;
-};
-
-// Send batched notifications
-const sendNotifications = async (messages) => {
-  const chunks = [];
-  for (let i = 0; i < messages.length; i += BATCH_SIZE) {
-    chunks.push(messages.slice(i, i + BATCH_SIZE));
+  try {
+    const command = new GetCommand({
+      TableName: "UserTable",
+      Key: { UserID: userId },
+    });
+    const response = await docClient.send(command);
+    return response.Item;
+  } catch (error) {
+    console.error(`Error fetching user ${userId}:`, error);
+    return null;
   }
+};
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
+const getPushToken = async (userId) => {
+  try {
+    const command = new GetCommand({
+      TableName: "TiktoPushTokens",
+      Key: { userId },
+    });
+    const response = await docClient.send(command);
+    return response.Item?.token;
+  } catch (error) {
+    console.error(`Error fetching push token for user ${userId}:`, error);
+    return null;
+  }
+};
+
+const checkNotificationLog = async (notificationId) => {
+  try {
+    const command = new GetCommand({
+      TableName: "NotificationLogs",
+      Key: { NotificationID: notificationId },
+    });
+    const response = await docClient.send(command);
+    return !!response.Item;
+  } catch (error) {
+    console.error(`Error checking notification log ${notificationId}:`, error);
+    return false;
+  }
+};
+
+const logNotification = async (
+  notificationId,
+  bookingId,
+  userId,
+  reminderType
+) => {
+  try {
+    const command = new PutCommand({
+      TableName: "NotificationLogs",
+      Item: {
+        NotificationID: notificationId,
+        BookingID: bookingId,
+        UserID: userId,
+        ReminderType: reminderType,
+        Timestamp: new Date().toISOString(),
+      },
+    });
+    await docClient.send(command);
+  } catch (error) {
+    console.error(`Error logging notification ${notificationId}:`, error);
+  }
+};
+
+const sendNotifications = async (messages) => {
+  const chunks = expo.chunkPushNotifications(messages);
+  for (const chunk of chunks) {
     try {
       const tickets = await expo.sendPushNotificationsAsync(chunk);
-      console.log(`Batch ${i + 1}/${chunks.length} sent:`, tickets);
-
-      // Handle errors (e.g., invalid tokens)
       for (const ticket of tickets) {
         if (ticket.status === "error") {
           console.error("Notification error:", ticket.message, ticket.details);
-          // Optionally remove invalid tokens from TiktoPushTokens
+          if (ticket.details?.error === "DeviceNotRegistered") {
+            console.log("Consider removing invalid push token");
+          }
         }
       }
+      await new Promise((resolve) => setTimeout(resolve, 200));
     } catch (error) {
-      console.error(`Error sending batch ${i + 1}:`, error);
-    }
-    if (i < chunks.length - 1) {
-      await setTimeout(BATCH_DELAY_MS); // Delay to avoid rate limiting
+      console.error("Error sending notifications:", error);
     }
   }
 };
 
-// Main Lambda handler
 export const handler = async (event) => {
+  const reminderType = event.reminder_type;
+  if (!["6_hour", "1_hour"].includes(reminderType)) {
+    console.error("Invalid reminder_type:", reminderType);
+    return { statusCode: 400, body: "Invalid reminder_type" };
+  }
+
   try {
-    const reminderType = event.reminder_type || "6_hour";
-    const hoursOffset = reminderType === "6_hour" ? 6 : 1;
-    const { startTime, endTime } = getTimeWindow(hoursOffset);
-
-    console.log(
-      `Processing ${reminderType} reminders for events between ${startTime} and ${endTime}`
-    );
-
-    // Query bookings for the time window
-    const queryCommand = new QueryCommand({
-      TableName: "BookingDetails",
-      IndexName: "EventDateIndex",
-      KeyConditionExpression: "EventDate BETWEEN :start AND :end",
-      FilterExpression: "BookingStatus = :status",
-      ExpressionAttributeValues: {
-        ":start": startTime,
-        ":end": endTime,
-        ":status": "Completed",
-      },
-    });
-
-    const bookings = (await docClient.send(queryCommand)).Items || [];
-    console.log(`Found ${bookings.length} bookings`);
+    const bookings = await getBookings(reminderType);
+    console.log(`Found ${bookings.length} bookings for ${reminderType}`);
 
     const messages = [];
     const logs = [];
-
     for (const booking of bookings) {
       const {
         BookingID: bookingId,
@@ -165,13 +167,11 @@ export const handler = async (event) => {
       } = booking;
       const notificationId = `${bookingId}_${reminderType}`;
 
-      // Skip if notification was already sent
       if (await checkNotificationLog(notificationId)) {
         console.log(`Skipping notification ${notificationId}: already sent`);
         continue;
       }
 
-      // Fetch event, user, and push token
       const [event, user, pushToken] = await Promise.all([
         getEventDetails(eventId),
         getUserDetails(userId),
@@ -180,12 +180,11 @@ export const handler = async (event) => {
 
       if (!event || !user || !pushToken || !Expo.isExpoPushToken(pushToken)) {
         console.warn(
-          `Skipping booking ${bookingId}: missing data or invalid token`
+          `Skipping booking ${bookingId}: unpublished event or missing data`
         );
         continue;
       }
 
-      // Construct notification
       const message = {
         to: pushToken,
         title: `Upcoming Event: ${event.EventTitle}`,
@@ -199,32 +198,22 @@ export const handler = async (event) => {
       logs.push({ notificationId, bookingId, userId, reminderType });
     }
 
-    // Send notifications in batches
     if (messages.length > 0) {
       console.log(`Sending ${messages.length} notifications`);
       await sendNotifications(messages);
-
-      // Log notifications
       await Promise.all(
         logs.map(({ notificationId, bookingId, userId, reminderType }) =>
           logNotification(notificationId, bookingId, userId, reminderType)
         )
       );
-    } else {
-      console.log("No notifications to send");
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        message: `${messages.length} notifications processed`,
-      }),
+      body: `Processed ${messages.length} notifications`,
     };
   } catch (error) {
-    console.error("Error:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: "Internal server error" }),
-    };
+    console.error("Handler error:", error);
+    return { statusCode: 500, body: "Internal server error" };
   }
 };
