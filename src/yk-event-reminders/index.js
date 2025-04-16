@@ -24,21 +24,28 @@ const getTimeWindow = (hoursOffset) => {
 const getBookings = async (reminderType) => {
   const hoursOffset = reminderType === "6_hour" ? 6 : 1;
   const { startTime, endTime } = getTimeWindow(hoursOffset);
-  const start = startTime.slice(0, 16); // Changed to match "2025-04-16T10:00"
+
+  // DynamoDB ISO string format precision for sort keys (e.g. "2025-04-16T10:00")
+  const start = startTime.slice(0, 16);
   const end = endTime.slice(0, 16);
-  console.log(`Querying EventDate BETWEEN ${start} AND ${end}`);
+
+  console.log(
+    `Querying BookingStatus = "Completed" AND EventDate BETWEEN ${start} AND ${end}`
+  );
+
   try {
     const queryCommand = new QueryCommand({
       TableName: "BookingDetails",
-      IndexName: "EventDateIndex",
-      KeyConditionExpression: "EventDate BETWEEN :start AND :end",
-      FilterExpression: "BookingStatus = :status",
+      IndexName: "BookingStatus-EventDate-index", // Use your actual GSI name
+      KeyConditionExpression:
+        "BookingStatus = :status AND EventDate BETWEEN :start AND :end",
       ExpressionAttributeValues: {
+        ":status": "Completed",
         ":start": start,
         ":end": end,
-        ":status": "Completed",
       },
     });
+
     const response = await docClient.send(queryCommand);
     console.log(`Found ${response.Items?.length || 0} bookings`);
     return response.Items || [];
