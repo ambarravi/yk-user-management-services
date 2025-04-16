@@ -81,7 +81,7 @@ const getEventDetails = async (eventId) => {
 // Fetch user details
 const getUserDetails = async (userId) => {
   const command = new GetCommand({
-    TableName: "UserTable",
+    TableName: "UsersTable",
     Key: { UserID: userId },
   });
   const response = await docClient.send(command);
