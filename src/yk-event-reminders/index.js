@@ -182,7 +182,9 @@ export const handler = async (event) => {
         console.log(`Skipping notification ${notificationId}: already sent`);
         continue;
       }
-
+      console.log("userId", userId);
+      console.log("bookingId", bookingId);
+      console.log("eventId", eventId);
       const [event, user, pushToken] = await Promise.all([
         getEventDetails(eventId),
         getUserDetails(userId),
