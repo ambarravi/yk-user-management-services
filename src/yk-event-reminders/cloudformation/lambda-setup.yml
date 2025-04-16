@@ -66,8 +66,8 @@ Resources:
   SixHourReminderRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Trigger Lambda for 6-hour event reminders every hour from 7 AM to 7 PM IST
-      ScheduleExpression: cron(0 1-13 * * ? *)
+      Description: Trigger Lambda for 6-hour event reminders every 5 minutes
+      ScheduleExpression: rate(5 minutes)
       State: ENABLED
       Targets:
         - Arn: !GetAtt EventReminderLambda.Arn
@@ -78,8 +78,8 @@ Resources:
   OneHourReminderRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Trigger Lambda for 1-hour event reminders every hour from 7 AM to 7 PM IST
-      ScheduleExpression: cron(0 1-13 * * ? *)
+      Description: Trigger Lambda for 1-hour event reminders every 5 minutes
+      ScheduleExpression: rate(5 minutes)
       State: ENABLED
       Targets:
         - Arn: !GetAtt EventReminderLambda.Arn
