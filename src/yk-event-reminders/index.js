@@ -36,7 +36,7 @@ const getBookings = async (reminderType) => {
   try {
     const queryCommand = new QueryCommand({
       TableName: "BookingDetails",
-      IndexName: "BookingStatus-EventDate-index", // Use your actual GSI name
+      IndexName: "BookingStatus-index", // Use your actual GSI name
       KeyConditionExpression:
         "BookingStatus = :status AND EventDate BETWEEN :start AND :end",
       ExpressionAttributeValues: {
