@@ -62,12 +62,20 @@ const logNotification = async (
 
 // Fetch event details
 const getEventDetails = async (eventId) => {
-  const command = new GetCommand({
-    TableName: "EventDetails",
-    Key: { EventID: eventId },
-  });
-  const response = await docClient.send(command);
-  return response.Item;
+  try {
+    const command = new GetCommand({
+      TableName: "EventDetails",
+      Key: { EventID: eventId },
+    });
+    const response = await docClient.send(command);
+    if (response.Item && response.Item.EventStatus === "Published") {
+      return response.Item;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching event ${eventId}:`, error);
+    return null;
+  }
 };
 
 // Fetch user details
@@ -132,7 +140,7 @@ export const handler = async (event) => {
 
     // Query bookings for the time window
     const queryCommand = new QueryCommand({
-      TableName: "Booking",
+      TableName: "BookingDetails",
       IndexName: "EventDateIndex",
       KeyConditionExpression: "EventDate BETWEEN :start AND :end",
       FilterExpression: "BookingStatus = :status",
