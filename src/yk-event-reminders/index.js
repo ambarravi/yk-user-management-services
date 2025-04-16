@@ -79,7 +79,7 @@ const getEventDetails = async (eventId) => {
 const getUserDetails = async (userId) => {
   try {
     const command = new GetCommand({
-      TableName: "UserTable",
+      TableName: "UsersTable",
       Key: { UserID: userId },
     });
     const response = await docClient.send(command);
@@ -92,12 +92,24 @@ const getUserDetails = async (userId) => {
 
 const getPushToken = async (userId) => {
   try {
-    const command = new GetCommand({
+    const command = new QueryCommand({
       TableName: "TiktoPushTokens",
-      Key: { userId },
+      KeyConditionExpression: "userId = :uid",
+      ExpressionAttributeValues: {
+        ":uid": userId,
+      },
+      Limit: 1,
+      ScanIndexForward: false, // sorts in descending order by token (assuming timestamped or sorted)
     });
+
     const response = await docClient.send(command);
-    return response.Item?.token;
+    const token = response.Items?.[0]?.token;
+
+    if (!token) {
+      console.warn(`No push token found for user ${userId}`);
+    }
+
+    return token;
   } catch (error) {
     console.error(`Error fetching push token for user ${userId}:`, error);
     return null;
