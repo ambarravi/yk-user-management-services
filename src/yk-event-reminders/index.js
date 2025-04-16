@@ -24,6 +24,9 @@ const getTimeWindow = (hoursOffset) => {
 const getBookings = async (reminderType) => {
   const hoursOffset = reminderType === "6_hour" ? 6 : 1;
   const { startTime, endTime } = getTimeWindow(hoursOffset);
+  const start = startTime.slice(0, 16); // Changed to match "2025-04-16T10:00"
+  const end = endTime.slice(0, 16);
+  console.log(`Querying EventDate BETWEEN ${start} AND ${end}`);
   try {
     const queryCommand = new QueryCommand({
       TableName: "BookingDetails",
@@ -31,12 +34,13 @@ const getBookings = async (reminderType) => {
       KeyConditionExpression: "EventDate BETWEEN :start AND :end",
       FilterExpression: "BookingStatus = :status",
       ExpressionAttributeValues: {
-        ":start": startTime.slice(0, 16),
-        ":end": endTime.slice(0, 16),
+        ":start": start,
+        ":end": end,
         ":status": "Completed",
       },
     });
     const response = await docClient.send(queryCommand);
+    console.log(`Found ${response.Items?.length || 0} bookings`);
     return response.Items || [];
   } catch (error) {
     console.error("Error querying bookings:", error);
