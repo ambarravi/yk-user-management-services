@@ -220,7 +220,11 @@ export const handler = async (event) => {
         body: `Your event starts in ${reminderType.replace("_", " ")} at ${
           event.EventDate
         }!`,
-        data: { booking_id: bookingId, event_id: eventId },
+        data: {
+          booking_id: bookingId,
+          event_id: eventId,
+          screen: "ManageTicketScreen",
+        },
       };
 
       messages.push(message);
