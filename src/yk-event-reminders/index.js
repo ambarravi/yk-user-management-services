@@ -214,16 +214,27 @@ export const handler = async (event) => {
         continue;
       }
 
+      const eventDateTime = new Date(event.EventDate || event.EventDate.S); // or event.EventDate if it's already a string
+
+      const formattedEventDate = eventDateTime.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+      });
+
+      const formattedEventTime = eventDateTime.toLocaleTimeString("en-IN", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
       const message = {
         to: pushToken,
-        title: `Upcoming Event: ${event.EventTitle}`,
-        body: `Your event starts in ${reminderType.replace("_", " ")} at ${
-          event.EventDate
-        }!`,
+        title: `📢 Upcoming Event: ${event.EventTitle}`,
+        body: `Get ready! Your event is happening on ${formattedEventDate} at ${formattedEventTime}.`,
         data: {
           booking_id: bookingId,
           event_id: eventId,
           screen: "ManageTicketScreen",
+          //  image: event.EventImages?.[0]?.S || "",
         },
       };
 
