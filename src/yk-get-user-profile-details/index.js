@@ -50,7 +50,9 @@ export const handler = async (event) => {
       city: result.Item.City?.S || "",
       cityId: result.Item.CityID?.S || "",
       role: result.Item.role?.S || "",
-      phoneNumber: result.Item.PhoneNumber?.S || "",
+      phoneNumber: result.Item.PhoneNumber?.S
+        ? result.Item.PhoneNumber.S.replace(/^\+91/, "")
+        : "",
       collegeDetails: result.Item.collegeDetails?.M
         ? {
             city: result.Item.collegeDetails.M.City?.S || "",

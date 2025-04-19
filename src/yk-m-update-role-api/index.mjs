@@ -139,10 +139,11 @@ export const handler = async (event) => {
     updatedAttributes.push({ Name: "custom:City", Value: city });
     updatedAttributes.push({ Name: "custom:State", Value: state });
     if (phoneNumber) {
+      let updatedPhone;
       if (phoneNumber && !phoneNumber.startsWith("+91")) {
-        phoneNumber = "+91" + phoneNumber.replace(/^0+/, "").slice(-10);
+        updatedPhone = "+91" + phoneNumber.replace(/^0+/, "").slice(-10);
       }
-      updatedAttributes.push({ Name: "phone_number", Value: phoneNumber });
+      updatedAttributes.push({ Name: "phone_number", Value: updatedPhone });
     }
     if (name) {
       updatedAttributes.push({ Name: "given_name", Value: name });
