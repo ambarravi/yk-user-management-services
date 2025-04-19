@@ -111,6 +111,13 @@ export const handler = async (event) => {
   let interCollegeEvents = [];
   let privateCollegeEvents = [];
 
+  const getISTISOString = () => {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
+    const istTime = new Date(now.getTime() + istOffset);
+    return istTime.toISOString().slice(0, 16); // Keep till minutes like '2025-04-19T11:55'
+  };
+
   if (SearchQuery) {
     searchResults = await searchEvents(SearchQuery);
   }
@@ -119,7 +126,7 @@ export const handler = async (event) => {
       keyexpression: "#CityID = :cityId AND #EventDate > :currentDate", // Use placeholders
       values: {
         ":cityId": { S: CityID },
-        ":currentDate": { S: new Date().toISOString() },
+        ":currentDate": { S: getISTISOString() },
       },
       names: {
         "#CityID": "CityID",
@@ -143,7 +150,7 @@ export const handler = async (event) => {
       keyexpression: "#CollegeID = :collegeId AND #EventDate > :currentDate",
       values: {
         ":collegeId": { S: CollegeID },
-        ":currentDate": { S: new Date().toISOString() },
+        ":currentDate": { S: getISTISOString() },
       },
       names: {
         "#CollegeID": "CollegeID",
