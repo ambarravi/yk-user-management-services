@@ -70,7 +70,7 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:ListBucket
-                Resource: !Sub arn:aws:s3:::tiktie-notifications/tiktie-firebase-adminsdk-fbsvc-7c2642a541.json
+                Resource: !Sub arn:aws:s3:::tiktie-notifications/tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json
               - Effect: Allow
                 Action:
                   - s3:ListBucket

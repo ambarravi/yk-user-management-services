@@ -173,11 +173,12 @@ export const handler = async (event) => {
   try {
     const command = new GetObjectCommand({
       Bucket: "tiktie-notifications",
-      Key: "tiktie-firebase-adminsdk-fbsvc-7c2642a541.json",
+      Key: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json",
     });
     const response = await s3Client.send(command);
     const serviceAccountData = await response.Body.transformToString();
     serviceAccount = JSON.parse(serviceAccountData);
+    console.log(JSON.stringify(serviceAccount));
   } catch (error) {
     console.error(
       "Failed to retrieve or parse service account from S3:",
