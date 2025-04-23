@@ -1,4 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -8,29 +9,22 @@ import {
 import admin from "firebase-admin";
 
 const client = new DynamoDBClient();
+const ssm = new SSMClient({ region: process.env.region });
 const docClient = DynamoDBDocumentClient.from(client);
-if (!admin.apps.length) {
-  console.log(process.env.FB_PROJECT_ID);
-  console.log(process.env.FB_CLIENT_EMAIL);
-  console.log(process.env.FB_PRIVATE_KEY);
 
-  let parsered = JSON.parse(`"${process.env.FB_PRIVATE_KEY}"`);
-  const privateKey = JSON.parse(`"${process.env.FB_PRIVATE_KEY}"`);
-
-  console.log(
-    "Private Key:\n",
-    process.env.FB_PRIVATE_KEY?.replace(/\\n/g, "\n")
-  );
-  console.log("parsered", JSON.parse(`"${process.env.FB_PRIVATE_KEY}"`));
-
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FB_PROJECT_ID,
-      clientEmail: process.env.FB_CLIENT_EMAIL,
-      privateKey: process.env.FB_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }),
+const getPrivateKey = async () => {
+  const command = new GetParameterCommand({
+    Name: "firebase_tiktie_dev",
+    WithDecryption: true,
   });
-}
+
+  const response = await ssm.send(command);
+  const rawKey = response.Parameter.Value;
+
+  const privateKey = rawKey.replace(/\\n/g, "\n");
+
+  return privateKey;
+};
 
 const getTimeWindow = (hoursOffset) => {
   const now = new Date();
@@ -186,6 +180,19 @@ const sendNotifications = async (messages) => {
 };
 
 export const handler = async (event) => {
+  const prvkey = await getPrivateKey();
+
+  console.log("prvkey", prvkey);
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FB_PROJECT_ID,
+        clientEmail: process.env.FB_CLIENT_EMAIL,
+        privateKey: prvkey,
+      }),
+    });
+  }
+
   const reminderType = event.reminder_type;
   if (!["6_hour", "1_hour"].includes(reminderType)) {
     console.error("Invalid reminder_type:", reminderType);
