@@ -69,6 +69,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:GetObject
+                  - s3:ListBucket
                 Resource: !Sub arn:aws:s3:::tiktie-notifications/tiktie-firebase-adminsdk-fbsvc-7c2642a541.json
 
   # EventBridge Rule: 6-Hour Reminders
