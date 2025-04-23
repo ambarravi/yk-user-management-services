@@ -10,6 +10,18 @@ import admin from "firebase-admin";
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
 if (!admin.apps.length) {
+  console.log(process.env.FB_PROJECT_ID);
+  console.log(process.env.FB_CLIENT_EMAIL);
+  console.log(process.env.FB_PRIVATE_KEY);
+
+  let parsered = JSON.parse(`"${process.env.FB_PRIVATE_KEY}"`);
+
+  console.log(
+    "Private Key:\n",
+    process.env.FB_PRIVATE_KEY?.replace(/\\n/g, "\n")
+  );
+  console.log("parsered", process.env.FB_PRIVATE_KEY);
+
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FB_PROJECT_ID,
