@@ -5,11 +5,11 @@ import {
   QueryCommand,
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { Expo } from "expo-server-sdk";
+import * as admin from "firebase-admin";
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
-const expo = new Expo();
+admin.initializeApp(); // Initialize Firebase Admin SDK
 
 const getTimeWindow = (hoursOffset) => {
   const now = new Date();
@@ -29,7 +29,6 @@ const getBookings = async (reminderType) => {
   const hoursOffset = reminderType === "6_hour" ? 6 : 1;
   const { startTime, endTime } = getTimeWindow(hoursOffset);
 
-  // DynamoDB ISO string format precision for sort keys (e.g. "2025-04-16T10:00")
   const start = startTime.slice(0, 16);
   const end = endTime.slice(0, 16);
 
@@ -40,7 +39,7 @@ const getBookings = async (reminderType) => {
   try {
     const queryCommand = new QueryCommand({
       TableName: "BookingDetails",
-      IndexName: "BookingStatus-index", // Use your actual GSI name
+      IndexName: "BookingStatus-index",
       KeyConditionExpression:
         "BookingStatus = :status AND EventDate BETWEEN :start AND :end",
       ExpressionAttributeValues: {
@@ -99,7 +98,7 @@ const getPushToken = async (userId) => {
         ":uid": userId,
       },
       Limit: 1,
-      ScanIndexForward: false, // sorts in descending order by token (assuming timestamped or sorted)
+      ScanIndexForward: false,
     });
 
     const response = await docClient.send(command);
@@ -153,22 +152,14 @@ const logNotification = async (
   }
 };
 
+// Send notifications via FCM (Firebase Cloud Messaging)
 const sendNotifications = async (messages) => {
-  const chunks = expo.chunkPushNotifications(messages);
-  for (const chunk of chunks) {
+  for (const message of messages) {
     try {
-      const tickets = await expo.sendPushNotificationsAsync(chunk);
-      for (const ticket of tickets) {
-        if (ticket.status === "error") {
-          console.error("Notification error:", ticket.message, ticket.details);
-          if (ticket.details?.error === "DeviceNotRegistered") {
-            console.log("Consider removing invalid push token");
-          }
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      const response = await admin.messaging().send(message);
+      console.log("Notification sent successfully:", response);
     } catch (error) {
-      console.error("Error sending notifications:", error);
+      console.error("Error sending notification:", error);
     }
   }
 };
@@ -198,23 +189,19 @@ export const handler = async (event) => {
         console.log(`Skipping notification ${notificationId}: already sent`);
         continue;
       }
-      console.log("userId", userId);
-      console.log("bookingId", bookingId);
-      console.log("eventId", eventId);
+
       const [event, user, pushToken] = await Promise.all([
         getEventDetails(eventId),
         getUserDetails(userId),
         getPushToken(userId),
       ]);
 
-      if (!event || !user || !pushToken || !Expo.isExpoPushToken(pushToken)) {
-        console.warn(
-          `Skipping booking ${bookingId}: unpublished event or missing data`
-        );
+      if (!event || !user || !pushToken) {
+        console.warn(`Skipping booking ${bookingId}: missing data`);
         continue;
       }
 
-      const eventDateTime = new Date(event.EventDate || event.EventDate.S); // or event.EventDate if it's already a string
+      const eventDateTime = new Date(event.EventDate || event.EventDate.S);
 
       const formattedEventDate = eventDateTime.toLocaleDateString("en-IN", {
         day: "numeric",
@@ -226,15 +213,17 @@ export const handler = async (event) => {
         minute: "2-digit",
         hour12: true,
       });
+
       const message = {
-        to: pushToken,
-        title: `📢 Upcoming Event: ${event.EventTitle}`,
-        body: `Get ready! Your event is happening on ${formattedEventDate} at ${formattedEventTime}.`,
+        token: pushToken,
+        notification: {
+          title: `📢 Upcoming Event: ${event.EventTitle}`,
+          body: `Get ready! Your event is happening on ${formattedEventDate} at ${formattedEventTime}.`,
+        },
         data: {
           booking_id: bookingId,
           event_id: eventId,
           screen: "ManageTicketScreen",
-          //  image: event.EventImages?.[0]?.S || "",
         },
       };
 
