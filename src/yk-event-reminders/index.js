@@ -1,4 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -6,14 +7,9 @@ import {
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import admin from "firebase-admin";
-import fs from "fs";
-import path from "path";
 
-// Path to the service account JSON file in the Lambda deployment package
-const serviceAccountPath = path.join(
-  __dirname,
-  "tiktie-firebase-adminsdk-fbsvc-7c2642a541.json"
-);
+// Initialize S3 client
+const s3Client = new S3Client();
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -172,16 +168,24 @@ const sendNotifications = async (messages) => {
 };
 
 export const handler = async (event) => {
-  // Read and parse the service account JSON file
+  // Retrieve and parse the service account JSON from S3
   let serviceAccount;
   try {
-    const serviceAccountData = fs.readFileSync(serviceAccountPath, "utf8");
+    const command = new GetObjectCommand({
+      Bucket: "tiktie-notifications",
+      Key: "tiktie-firebase-adminsdk-fbsvc-7c2642a541.json",
+    });
+    const response = await s3Client.send(command);
+    const serviceAccountData = await response.Body.transformToString();
     serviceAccount = JSON.parse(serviceAccountData);
   } catch (error) {
-    console.error("Failed to read or parse service account file:", error);
+    console.error(
+      "Failed to retrieve or parse service account from S3:",
+      error
+    );
     return {
       statusCode: 500,
-      body: "Failed to initialize Firebase: Invalid service account file",
+      body: "Failed to initialize Firebase: Unable to retrieve service account",
     };
   }
 

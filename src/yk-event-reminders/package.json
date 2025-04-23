@@ -1,7 +1,7 @@
 {
   "name": "yojanakaar-event-reminder",
   "version": "1.0.0",
-  "description": "Function to send push notificaions",
+  "description": "AWS Lambda function for sending event reminder notifications via Firebase for Tiktie app",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "@aws-sdk/client-dynamodb": "^3.645.0",
     "@aws-sdk/lib-dynamodb": "^3.645.0",
     "firebase-admin": "^11.2.0",
-    "@aws-sdk/client-ssm": "^3.772.0"
+    "@aws-sdk/client-s3": "^3.645.0"
   },
   "author": "Ravi Ambar",
   "license": "MIT"
