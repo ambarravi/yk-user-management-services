@@ -15,18 +15,19 @@ if (!admin.apps.length) {
   console.log(process.env.FB_PRIVATE_KEY);
 
   let parsered = JSON.parse(`"${process.env.FB_PRIVATE_KEY}"`);
+  const privateKey = JSON.parse(`"${process.env.FB_PRIVATE_KEY}"`);
 
   console.log(
     "Private Key:\n",
     process.env.FB_PRIVATE_KEY?.replace(/\\n/g, "\n")
   );
-  console.log("parsered", process.env.FB_PRIVATE_KEY);
+  console.log("parsered", JSON.parse(`"${process.env.FB_PRIVATE_KEY}"`));
 
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FB_PROJECT_ID,
       clientEmail: process.env.FB_CLIENT_EMAIL,
-      privateKey: process.env.FB_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      privateKey: JSON.parse(`"${process.env.FB_PRIVATE_KEY}"`),
     }),
   });
 }
