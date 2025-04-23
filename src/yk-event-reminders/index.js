@@ -178,6 +178,12 @@ export const handler = async (event) => {
     const response = await s3Client.send(command);
     const serviceAccountData = await response.Body.transformToString();
     serviceAccount = JSON.parse(serviceAccountData);
+    console.log("Service account parsed:", {
+      projectId: serviceAccount.project_id,
+      clientEmail: serviceAccount.client_email,
+      privateKey: serviceAccount.private_key ? "Present" : "Missing",
+      privateKeyId: serviceAccount.private_key_id,
+    });
     console.log(JSON.stringify(serviceAccount));
   } catch (error) {
     console.error(
