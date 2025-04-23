@@ -5,11 +5,19 @@ import {
   QueryCommand,
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
-import * as admin from "firebase-admin";
+import admin from "firebase-admin";
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
-admin.initializeApp(); // Initialize Firebase Admin SDK
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FB_PROJECT_ID,
+      clientEmail: process.env.FB_CLIENT_EMAIL,
+      privateKey: process.env.FB_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
+  });
+}
 
 const getTimeWindow = (hoursOffset) => {
   const now = new Date();

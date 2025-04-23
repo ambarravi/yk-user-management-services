@@ -9,6 +9,11 @@ Resources:
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 300 # 5 minutes to handle up to 1,000 notifications
+      Environment:
+        Variables:
+          FB_PROJECT_ID: "Test"
+          FB_CLIENT_EMAIL: "Test"
+          FB_PRIVATE_KEY: "Test"
       MemorySize: 256 # Sufficient for DynamoDB queries and Expo API calls
       ReservedConcurrentExecutions: 5 # Limit concurrency to avoid DynamoDB throttling
       Code:
