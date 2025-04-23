@@ -1,5 +1,4 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -7,24 +6,17 @@ import {
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import admin from "firebase-admin";
+import fs from "fs";
+import path from "path";
+
+// Path to the service account JSON file in the Lambda deployment package
+const serviceAccountPath = path.join(
+  __dirname,
+  "tiktie-firebase-adminsdk-fbsvc-7c2642a541.json"
+);
 
 const client = new DynamoDBClient();
-const ssm = new SSMClient({ region: process.env.region });
 const docClient = DynamoDBDocumentClient.from(client);
-
-const getPrivateKey = async () => {
-  const command = new GetParameterCommand({
-    Name: "firebase_tiktie_dev",
-    WithDecryption: true,
-  });
-
-  const response = await ssm.send(command);
-  const rawKey = response.Parameter.Value;
-
-  const privateKey = rawKey.replace(/\\n/g, "\n");
-
-  return privateKey;
-};
 
 const getTimeWindow = (hoursOffset) => {
   const now = new Date();
@@ -180,15 +172,26 @@ const sendNotifications = async (messages) => {
 };
 
 export const handler = async (event) => {
-  const prvkey = await getPrivateKey();
+  // Read and parse the service account JSON file
+  let serviceAccount;
+  try {
+    const serviceAccountData = fs.readFileSync(serviceAccountPath, "utf8");
+    serviceAccount = JSON.parse(serviceAccountData);
+  } catch (error) {
+    console.error("Failed to read or parse service account file:", error);
+    return {
+      statusCode: 500,
+      body: "Failed to initialize Firebase: Invalid service account file",
+    };
+  }
 
-  console.log("prvkey", prvkey);
+  // Initialize Firebase Admin SDK (only if not already initialized)
   if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: process.env.FB_PROJECT_ID,
-        clientEmail: process.env.FB_CLIENT_EMAIL,
-        privateKey: prvkey,
+        projectId: serviceAccount.project_id,
+        clientEmail: serviceAccount.client_email,
+        privateKey: serviceAccount.private_key,
       }),
     });
   }

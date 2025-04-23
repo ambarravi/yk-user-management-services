@@ -66,10 +66,6 @@ Resources:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                 Resource: "*"
-              - Effect: Allow
-                Action:
-                  - ssm:GetParameter
-                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/firebase_tiktie_dev
 
   # EventBridge Rule: 6-Hour Reminders
   SixHourReminderRule:
