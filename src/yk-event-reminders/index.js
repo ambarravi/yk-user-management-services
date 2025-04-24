@@ -256,10 +256,11 @@ export const handler = async (event) => {
         hour12: true,
       });
 
+      const userName = user.FirstName || user.LastName || "Dear";
       const message = {
         token: pushToken,
         notification: {
-          title: `📢 Upcoming Event: ${event.EventTitle}`,
+          title: `📢 Hey , ${userName}, Your Event: ${event.EventTitle} Awaits!`,
           body: `Get ready! Your event is happening on ${formattedEventDate} at ${formattedEventTime}.`,
         },
         data: {
