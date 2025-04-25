@@ -1,0 +1,20 @@
+{
+  "name": "yk-send-push-notification",
+  "version": "1.0.0",
+  "description": "AWS Lambda function to send push notifications for event cancellations via FCM",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "zip": "zip -r lambda.zip index.mjs node_modules"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.658.1",
+    "@aws-sdk/client-s3": "^3.658.1",
+    "@aws-sdk/lib-dynamodb": "^3.658.1",
+    "firebase-admin": "^12.6.0"
+  },
+  "devDependencies": {},
+  "author": "",
+  "license": "ISC"
+}

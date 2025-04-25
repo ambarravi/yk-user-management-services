@@ -1,18 +1,19 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Resources:
-  # Lambda: Event Reminder
-  EventReminderLambda:
+  # Lambda: Send Push Notification for Event Cancellation
+  SendPushNotificationLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: yk-event-reminders
+      FunctionName: yk-send-push-notification
       Handler: index.handler
       Runtime: nodejs20.x
-      Timeout: 300 # 5 minutes to handle up to 1,000 notifications
+      Timeout: 300 # 5 minutes to handle multiple bookings
       Environment:
         Variables:
+          RETRY_COUNT: "1" # Default to 1 retry, configurable
           S3_FCM_KEY: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json"
-      MemorySize: 256 # Sufficient for DynamoDB queries and Expo API calls
+      MemorySize: 256 # Sufficient for DynamoDB queries and FCM calls
       ReservedConcurrentExecutions: 5 # Limit concurrency to avoid DynamoDB throttling
       Code:
         ZipFile: |
@@ -20,12 +21,12 @@ Resources:
           export const handler = async () => {
             return { statusCode: 200, body: "Placeholder" };
           };
-      Role: !GetAtt EventReminderLambdaExecutionRole.Arn
+      Role: !GetAtt SendPushNotificationLambdaExecutionRole.Arn
       TracingConfig:
         Mode: Active
 
-  # IAM Role for EventReminderLambda
-  EventReminderLambdaExecutionRole:
+  # IAM Role for SendPushNotificationLambda
+  SendPushNotificationLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -36,7 +37,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: EventReminderLambdaPolicy
+        - PolicyName: SendPushNotificationLambdaPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -45,7 +46,6 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:Query
                   - dynamodb:PutItem
-                  - dynamodb:DeleteItem
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/*
@@ -58,7 +58,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-event-reminders:*
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-send-push-notification:*
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
@@ -71,56 +71,58 @@ Resources:
                 Resource:
                   - !Sub arn:aws:s3:::tiktie-notifications/*
                   - !Sub arn:aws:s3:::tiktie-notifications
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt EventCancellationQueue.Arn
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt EventCancellationDLQ.Arn
 
-  # EventBridge Rule: 6-Hour Reminders
-  SixHourReminderRule:
-    Type: AWS::Events::Rule
+  # SQS Queue: Event Cancellation Queue
+  EventCancellationQueue:
+    Type: AWS::SQS::Queue
     Properties:
-      Description: Trigger Lambda for 6-hour event reminders every 5 minutes (testing, revert to cron(0 1-13 * * ? *) post-testing)
-      ScheduleExpression: rate(5 minutes)
-      State: ENABLED
-      Targets:
-        - Arn: !GetAtt EventReminderLambda.Arn
-          Id: SixHourReminderTarget
-          Input: '{"reminder_type":"6_hour"}'
+      QueueName: EventCancellationQueue
+      VisibilityTimeout: 600 # 2x Lambda timeout (300s) to prevent duplicate processing
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt EventCancellationDLQ.Arn
+        maxReceiveCount: 3 # Move to DLQ after 3 failed attempts
 
-  # EventBridge Rule: 1-Hour Reminders
-  OneHourReminderRule:
-    Type: AWS::Events::Rule
+  # SQS Dead Letter Queue
+  EventCancellationDLQ:
+    Type: AWS::SQS::Queue
     Properties:
-      Description: Trigger Lambda for 1-hour event reminders every 5 minutes (testing, revert to cron(0 1-13 * * ? *) post-testing)
-      ScheduleExpression: rate(5 minutes)
-      State: ENABLED
-      Targets:
-        - Arn: !GetAtt EventReminderLambda.Arn
-          Id: OneHourReminderTarget
-          Input: '{"reminder_type":"1_hour"}'
+      QueueName: EventCancellationDLQ
 
-  # Lambda Permission for EventBridge: 6-Hour Rule
-  SixHourRuleLambdaPermission:
+  # Lambda Event Source Mapping for SQS
+  EventCancellationQueueEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt EventCancellationQueue.Arn
+      FunctionName: !Ref SendPushNotificationLambda
+      BatchSize: 10 # Process up to 10 messages at a time
+      Enabled: true
+
+  # Lambda Permission for SQS
+  SqsLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref EventReminderLambda
+      FunctionName: !Ref SendPushNotificationLambda
       Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt SixHourReminderRule.Arn
-
-  # Lambda Permission for EventBridge: 1-Hour Rule
-  OneHourRuleLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref EventReminderLambda
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt OneHourReminderRule.Arn
+      Principal: sqs.amazonaws.com
+      SourceArn: !GetAtt EventCancellationQueue.Arn
 
 Outputs:
-  EventReminderLambdaArn:
-    Description: ARN of the Event Reminder Lambda function
-    Value: !GetAtt EventReminderLambda.Arn
-  SixHourReminderRuleArn:
-    Description: ARN of the 6-hour reminder EventBridge rule
-    Value: !GetAtt SixHourReminderRule.Arn
-  OneHourReminderRuleArn:
-    Description: ARN of the 1-hour reminder EventBridge rule
-    Value: !GetAtt OneHourReminderRule.Arn
+  SendPushNotificationLambdaArn:
+    Description: ARN of the Send Push Notification Lambda function
+    Value: !GetAtt SendPushNotificationLambda.Arn
+  EventCancellationQueueArn:
+    Description: ARN of the Event Cancellation SQS Queue
+    Value: !GetAtt EventCancellationQueue.Arn
+  EventCancellationDLQArn:
+    Description: ARN of the Event Cancellation Dead Letter Queue
+    Value: !GetAtt EventCancellationDLQ.Arn

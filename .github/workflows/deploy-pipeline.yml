@@ -41,6 +41,7 @@ jobs:
           - yk-get-city-id
           - yk-get-profile-pic
           - yk-event-reminders
+          - yk-send-push-notification
 
     steps:
       # Step 1: Checkout code
