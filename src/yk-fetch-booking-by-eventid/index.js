@@ -56,7 +56,7 @@ export const handler = async (event) => {
         [EVENT_TABLE]: {
           Keys: [{ EventID: { S: eventId } }],
           ProjectionExpression:
-            "EventID, EventTitle, EventLocation, EventDate, CategoryName, OrganizerName, ReadableEventID, Seats, ReservedSeats, TicketsBooked",
+            "EventID, EventTitle, EventLocation, EventDate, CategoryName, OrganizerName, ReadableEventID, Seats, ReservedSeats, SeatsBooked",
         },
       },
     };
