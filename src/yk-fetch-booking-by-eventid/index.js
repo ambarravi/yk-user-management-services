@@ -17,7 +17,7 @@ export const handler = async (event) => {
 
     // Parse input
     let body = JSON.parse(event.body);
-    let eventId = body.eventId;
+    let eventId = body.eventID;
 
     if (!eventId) {
       return generateResponse(400, { message: "eventId is required" });
