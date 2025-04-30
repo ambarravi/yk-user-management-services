@@ -42,6 +42,7 @@ jobs:
           - yk-get-profile-pic
           - yk-event-reminders
           - yk-send-push-notification
+          - yk-fetch-booking-by-eventid
 
     steps:
       # Step 1: Checkout code

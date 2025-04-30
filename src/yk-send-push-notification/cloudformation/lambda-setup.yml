@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Resources:
-  # Lambda: Send Push Notification for Event Cancellation
+  # Lambda: Send Push Notification and Email for Event Cancellation
   SendPushNotificationLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -12,8 +12,9 @@ Resources:
       Environment:
         Variables:
           RETRY_COUNT: "1" # Default to 1 retry, configurable
-          S3_FCM_KEY: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json"
-      MemorySize: 256 # Sufficient for DynamoDB queries and FCM calls
+          S3_FCM_KEY: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json" # Firebase service account key
+          SES_SENDER_EMAIL: !Ref SenderEmail # Sender email for SES
+      MemorySize: 256 # Sufficient for DynamoDB queries, FCM, and SES
       ReservedConcurrentExecutions: 5 # Limit concurrency to avoid DynamoDB throttling
       Code:
         ZipFile: |
@@ -81,6 +82,13 @@ Resources:
                 Action:
                   - sqs:SendMessage
                 Resource: !GetAtt EventCancellationDLQ.Arn
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    ses:FromAddress: !Ref SenderEmail
 
   # SQS Queue: Event Cancellation Queue
   EventCancellationQueue:
@@ -115,6 +123,12 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: sqs.amazonaws.com
       SourceArn: !GetAtt EventCancellationQueue.Arn
+
+Parameters:
+  SenderEmail:
+    Type: String
+    Description: The verified SES sender email address
+    Default: "support@tiktie.com"
 
 Outputs:
   SendPushNotificationLambdaArn:

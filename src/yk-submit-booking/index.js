@@ -1,17 +1,130 @@
-import {
+const {
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
   UpdateItemCommand,
   QueryCommand,
   TransactWriteItemsCommand,
-} from "@aws-sdk/client-dynamodb";
-
-import { v4 as uuidv4 } from "uuid";
+} = require("@aws-sdk/client-dynamodb");
+const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
+const { v4: uuidv4 } = require("uuid");
 
 const ddbClient = new DynamoDBClient({ region: "eu-west-1" });
+const sesClient = new SESClient({ region: "eu-west-1" });
 
-export const handler = async (event) => {
+// Get retry count from environment variable (default to 1)
+const RETRY_COUNT = parseInt(process.env.RETRY_COUNT, 10) || 1;
+
+// Get current time in IST
+const getCurrentIST = () => {
+  const now = new Date();
+  const istOffsetMs = 5.5 * 60 * 60 * 1000; // IST = UTC + 5.5 hrs
+  return new Date(now.getTime() + istOffsetMs);
+};
+
+// Log notification to NotificationLogs with retry
+const logNotification = async (
+  notificationId,
+  bookingId,
+  userId,
+  reminderType,
+  retryCount = RETRY_COUNT
+) => {
+  try {
+    const command = new PutItemCommand({
+      TableName: "NotificationLogs",
+      Item: {
+        NotificationID: { S: notificationId },
+        BookingID: { S: bookingId },
+        UserID: { S: userId },
+        ReminderType: { S: reminderType },
+        Timestamp: { S: getCurrentIST().toISOString() },
+      },
+    });
+    await ddbClient.send(command);
+  } catch (error) {
+    console.error(`Error logging notification ${notificationId}:`, error);
+    if (retryCount > 0) {
+      console.log(
+        `Retrying logNotification for NotificationID ${notificationId} (${retryCount} retries left)...`
+      );
+      return logNotification(
+        notificationId,
+        bookingId,
+        userId,
+        reminderType,
+        retryCount - 1
+      );
+    }
+    throw new Error(
+      `Failed to log notification ${notificationId}: ${error.message}`
+    );
+  }
+};
+
+// Check if notification was already sent with retry
+const checkNotificationLog = async (
+  notificationId,
+  retryCount = RETRY_COUNT
+) => {
+  try {
+    const command = new GetItemCommand({
+      TableName: "NotificationLogs",
+      Key: { NotificationID: { S: notificationId } },
+    });
+    const response = await ddbClient.send(command);
+    return !!response.Item;
+  } catch (error) {
+    console.error(`Error checking notification log ${notificationId}:`, error);
+    if (retryCount > 0) {
+      console.log(
+        `Retrying checkNotificationLog for NotificationID ${notificationId} (${retryCount} retries left)...`
+      );
+      return checkNotificationLog(notificationId, retryCount - 1);
+    }
+    throw new Error(
+      `Failed to check notification log ${notificationId}: ${error.message}`
+    );
+  }
+};
+
+// Send email via SES with retry
+const sendEmail = async (email, retryCount = RETRY_COUNT) => {
+  try {
+    const command = new SendEmailCommand({
+      Source: process.env.SES_SENDER_EMAIL,
+      Destination: {
+        ToAddresses: [email.to],
+      },
+      Message: {
+        Subject: {
+          Data: email.subject,
+        },
+        Body: {
+          Html: {
+            Data: email.html,
+          },
+          Text: {
+            Data: email.text, // Fallback for clients that don't support HTML
+          },
+        },
+      },
+    });
+    const response = await sesClient.send(command);
+    console.log(`Email sent successfully to ${email.to}:`, response);
+  } catch (error) {
+    console.error(`Error sending email to ${email.to}:`, error);
+    if (retryCount > 0) {
+      console.log(
+        `Retrying email send for ${email.to} (${retryCount} retries left)...`
+      );
+      return sendEmail(email, retryCount - 1);
+    }
+    throw new Error(`Failed to send email to ${email.to}: ${error.message}`);
+  }
+};
+
+exports.handler = async (event) => {
   console.log(event);
   try {
     const requestBody = JSON.parse(event.body);
@@ -27,7 +140,14 @@ export const handler = async (event) => {
       paymentMethod = "CASH",
     } = requestBody.bookingDetails;
 
-    if (!eventId || !userId || !ticketCount || ticketCount <= 0) {
+    if (
+      !eventId ||
+      !userId ||
+      !ticketCount ||
+      ticketCount <= 0 ||
+      !bookingEmail ||
+      !bookingName
+    ) {
       return {
         statusCode: 400,
         body: JSON.stringify({ message: "Invalid booking details." }),
@@ -38,7 +158,7 @@ export const handler = async (event) => {
     console.log("BookingID", bookingID);
     const createdAt = Math.floor(Date.now() / 1000);
 
-    // Step 1: Check if the user already booked this event (existing functionality)
+    // Step 1: Check if the user already booked this event
     const existingBooking = await ddbClient.send(
       new QueryCommand({
         TableName: "BookingDetails",
@@ -62,7 +182,7 @@ export const handler = async (event) => {
       };
     }
 
-    // Step 2: Fetch Event Details (existing functionality)
+    // Step 2: Fetch Event Details
     const eventDetails = await ddbClient.send(
       new GetItemCommand({
         TableName: "EventDetails",
@@ -82,8 +202,10 @@ export const handler = async (event) => {
     const bookedSeats = eventDetails.Item.SeatsBooked?.N
       ? parseInt(eventDetails.Item.SeatsBooked.N)
       : 0;
+    const eventTitle = eventDetails.Item.EventTitle.S;
+    const eventDate = eventDetails.Item.EventDate.S;
 
-    // Step 3: Check Seat Availability (existing functionality)
+    // Step 3: Check Seat Availability
     if (bookedSeats + ticketCount > totalSeats) {
       return {
         statusCode: 400,
@@ -94,7 +216,7 @@ export const handler = async (event) => {
     // Step 4: Enhanced Transaction with UsersTable Update
     const transactionCommand = new TransactWriteItemsCommand({
       TransactItems: [
-        // Update SeatsBooked in EventDetails (existing)
+        // Update SeatsBooked in EventDetails
         {
           Update: {
             TableName: "EventDetails",
@@ -110,7 +232,7 @@ export const handler = async (event) => {
             },
           },
         },
-        // Insert New Booking Record (existing)
+        // Insert New Booking Record
         {
           Put: {
             TableName: "BookingDetails",
@@ -133,7 +255,7 @@ export const handler = async (event) => {
             },
           },
         },
-        // New: Update UsersTable to increment eventsAttended
+        // Update UsersTable to increment eventsAttended
         {
           Update: {
             TableName: "UsersTable",
@@ -150,6 +272,122 @@ export const handler = async (event) => {
     });
 
     await ddbClient.send(transactionCommand);
+
+    // Step 5: Send Confirmation Email
+    const notificationId = `${bookingID}_booking_confirmation_email`;
+    const reminderType = "booking_confirmation_email";
+
+    // Check if email was already sent
+    const emailSent = await checkNotificationLog(notificationId);
+    if (emailSent) {
+      console.log(`Skipping email for booking ${bookingID}: already sent`);
+    } else {
+      // Format EventDate for email (in IST)
+      const eventDateTime = new Date(eventDate);
+      const formattedEventDate = eventDateTime.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+      });
+
+      // Prepare email
+      const email = {
+        to: bookingEmail,
+        subject: `Booking Confirmation for ${eventTitle}`,
+        text: `Dear ${bookingName},\n\nThank you for booking ${ticketCount} ticket(s) for "${eventTitle}" on ${formattedEventDate}. Your booking ID is ${bookingID}. The total amount paid is ${totalPrice} INR.\n\nWe look forward to seeing you at the event! For any queries, please contact our support team at support@tiktie.com.\n\nBest regards,\nThe Tiktie Team`,
+        html: `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                max-width: 600px;
+                margin: 20px auto;
+                background: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+              }
+              .header {
+                text-align: center;
+                padding-bottom: 20px;
+                border-bottom: 1px solid #ddd;
+              }
+              .header img {
+                max-width: 150px;
+                height: auto;
+              }
+              .content {
+                padding: 20px 0;
+              }
+              .content p {
+                margin: 10px 0;
+              }
+              .highlight {
+                color: #007bff;
+                font-weight: bold;
+              }
+              .footer {
+                text-align: center;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                font-size: 14px;
+                color: #777;
+              }
+              .footer a {
+                color: #007bff;
+                text-decoration: none;
+              }
+              @media only screen and (max-width: 600px) {
+                .container {
+                  padding: 10px;
+                }
+                .header img {
+                  max-width: 120px;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <img src="https://tiktie-logo-bucket.s3.eu-west-1.amazonaws.com/tiktie-logo.png" alt="Tiktie Logo">
+                <h2>Booking Confirmation</h2>
+              </div>
+              <div class="content">
+                <p>Dear <span class="highlight">${bookingName}</span>,</p>
+                <p>Thank you for booking <span class="highlight">${ticketCount} ticket(s)</span> for "<span class="highlight">${eventTitle}</span>" scheduled on <span class="highlight">${formattedEventDate}</span>.</p>
+                <p>Your booking ID is <span class="highlight">${bookingID}</span>.</p>
+                <p>The total amount paid is <span class="highlight">${totalPrice} INR</span>.</p>
+                <p>We look forward to seeing you at the event! For any queries, please contact our support team at <a href="mailto:support@tiktie.com">support@tiktie.com</a>.</p>
+              </div>
+              <div class="footer">
+                <p>Best regards,<br>The Tiktie Team</p>
+                <p><a href="mailto:support@tiktie.com">support@tiktie.com</a></p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `,
+      };
+
+      // Send email
+      await sendEmail(email);
+
+      // Log email notification
+      await logNotification(notificationId, bookingID, userId, reminderType);
+    }
 
     return {
       statusCode: 200,
@@ -170,8 +408,8 @@ export const handler = async (event) => {
   }
 };
 
-// New function to handle booking cancellation
-export const cancelBookingHandler = async (event) => {
+// Booking cancellation handler (unchanged)
+exports.cancelBookingHandler = async (event) => {
   try {
     const requestBody = JSON.parse(event.body);
     const { bookingId, eventId, userId, ticketCount } = requestBody;

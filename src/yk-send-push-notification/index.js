@@ -6,12 +6,14 @@ import {
   QueryCommand,
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import admin from "firebase-admin";
 
-// Initialize S3 and DynamoDB clients
+// Initialize clients
 const s3Client = new S3Client();
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
+const sesClient = new SESClient();
 
 // Get retry count from environment variable (default to 1)
 const RETRY_COUNT = parseInt(process.env.RETRY_COUNT, 10) || 1;
@@ -204,21 +206,63 @@ const sendNotifications = async (messages) => {
     while (retryCount >= 0) {
       try {
         const response = await admin.messaging().send(message);
-        console.log("Notification sent successfully:", response);
+        console.log("Push notification sent successfully:", response);
         break;
       } catch (error) {
         console.error(
-          `Error sending notification to token ${message.token}:`,
+          `Error sending push notification to token ${message.token}:`,
           error
         );
         if (retryCount > 0) {
           console.log(
-            `Retrying notification send for token ${message.token} (${retryCount} retries left)...`
+            `Retrying push notification send for token ${message.token} (${retryCount} retries left)...`
           );
           retryCount--;
         } else {
           throw new Error(
-            `Failed to send notification to token ${message.token}: ${error.message}`
+            `Failed to send push notification to token ${message.token}: ${error.message}`
+          );
+        }
+      }
+    }
+  }
+};
+
+// Send emails via SES with retry
+const sendEmails = async (emails) => {
+  for (const email of emails) {
+    let retryCount = RETRY_COUNT;
+    while (retryCount >= 0) {
+      try {
+        const command = new SendEmailCommand({
+          Source: process.env.SES_SENDER_EMAIL,
+          Destination: {
+            ToAddresses: [email.to],
+          },
+          Message: {
+            Subject: {
+              Data: email.subject,
+            },
+            Body: {
+              Text: {
+                Data: email.body,
+              },
+            },
+          },
+        });
+        const response = await sesClient.send(command);
+        console.log(`Email sent successfully to ${email.to}:`, response);
+        break;
+      } catch (error) {
+        console.error(`Error sending email to ${email.to}:`, error);
+        if (retryCount > 0) {
+          console.log(
+            `Retrying email send for ${email.to} (${retryCount} retries left)...`
+          );
+          retryCount--;
+        } else {
+          throw new Error(
+            `Failed to send email to ${email.to}: ${error.message}`
           );
         }
       }
@@ -263,9 +307,11 @@ export const handler = async (event) => {
   }
 
   try {
-    const messages = [];
+    const pushMessages = [];
+    const emails = [];
     const logs = [];
-    const reminderType = "event_cancelled";
+    const pushReminderType = "event_cancelled_push";
+    const emailReminderType = "event_cancelled_email";
 
     // Process each SQS record
     for (const record of event.Records) {
@@ -295,7 +341,7 @@ export const handler = async (event) => {
       }
       const { EventTitle: eventTitle, EventDate: eventDate } = eventDetails;
 
-      // Format EventDate for notification (in IST)
+      // Format EventDate for notification and email (in IST)
       const eventDateTime = new Date(eventDate);
       const formattedEventDate = eventDateTime.toLocaleDateString("en-IN", {
         day: "numeric",
@@ -312,11 +358,20 @@ export const handler = async (event) => {
 
       for (const booking of bookings) {
         const { BookingID: bookingId, UserId: userId } = booking;
-        const notificationId = `${bookingId}_${reminderType}`;
 
-        // Check if notification was already sent
-        if (await checkNotificationLog(notificationId)) {
-          console.log(`Skipping notification ${notificationId}: already sent`);
+        // Check push and email notification logs
+        const pushNotificationId = `${bookingId}_${pushReminderType}`;
+        const emailNotificationId = `${bookingId}_${emailReminderType}`;
+
+        const [pushSent, emailSent] = await Promise.all([
+          checkNotificationLog(pushNotificationId),
+          checkNotificationLog(emailNotificationId),
+        ]);
+
+        if (pushSent && emailSent) {
+          console.log(
+            `Skipping notification ${pushNotificationId} and ${emailNotificationId}: already sent`
+          );
           continue;
         }
 
@@ -326,38 +381,72 @@ export const handler = async (event) => {
           getPushToken(userId),
         ]);
 
-        if (!user || !pushToken) {
-          console.warn(
-            `Skipping booking ${bookingId}: missing user or push token`
-          );
+        if (!user) {
+          console.warn(`Skipping booking ${bookingId}: missing user data`);
           continue;
         }
 
-        // Prepare notification message
         const userName = user.FirstName || user.LastName || "Dear";
-        const message = {
-          token: pushToken,
-          notification: {
-            title: `❌ ${userName}, Event Cancelled`,
-            body: `We regret to inform you that the event "${eventTitle}" scheduled for ${formattedEventDate} has been cancelled. Please contact support for more details.`,
-          },
-          data: {
-            booking_id: bookingId,
-            event_id: eventId,
-            org_id: orgId,
-            screen: "ManageTicketScreen",
-          },
-        };
 
-        messages.push(message);
-        logs.push({ notificationId, bookingId, userId, reminderType });
+        // Prepare push notification if not already sent
+        if (!pushSent && pushToken) {
+          const pushMessage = {
+            token: pushToken,
+            notification: {
+              title: `❌ ${userName}, Event Cancelled`,
+              body: `We regret to inform you that the event "${eventTitle}" scheduled for ${formattedEventDate} has been cancelled. Please contact support for more details.`,
+            },
+            data: {
+              booking_id: bookingId,
+              event_id: eventId,
+              org_id: orgId,
+              screen: "ManageTicketScreen",
+            },
+          };
+          pushMessages.push(pushMessage);
+          logs.push({
+            notificationId: pushNotificationId,
+            bookingId,
+            userId,
+            reminderType: pushReminderType,
+          });
+        }
+
+        // Prepare email if not already sent and email exists
+        if (!emailSent && user.Email) {
+          const email = {
+            to: user.Email,
+            subject: `Event Cancelled: ${eventTitle}`,
+            body: `Dear ${userName},\n\nWe regret to inform you that the event "${eventTitle}" scheduled for ${formattedEventDate} has been cancelled. Please contact our support team for more details or assistance.\n\nBest regards,\nThe Tikto Team`,
+          };
+          emails.push(email);
+          logs.push({
+            notificationId: emailNotificationId,
+            bookingId,
+            userId,
+            reminderType: emailReminderType,
+          });
+        }
+
+        if (!pushToken && !user.Email) {
+          console.warn(
+            `Skipping booking ${bookingId}: missing push token and email`
+          );
+        }
       }
     }
 
-    // Send notifications and log them
-    if (messages.length > 0) {
-      console.log(`Sending ${messages.length} notifications`);
-      await sendNotifications(messages);
+    // Send push notifications and emails, then log them
+    if (pushMessages.length > 0 || emails.length > 0) {
+      console.log(
+        `Sending ${pushMessages.length} push notifications and ${emails.length} emails`
+      );
+      await Promise.all([
+        pushMessages.length > 0
+          ? sendNotifications(pushMessages)
+          : Promise.resolve(),
+        emails.length > 0 ? sendEmails(emails) : Promise.resolve(),
+      ]);
       await Promise.all(
         logs.map(({ notificationId, bookingId, userId, reminderType }) =>
           logNotification(notificationId, bookingId, userId, reminderType)
@@ -367,7 +456,7 @@ export const handler = async (event) => {
 
     return {
       statusCode: 200,
-      body: `Processed ${messages.length} notifications`,
+      body: `Processed ${pushMessages.length} push notifications and ${emails.length} emails`,
     };
   } catch (error) {
     console.error("Handler error:", error);
