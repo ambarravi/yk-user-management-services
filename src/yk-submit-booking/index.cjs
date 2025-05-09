@@ -1,13 +1,13 @@
-const {
+import {
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
   UpdateItemCommand,
   QueryCommand,
   TransactWriteItemsCommand,
-} = require("@aws-sdk/client-dynamodb");
-const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
-const { v4: uuidv4 } = require("uuid");
+} from "@aws-sdk/client-dynamodb";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { v4 as uuidv4 } from "uuid";
 
 const ddbClient = new DynamoDBClient({ region: "eu-west-1" });
 const sesClient = new SESClient({ region: "eu-west-1" });
@@ -124,7 +124,7 @@ const sendEmail = async (email, retryCount = RETRY_COUNT) => {
   }
 };
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   console.log(event);
   try {
     const requestBody = JSON.parse(event.body);
@@ -408,8 +408,8 @@ exports.handler = async (event) => {
   }
 };
 
-// Booking cancellation handler (unchanged)
-exports.cancelBookingHandler = async (event) => {
+// Booking cancellation handler
+export const cancelBookingHandler = async (event) => {
   try {
     const requestBody = JSON.parse(event.body);
     const { bookingId, eventId, userId, ticketCount } = requestBody;
