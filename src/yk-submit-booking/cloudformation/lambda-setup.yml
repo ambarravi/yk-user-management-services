@@ -13,7 +13,7 @@ Parameters:
   SenderEmail:
     Type: String
     Description: The verified SES sender email address
-    Default: "support@tiktie.com" # Corrected typo (tikties.com -> tiktie.com)
+    Default: "support@tikties.com"
 
 Resources:
   # Lambda: Submit Booking
@@ -32,8 +32,11 @@ Resources:
           SES_SENDER_EMAIL: !Ref SenderEmail # Sender email for SES
       MemorySize: 128 # Sufficient for DynamoDB transactions and SES
       Code:
-        S3Bucket: !Ref CodeS3Bucket # Use S3 for actual code
-        S3Key: !Ref CodeS3Key
+        ZipFile: |
+          // Placeholder: Upload actual code via ZIP file
+          exports.handler = async () => {
+            return { statusCode: 200, body: "Placeholder" };
+          };
       Role: !GetAtt SubmitBookingLambdaExecutionRole.Arn
       TracingConfig:
         Mode: Active
@@ -82,8 +85,7 @@ Resources:
                 Action:
                   - ses:SendEmail
                   - ses:SendRawEmail
-                Resource:
-                  - !Sub arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/*
+                Resource: "*"
 
   # Lambda Permission for API Gateway
   SubmitBookingLambdaPermission:
