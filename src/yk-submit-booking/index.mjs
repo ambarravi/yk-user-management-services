@@ -295,7 +295,7 @@ export const handler = async (event) => {
       const email = {
         to: bookingEmail,
         subject: `Booking Confirmation for ${eventTitle}`,
-        text: `Dear ${bookingName},\n\nThank you for booking ${ticketCount} ticket(s) for "${eventTitle}" on ${formattedEventDate}. Your booking ID is ${bookingID}. The total amount paid is ${totalPrice} INR.\n\nWe look forward to seeing you at the event! For any queries, please contact our support team at support@tiktie.com.\n\nBest regards,\nThe Tiktie Team`,
+        text: `Dear ${bookingName},\n\nThank you for booking ${ticketCount} ticket(s) for "${eventTitle}" on ${formattedEventDate}. Your booking ID is ${bookingID}. The total amount paid is ${totalPrice} INR.\n\nWe look forward to seeing you at the event! For any queries, please contact our support team at support@tikties.com.\n\nBest regards,\nThe Tiktie Team`,
         html: `
           <!DOCTYPE html>
           <html lang="en">
@@ -370,11 +370,11 @@ export const handler = async (event) => {
                 <p>Thank you for booking <span class="highlight">${ticketCount} ticket(s)</span> for "<span class="highlight">${eventTitle}</span>" scheduled on <span class="highlight">${formattedEventDate}</span>.</p>
                 <p>Your booking ID is <span class="highlight">${bookingID}</span>.</p>
                 <p>The total amount paid is <span class="highlight">${totalPrice} INR</span>.</p>
-                <p>We look forward to seeing you at the event! For any queries, please contact our support team at <a href="mailto:support@tiktie.com">support@tiktie.com</a>.</p>
+                <p>We look forward to seeing you at the event! For any queries, please contact our support team at <a href="mailto:support@tikties.com">support@tikties.com</a>.</p>
               </div>
               <div class="footer">
                 <p>Best regards,<br>The Tiktie Team</p>
-                <p><a href="mailto:support@tiktie.com">support@tiktie.com</a></p>
+                <p><a href="mailto:support@tikties.com">support@tikties.com</a></p>
               </div>
             </div>
           </body>

@@ -13,7 +13,7 @@ Parameters:
   SenderEmail:
     Type: String
     Description: The verified SES sender email address
-    Default: "no-reply@tiktie.com"
+    Default: "support@tikties.com"
 
 Resources:
   # Lambda: Submit Booking
