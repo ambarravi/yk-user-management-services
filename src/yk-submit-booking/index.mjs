@@ -372,7 +372,7 @@ export const handler = async (event) => {
                 <p>The total amount paid is <span class="highlight">${totalPrice} INR</span>.</p>
                 <p>We look forward to seeing you at the event! For any queries, please contact our support team at <a href="mailto:support@tikties.com">support@tikties.com</a>.</p>
               </div>
-              <div class="footer">
+              <div class="footer">s
                 <p>Best regards,<br>The Tiktie Team</p>
                 <p><a href="mailto:support@tikties.com">support@tikties.com</a></p>
               </div>
