@@ -30,7 +30,11 @@ export const handler = async (event) => {
     );
     console.log("existingRecord", existingRecord);
 
-    if (existingRecord && existingRecord.Item.collegeID) {
+    if (
+      existingRecord.Item &&
+      existingRecord.Item.collegeID &&
+      existingRecord.Item.collegeID.S
+    ) {
       const collegeGetParams = {
         TableName: "College",
         Key: {
@@ -45,7 +49,7 @@ export const handler = async (event) => {
       );
 
       console.log("CollegeRecord", collegeRecord);
-      if (collegeRecord && collegeRecord.Item.Name) {
+      if (collegeRecord.Item && collegeRecord.Item.Name) {
         existingRecord.Item.collegeName = collegeRecord.Item.Name;
       }
     }
