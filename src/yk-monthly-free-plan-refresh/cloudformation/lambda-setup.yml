@@ -13,7 +13,7 @@ Resources:
       Timeout: 300 # 5 minutes to handle large datasets
       Environment:
         Variables:
-          ORGANIZERS_TABLE: "Organizers"
+          ORGANIZERS_TABLE: "Organizer"
           PLANS_TABLE: "Plans"
           SNS_TOPIC_ARN: !Ref MonthlyFreePlanRefreshSNSTopic
           ADMIN_PHONE_NUMBER: "+919860719197"
@@ -51,7 +51,7 @@ Resources:
                   - dynamodb:Scan
                   - dynamodb:UpdateItem
                 Resource:
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizers
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Plans
               - Effect: Allow
                 Action:
