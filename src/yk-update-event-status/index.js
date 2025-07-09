@@ -120,14 +120,19 @@ export const handler = async (event) => {
         Key: {
           OrganizerID: { S: eventDetails.orgId },
         },
-        UpdateExpression:
-          "SET #publishedEvent = if_not_exists(#publishedEvent, :start) + :inc",
+        UpdateExpression: `
+    SET 
+      #publishedEvent = if_not_exists(#publishedEvent, :start) + :inc,
+      #eventsRemaining = if_not_exists(#eventsRemaining, :start) - :dec
+  `,
         ExpressionAttributeNames: {
           "#publishedEvent": "publishedEvent",
+          "#eventsRemaining": "eventsRemaining",
         },
         ExpressionAttributeValues: {
           ":start": { N: "0" },
           ":inc": { N: "1" },
+          ":dec": { N: "1" },
         },
       };
       await dynamoDBClient.send(new UpdateItemCommand(updateOrganizerParams));
