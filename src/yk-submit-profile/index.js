@@ -197,7 +197,7 @@ export const handler = async (event) => {
       await dynamoDBClient.send(new UpdateItemCommand(updateParams));
       console.log("Record updated successfully.");
     } else {
-      const eventNumber = 2;
+      const eventNumber = 5;
       const insertParams = {
         TableName: ORGANIZER_TABLE,
         Item: {
@@ -217,7 +217,7 @@ export const handler = async (event) => {
           associatedCollegeUniversity: { BOOL: associatedCollegeUniversity },
           logoPath: { S: logoPath },
           createdAt: { S: new Date().toISOString() },
-          eventsAllowed: { N: eventNumber.toString() },
+          eventsRemaining: { N: eventNumber.toString() },
         },
       };
       console.log("Insert params:", JSON.stringify(insertParams));
