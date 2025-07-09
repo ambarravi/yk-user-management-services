@@ -13,8 +13,8 @@ Resources:
       Timeout: 300 # 5 minutes to handle large datasets
       Environment:
         Variables:
-          ORGANIZERS_TABLE: Organizers
-          PLANS_TABLE: Plans
+          ORGANIZERS_TABLE: "Organizers"
+          PLANS_TABLE: "Plans"
           SNS_TOPIC_ARN: !Ref MonthlyFreePlanRefreshSNSTopic
           ADMIN_PHONE_NUMBER: "+919860719197"
           ADMIN_EMAIL: "ravi.ambar@gmail.com"
@@ -102,18 +102,7 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt MonthlyResetRule.Arn
 
-  # Plans Table
-  PlansTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: Plans
-      AttributeDefinitions:
-        - AttributeName: PlanID
-          AttributeType: S
-      KeySchema:
-        - AttributeName: PlanID
-          KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
+
 
 Outputs:
   MonthlyFreePlanRefreshLambdaArn:
@@ -124,7 +113,4 @@ Outputs:
     Value: !GetAtt MonthlyResetRule.Arn
   MonthlyFreePlanRefreshSNSTopicArn:
     Description: ARN of the SNS topic for reset notifications
-    Value: !Ref MonthlyFreePlanRefreshSNSTopic
-  PlansTableName:
-    Description: Name of the Plans table
-    Value: !Ref PlansTable
+    Value: !Ref MonthlyFreePlanRefreshSNSTopi
