@@ -43,6 +43,7 @@ jobs:
           - yk-event-reminders
           - yk-send-push-notification
           - yk-fetch-booking-by-eventid
+          - yk-monthly-free-plan-refresh
 
     steps:
       # Step 1: Checkout code
