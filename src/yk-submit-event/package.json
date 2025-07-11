@@ -15,6 +15,7 @@
     "@aws-sdk/s3-request-presigner": "^3.731.1",
     "formidable": "^3.5.2",
     "jose": "^4.14.4",
+    "stopword": "^1.0.10",
     "uuid": "^9.0.0"
   },
   "author": "Ravi Ambar",

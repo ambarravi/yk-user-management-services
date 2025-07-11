@@ -71,6 +71,14 @@ export async function handler(event) {
 
       console.log("Query succeeded:", itemsWithDefaults);
 
+      const sortedItems = itemsWithDefaults.sort((a, b) => {
+        const dateA = new Date(a.EventDate).getTime();
+        const dateB = new Date(b.EventDate).getTime();
+        return dateB - dateA; // Descending
+      });
+
+      console.log("Sorted Events:", sortedItems);
+
       // Pagination: If there is more data, include the LastEvaluatedKey in the response
       const result = {
         statusCode: 200,
@@ -79,7 +87,7 @@ export async function handler(event) {
           "Access-Control-Allow-Origin": "*", // CORS headers
         },
         body: JSON.stringify({
-          items: itemsWithDefaults || [],
+          items: sortedItems || [],
           lastEvaluatedKey: response.LastEvaluatedKey
             ? JSON.stringify(response.LastEvaluatedKey)
             : null,
@@ -101,5 +109,6 @@ export async function handler(event) {
   }
 
   const response = await queryDynamoDB();
+
   return response;
 }

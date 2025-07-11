@@ -13,6 +13,7 @@ import {
 
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
+import sw from "stopword";
 
 const dynamoDBClient = new DynamoDBClient({ region: "eu-west-1" });
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
@@ -28,7 +29,6 @@ export const handler = async (event) => {
 
     const {
       EventID,
-
       OrgID,
       eventImages = [],
       newImages = [],
@@ -36,6 +36,11 @@ export const handler = async (event) => {
       ...eventDetails
     } = parsedBody;
     let readableEventID = parsedBody.readableEventID;
+
+    eventDetails.tags = generateTagsFromTitle(
+      eventDetails.eventTitle,
+      eventDetails.tags
+    );
 
     if (!OrgID) {
       throw new Error("Organization ID (OrgID) is required.");
@@ -95,6 +100,10 @@ export const handler = async (event) => {
             presignedUrl
           );
         } catch (err) {
+          console.error("Error details:", {
+            message: err.message,
+            stack: err.stack,
+          });
           console.error(
             `Failed to generate presigned URL for image ${i + 1}:`,
             err
@@ -105,7 +114,7 @@ export const handler = async (event) => {
 
     console.log("Check for Old images", oldImages);
 
-    oldImages.map((x) => {
+    oldImages.forEach((x) => {
       console.log("old image url", x.url);
       imageUrls.push(x.url);
     });
@@ -308,6 +317,11 @@ export const handler = async (event) => {
       }),
     };
   } catch (error) {
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+      event,
+    });
     console.error("Error processing event:", error);
     return {
       statusCode: 500,
@@ -369,6 +383,10 @@ const generateReadableEventID = async () => {
     return `EVT-${newSequence.toString().padStart(6, "0")}`;
   } catch (error) {
     console.error("Error generating ReadableEventID:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+    });
     throw new Error("Error generating ReadableEventID");
   }
 };
@@ -394,6 +412,27 @@ export const getCollegeID = async (OrgID) => {
     return response.Item?.collegeID?.S || null;
   } catch (error) {
     console.error("Error fetching CollegeID:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+    });
     throw new Error("Failed to retrieve CollegeID from Organizer table.");
   }
+};
+
+const generateTagsFromTitle = (title = "", existingTags = "") => {
+  const titleWords = title
+    .toLowerCase()
+    .replace(/[^\w\s]/gi, "") // remove punctuation
+    .split(/\s+/); // split by whitespace
+
+  const filteredWords = sw.removeStopwords(titleWords); // remove common stopwords
+
+  const existing = existingTags
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter((tag) => tag);
+
+  const allTagsSet = new Set([...existing, ...filteredWords]);
+  return Array.from(allTagsSet).join(","); // comma-separated string
 };

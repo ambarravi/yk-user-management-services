@@ -44,6 +44,7 @@ jobs:
           - yk-send-push-notification
           - yk-fetch-booking-by-eventid
           - yk-monthly-free-plan-refresh
+          - yk-get-dashboard-data
 
     steps:
       # Step 1: Checkout code
