@@ -1,62 +1,59 @@
-import {
-  DynamoDBClient,
-  QueryCommand,
-  ScanCommand,
-} from "@aws-sdk/client-dynamodb";
-
-import { unmarshall } from "@aws-sdk/util-dynamodb"; // Import unmarshall utility
+import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 const region = process.env.AWS_REGION || "eu-west-1";
 const client = new DynamoDBClient({ region });
 
 export async function handler(event) {
-  //console.log(JSON.stringify(event));
+  const city = (event.queryStringParameters?.city || "").toLowerCase().trim();
+  const searchText = (event.queryStringParameters?.searchText || "")
+    .toLowerCase()
+    .trim();
+  console.log("Request parameters:", JSON.stringify({ city, searchText }));
 
-  const city = event.queryStringParameters?.city || "";
-  const searchText = event.queryStringParameters?.searchText || "";
-  console.log(JSON.stringify(event.queryStringParameters));
-
-  if (!city) {
+  if (!city || !searchText) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: "city is required" }),
+      body: JSON.stringify({ error: "city and searchText are required" }),
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*", // CORS headers
+        "Access-Control-Allow-Origin": "*",
       },
     };
   }
 
   const input = {
-    TableName: "College", // Your table name
-    IndexName: "City-index", // Name of the GSI
-    KeyConditionExpression: "City = :city", // Partition key condition
+    TableName: "College",
+    IndexName: "City-index",
+    KeyConditionExpression: "City = :city",
     ExpressionAttributeValues: {
-      ":city": { S: city }, // Replace "pune" with the desired city
-      ":searchText": { S: searchText }, // Additional filter condition for "Name"
-      ":shortformPrefix": { S: searchText }, // Additional filter condition for "Shortform"
+      ":city": { S: city },
+      ":searchText": { S: searchText },
     },
     FilterExpression:
-      "contains(#nameAttr, :searchText) OR begins_with(#shortformAttr, :shortformPrefix)", // Filter criteria
+      "contains(#nameLower, :searchText) OR begins_with(#shortformLower, :searchText)",
     ExpressionAttributeNames: {
-      "#nameAttr": "Name", // Attribute name mapping for "Name"
-      "#shortformAttr": "Shortform", // Attribute name mapping for "Shortform"
+      "#nameLower": "NameLower",
+      "#shortformLower": "ShortformLower",
     },
-    Select: "ALL_ATTRIBUTES", // Retrieve all attributes
+    Select: "ALL_ATTRIBUTES",
   };
 
   async function queryDynamoDB() {
     try {
       const command = new QueryCommand(input);
-      console.log(command);
+      console.log("Query input:", JSON.stringify(input, null, 2));
       const response = await client.send(command);
       const unmarshalledItems = response.Items.map((item) => unmarshall(item));
-      console.log("Query succeeded:", unmarshalledItems);
+      console.log(
+        "Query succeeded:",
+        JSON.stringify(unmarshalledItems, null, 2)
+      );
       return {
         statusCode: 200,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*", // CORS headers
+          "Access-Control-Allow-Origin": "*",
         },
         body: JSON.stringify(unmarshalledItems || []),
       };
@@ -66,13 +63,12 @@ export async function handler(event) {
         statusCode: 500,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*", // CORS headers
+          "Access-Control-Allow-Origin": "*",
         },
         body: JSON.stringify({ error: "Error querying data" }),
       };
     }
   }
 
-  const response = await queryDynamoDB();
-  return response;
+  return await queryDynamoDB();
 }
