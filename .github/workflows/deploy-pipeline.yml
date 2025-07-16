@@ -88,6 +88,7 @@ jobs:
               Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
               ApiGatewayRestApiId=${{ github.ref == 'refs/heads/main' && '27sqbwaad7' || '27sqbwaad7' }} \
               ApiGatewayRootResourceId=${{ github.ref == 'refs/heads/main' && '78iwchywp5' || '78iwchywp5' }} \
+              CognitoAuthorizerId=${{ github.ref == 'refs/heads/main' && 'c0oigh' || 'c0oigh' }} \
             --capabilities CAPABILITY_NAMED_IAM
       - name: Wait for resources to be available
         run: sleep 30
