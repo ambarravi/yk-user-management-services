@@ -9,6 +9,9 @@ Parameters:
   StageName:
     Type: String
     Description: The stage name (e.g., dev, prod)
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
 
 Resources:
   CognitoConfigLambda:
@@ -87,7 +90,8 @@ Resources:
       RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref CognitoConfigResource
       HttpMethod: GET # Changed from POST to GET to match your fetchCognitoConfig
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizerId
       ApiKeyRequired: true # Require API key
       Integration:
         Type: AWS_PROXY

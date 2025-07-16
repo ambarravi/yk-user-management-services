@@ -10,6 +10,9 @@ Parameters:
   ApiGatewayRootResourceId:
     Type: String
     Description: The Root Resource ID for API Gateway deployment
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
 
 Resources:
   FetchEventByIDLambda:
@@ -96,7 +99,8 @@ Resources:
       RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref FetchEventByIdResource
       HttpMethod: POST
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizerId
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST

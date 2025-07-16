@@ -9,6 +9,9 @@ Parameters:
   StageName:
     Type: String
     Description: The stage name (e.g., dev, prod)
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
 
 Resources:
   SubmitFeedbackLambda:
@@ -90,7 +93,8 @@ Resources:
       RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref SubmitFeedbackResource
       HttpMethod: POST
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizerId
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST

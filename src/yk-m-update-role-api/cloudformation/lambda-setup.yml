@@ -15,11 +15,13 @@ Mappings:
       UserPoolId: eu-west-1_hgUDdjyRr
       Stage: dev
       ApiGatewayRootResourceId: 78iwchywp5
+      CognitoAuthorizerId: c0oigh
     Production:
       ApiGatewayId: 27sqbwaad7
       UserPoolId: eu-west-1_hgUDdjyRr
       Stage: prod
       ApiGatewayRootResourceId: 78iwchywp5
+      CognitoAuthorizerId: c0oigh
 
 Resources:
   RoleUpdateMobileTriggerLambda:

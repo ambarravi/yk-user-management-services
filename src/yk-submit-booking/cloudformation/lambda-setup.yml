@@ -14,6 +14,9 @@ Parameters:
     Type: String
     Description: The verified SES sender email address
     Default: "support@tikties.com"
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
 
 Resources:
   # Lambda: Submit Booking
@@ -111,7 +114,8 @@ Resources:
       RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref SubmitBookingResource
       HttpMethod: POST
-      AuthorizationType: NONE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizerId
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST

@@ -17,11 +17,13 @@ Mappings:
       UserPoolId: eu-west-1_hgUDdjyRr
       Stage: dev
       ApiGatewayRootResourceId: 78iwchywp5
+      CognitoAuthorizerId: c0oigh
     Production:
       ApiGatewayId: 27sqbwaad7
       UserPoolId: eu-west-1_hgUDdjyRr
       Stage: prod
       ApiGatewayRootResourceId: 78iwchywp5
+      CognitoAuthorizerId: c0oigh
 
 Resources:
   UpdateRoleApiResource:
@@ -31,17 +33,17 @@ Resources:
       ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]
       PathPart: update-role
 
-  CognitoAuthorizer:
-    Type: AWS::ApiGateway::Authorizer
-    Properties:
-      Name: CognitoUserPoolAuthorizer
-      Type: COGNITO_USER_POOLS
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-      IdentitySource: method.request.header.Authorization
-      ProviderARNs:
-        - !Sub
-          - "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
-          - UserPoolId: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
+  # CognitoAuthorizer:
+  #   Type: AWS::ApiGateway::Authorizer
+  #   Properties:
+  #     Name: CognitoUserPoolAuthorizer
+  #     Type: COGNITO_USER_POOLS
+  #     RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+  #     IdentitySource: method.request.header.Authorization
+  #     ProviderARNs:
+  #       - !Sub
+  #         - "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
+  #         - UserPoolId: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
 
   UpdateRoleApiPostMethod:
     Type: AWS::ApiGateway::Method
