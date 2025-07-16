@@ -52,7 +52,7 @@ Resources:
       ResourceId: !Ref UpdateRoleApiResource
       HttpMethod: POST
       AuthorizationType: COGNITO_USER_POOLS
-      AuthorizerId: !Ref CognitoAuthorizerId
+      AuthorizerId: !FindInMap [EnvToResources, !Ref Env, CognitoAuthorizerId]
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
