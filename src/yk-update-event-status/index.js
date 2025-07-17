@@ -96,6 +96,40 @@ export const handler = async (event) => {
       },
     };
     await dynamoDBClient.send(new UpdateItemCommand(updateParams));
+
+    // If status is "Cancelled", send to EventCancellationQueue
+    if (eventStatus === "Cancelled" && currentStatus === "Published") {
+      const cancellationQueueUrl = process.env.EVENT_CANCELLATION_QUEUE_URL;
+
+      if (!cancellationQueueUrl) {
+        throw new Error(
+          "Missing environment variable: EVENT_CANCELLATION_QUEUE_URL"
+        );
+      }
+
+      const cancelledEventDetails = {
+        eventID: existingRecord.Item.EventID?.S,
+        orgId: existingRecord.Item.OrgID?.S,
+        eventTitle: existingRecord.Item.EventTitle?.S,
+        dateTime: existingRecord.Item.EventDate?.S,
+        readableEventID: existingRecord.Item.ReadableEventID?.S,
+        eventType: existingRecord.Item.EventType?.S || "event",
+        type: "event_cancelled",
+      };
+
+      if (!cancelledEventDetails.orgId) {
+        throw new Error("OrgId not found in event record.");
+      }
+
+      const sqsMessage = {
+        QueueUrl: cancellationQueueUrl,
+        MessageBody: JSON.stringify(cancelledEventDetails),
+      };
+
+      await sqsClient.send(new SendMessageCommand(sqsMessage));
+      console.log(`Sent cancelled event ${eventID} to EventCancellationQueue.`);
+    }
+
     console.log(`Updated event ${eventID} to ${eventStatus}.`);
 
     let eventDetails = {};

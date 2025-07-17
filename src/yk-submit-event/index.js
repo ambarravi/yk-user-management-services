@@ -172,7 +172,67 @@ export const handler = async (event) => {
     const existingRecord = await dynamoDBClient.send(
       new GetItemCommand(getParams)
     );
-    //console.log("Existing Record:", existingRecord);
+    console.log("Existing Record:", existingRecord);
+
+    if (existingRecord.Item) {
+      // After existingRecord.Item is fetched and before the event is updated
+      const wasPublished = existingRecord.Item.EventStatus?.S === "Published";
+      let updateType = null;
+
+      // Check for reschedule (date/time changed)
+      if (existingRecord.Item.EventDate?.S !== eventDetails.dateTime) {
+        updateType = "RESCHEDULED";
+      }
+
+      // Check for venue change
+      if (existingRecord.Item.EventLocation?.S !== eventDetails.eventLocation) {
+        updateType = updateType ? "EVENT_UPDATED" : "VENUE_CHANGED";
+      }
+
+      // Check for other field updates (excluding tags, images etc for simplicity)
+      const otherFieldsChanged = [
+        "eventTitle",
+        "eventDetails",
+        "highlight",
+        "ticketPrice",
+        "noOfSeats",
+        "eventType",
+      ].some((field) => {
+        const existingVal = existingRecord.Item[camelToPascal(field)]?.S || "";
+        const newVal = eventDetails[field] || "";
+        return existingVal !== newVal;
+      });
+
+      if (otherFieldsChanged) {
+        updateType = updateType ? "EVENT_UPDATED" : "EVENT_UPDATED";
+      }
+
+      // Send to SQS only if it was previously published
+      if (updateType && wasPublished) {
+        const sqsPayload = {
+          eventId: uniqueEventID,
+          updateType,
+        };
+
+        const sqs = new AWS.SQS({ region: REGION });
+        const sqsParams = {
+          QueueUrl: process.env.EVENT_UPDATE_SQS_URL,
+          MessageBody: JSON.stringify(sqsPayload),
+        };
+
+        try {
+          await sqs.sendMessage(sqsParams).promise();
+          console.log("Notification sent to SQS for:", updateType);
+        } catch (err) {
+          console.error("Failed to send SQS message:", err);
+        }
+      }
+
+      // Helper to convert camelCase to PascalCase (used to match keys like EventTitle)
+      function camelToPascal(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+      }
+    }
 
     if (existingRecord.Item) {
       console.log("Event already exists. Updating...");

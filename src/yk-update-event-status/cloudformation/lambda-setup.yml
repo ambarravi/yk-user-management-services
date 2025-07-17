@@ -35,6 +35,7 @@ Resources:
         Variables:
           EVENT_TABLE: "EventDetails"
           EVENT_PUBLISH_QUEUE_URL: !Ref EventPublishQueue
+          EVENT_CANCELLATION_QUEUE_URL: "https://sqs.eu-west-1.amazonaws.com/756157886151/EventCancellationQueue"
       Code:
         ZipFile: |
           // Inline code placeholder - replace with actual zipped code in production
