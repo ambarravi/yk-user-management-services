@@ -10,13 +10,15 @@ import {
   ListObjectsV2Command,
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
 import sw from "stopword";
 
-const dynamoDBClient = new DynamoDBClient({ region: "eu-west-1" });
+const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
+const sqsClient = new SQSClient({ region: REGION });
 
 export const handler = async (event) => {
   try {
@@ -214,14 +216,14 @@ export const handler = async (event) => {
           updateType,
         };
 
-        const sqs = new AWS.SQS({ region: REGION });
         const sqsParams = {
           QueueUrl: process.env.EVENT_UPDATE_SQS_URL,
           MessageBody: JSON.stringify(sqsPayload),
         };
 
         try {
-          await sqs.sendMessage(sqsParams).promise();
+          const command = new SendMessageCommand(sqsParams);
+          await sqsClient.send(command);
           console.log("Notification sent to SQS for:", updateType);
         } catch (err) {
           console.error("Failed to send SQS message:", err);
