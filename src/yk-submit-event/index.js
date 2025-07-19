@@ -181,9 +181,31 @@ export const handler = async (event) => {
       let updateType = null;
 
       // Check for reschedule (date/time changed)
-      if (existingRecord.Item.EventDate?.S !== eventDetails.dateTime) {
+
+      const normalizeDate = (str) => new Date(str).toISOString();
+
+      const normalizeEventDates = (arr) =>
+        (arr || []).map((d) => ({
+          eventDate: normalizeDate(d.eventDate),
+          startTime: normalizeDate(d.startTime),
+          endTime: normalizeDate(d.endTime),
+        }));
+
+      const existingNormalized = normalizeEventDates(existingEventDates);
+      const newNormalized = normalizeEventDates(body.eventDates);
+
+      console.log("Existing Dates:", JSON.stringify(existingNormalized));
+      console.log("New Dates:", JSON.stringify(newNormalized));
+
+      if (
+        JSON.stringify(existingNormalized) !== JSON.stringify(newNormalized)
+      ) {
         updateType = "RESCHEDULED";
       }
+
+      // if (existingRecord.Item.EventDate?.S !== eventDetails.dateTime) {
+      //   updateType = "RESCHEDULED";
+      // }
 
       // Check for venue change
       if (existingRecord.Item.EventLocation?.S !== eventDetails.eventLocation) {
