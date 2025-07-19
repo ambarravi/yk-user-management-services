@@ -302,7 +302,7 @@ export const handler = async (event) => {
         //  ":organizerName": { S: eventDetails.OrganizerName || "" },
         ":mode": { S: eventDetails.eventMode || "" },
         //":orgID": { S: OrgID },
-        ":eventStatus": { S: "AwaitingApproval" },
+        //":eventStatus": { S: "AwaitingApproval" },
       };
 
       // Check if CollegeID is present
