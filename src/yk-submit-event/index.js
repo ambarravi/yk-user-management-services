@@ -191,8 +191,10 @@ export const handler = async (event) => {
           endTime: normalizeDate(d.endTime),
         }));
 
-      const existingNormalized = normalizeEventDates(existingEventDates);
-      const newNormalized = normalizeEventDates(body.eventDates);
+      const existingNormalized = normalizeEventDates(
+        existingRecord.Item.EventDate
+      );
+      const newNormalized = normalizeEventDates(eventDetails.dateTime);
 
       console.log("Existing Dates:", JSON.stringify(existingNormalized));
       console.log("New Dates:", JSON.stringify(newNormalized));
