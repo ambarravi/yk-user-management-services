@@ -1,8 +1,12 @@
-const AWS = require("aws-sdk");
-const docClient = new AWS.DynamoDB.DocumentClient();
-const ses = new AWS.SES();
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
-exports.handler = async (event) => {
+const ddbClient = new DynamoDBClient();
+const docClient = DynamoDBDocumentClient.from(ddbClient);
+const ses = new SESClient();
+
+export const handler = async (event) => {
   console.log("Received event:", JSON.stringify(event, null, 2));
 
   for (const record of event.Records) {
@@ -17,7 +21,6 @@ exports.handler = async (event) => {
     const { eventId, eventType } = message;
     console.log(`Processing eventId: ${eventId}, type: ${eventType}`);
 
-    // Validation 1: Check eventType is supported
     const allowedTypes = [
       "CANCELLED",
       "RESCHEDULED",
@@ -29,13 +32,18 @@ exports.handler = async (event) => {
       continue;
     }
 
-    // Validation 2: Event must exist in DB
-    const eventDetails = await docClient
-      .get({
-        TableName: process.env.EVENT_TABLE,
-        Key: { id: eventId },
-      })
-      .promise();
+    let eventDetails;
+    try {
+      eventDetails = await docClient.send(
+        new GetCommand({
+          TableName: process.env.EVENT_TABLE,
+          Key: { id: eventId },
+        })
+      );
+    } catch (err) {
+      console.error(`DynamoDB error fetching event ${eventId}:`, err);
+      continue;
+    }
 
     if (!eventDetails.Item) {
       console.warn(`Event ${eventId} not found - skipping.`);
@@ -44,7 +52,6 @@ exports.handler = async (event) => {
 
     const eventItem = eventDetails.Item;
 
-    // Validation 3: Event must have a valid datetime
     if (!eventItem.EventDateTime || isNaN(new Date(eventItem.EventDateTime))) {
       console.warn(
         `Invalid or missing EventDateTime for event ${eventId} - skipping.`
@@ -52,7 +59,6 @@ exports.handler = async (event) => {
       continue;
     }
 
-    // Validation 4: Don't notify for past events
     const now = new Date();
     const eventTime = new Date(eventItem.EventDateTime);
     if (eventTime < now) {
@@ -60,14 +66,12 @@ exports.handler = async (event) => {
       continue;
     }
 
-    // Validation 5: Check if recipients are available
     const recipients = eventItem.RegisteredUsers || [];
     if (recipients.length === 0) {
       console.warn(`No recipients for event ${eventId} - skipping.`);
       continue;
     }
 
-    // Validation 6: Ensure each recipient has valid email
     const validRecipients = recipients.filter(
       (user) => user.email && user.email.includes("@")
     );
@@ -78,7 +82,6 @@ exports.handler = async (event) => {
       continue;
     }
 
-    // Send email to valid recipients
     for (const user of validRecipients) {
       const email = user.email;
       const subject = getSubject(eventType, eventItem);
@@ -93,7 +96,7 @@ exports.handler = async (event) => {
   return { statusCode: 200, body: JSON.stringify("Done") };
 };
 
-// Helper: Get Email Subject
+// Subject generator
 function getSubject(type, event) {
   switch (type) {
     case "CANCELLED":
@@ -109,7 +112,7 @@ function getSubject(type, event) {
   }
 }
 
-// Helper: Get Email Body
+// Body generator
 function getBody(type, event) {
   return `
     Hello,
@@ -125,7 +128,7 @@ function getBody(type, event) {
   `;
 }
 
-// Helper: Send email via SES
+// SES email sender
 async function sendEmail(to, subject, body) {
   const params = {
     Destination: { ToAddresses: [to] },
@@ -137,37 +140,9 @@ async function sendEmail(to, subject, body) {
   };
 
   try {
-    await ses.sendEmail(params).promise();
+    await ses.send(new SendEmailCommand(params));
     console.log(`Email sent to ${to}`);
   } catch (err) {
     console.error(`Failed to send email to ${to}:`, err);
   }
 }
-
-// Sample SQS Messages
-// // Cancellation
-// {
-//   "type": "CANCELLED",
-//   "eventId": "evt123"
-// }
-
-// // Rescheduled
-// {
-//   "type": "RESCHEDULED",
-//   "eventId": "evt123",
-//   "oldEventDate": "2025-07-20"
-// }
-
-// // Venue Changed
-// {
-//   "type": "VENUE_CHANGED",
-//   "eventId": "evt123",
-//   "oldVenue": "Old Hall A"
-// }
-
-// // Generic Event Update
-// {
-//   "type": "EVENT_UPDATED",
-//   "eventId": "evt123",
-//   "updatedFields": ["Category", "Host"]
-// }
