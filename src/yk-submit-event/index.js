@@ -182,26 +182,17 @@ export const handler = async (event) => {
 
       // Check for reschedule (date/time changed)
 
-      const normalizeDate = (str) => new Date(str).toISOString();
+      const existingDate = new Date(existingRecord.Item.EventDate);
+      const newDate = new Date(eventDetails.dateTime);
 
-      const normalizeEventDates = (arr) =>
-        (arr || []).map((d) => ({
-          eventDate: normalizeDate(d.eventDate),
-          startTime: normalizeDate(d.startTime),
-          endTime: normalizeDate(d.endTime),
-        }));
+      // Check if dates are valid
+      if (isNaN(existingDate) || isNaN(newDate)) {
+        throw new Error("Invalid date format");
+      }
 
-      const existingNormalized = normalizeEventDates(
-        existingRecord.Item.EventDate
-      );
-      const newNormalized = normalizeEventDates(eventDetails.dateTime);
+      // Compare dates
 
-      console.log("Existing Dates:", JSON.stringify(existingNormalized));
-      console.log("New Dates:", JSON.stringify(newNormalized));
-
-      if (
-        JSON.stringify(existingNormalized) !== JSON.stringify(newNormalized)
-      ) {
+      if (existingDate.getTime() !== newDate.getTime()) {
         updateType = "RESCHEDULED";
       }
 
