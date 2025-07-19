@@ -37,7 +37,7 @@ export const handler = async (event) => {
       eventDetails = await docClient.send(
         new GetCommand({
           TableName: process.env.EVENT_TABLE,
-          Key: { id: eventId },
+          Key: { EventID: eventId },
         })
       );
     } catch (err) {
@@ -52,6 +52,7 @@ export const handler = async (event) => {
 
     const eventItem = eventDetails.Item;
 
+    console.log(eventDetails.Item);
     if (!eventItem.EventDateTime || isNaN(new Date(eventItem.EventDateTime))) {
       console.warn(
         `Invalid or missing EventDateTime for event ${eventId} - skipping.`
