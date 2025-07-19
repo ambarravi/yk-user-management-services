@@ -212,7 +212,7 @@ export const handler = async (event) => {
       if (updateType && wasPublished) {
         const sqsPayload = {
           eventId: uniqueEventID,
-          updateType,
+          eventType: updateType,
         };
 
         const sqsParams = {
