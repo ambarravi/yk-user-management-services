@@ -181,19 +181,41 @@ export const handler = async (event) => {
       let updateType = null;
 
       // Check for reschedule (date/time changed)
+      const existingDate = existingRecord.Item.EventDate?.S;
+      const newDate = eventDetails.dateTime;
 
-      const existingDate = new Date(existingRecord.Item.EventDate);
-      const newDate = new Date(eventDetails.dateTime);
-
-      // Check if dates are valid
-      if (isNaN(existingDate) || isNaN(newDate)) {
-        throw new Error("Invalid date format");
+      // Validate dates before comparison
+      if (!existingDate || !newDate) {
+        throw new Error(
+          "Missing date information in existing or new event data"
+        );
       }
 
-      // Compare dates
+      // Robust date comparison
+      try {
+        const existingDateObj = new Date(existingDate);
+        const newDateObj = new Date(newDate);
 
-      if (existingDate.getTime() !== newDate.getTime()) {
-        updateType = "RESCHEDULED";
+        if (isNaN(existingDateObj.getTime()) || isNaN(newDateObj.getTime())) {
+          throw new Error(
+            `Invalid date format: existingDate=${existingDate}, newDate=${newDate}`
+          );
+        }
+
+        // Compare dates up to minute precision
+        const existingDateStr = existingDateObj.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+        const newDateStr = newDateObj.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+
+        if (existingDateStr !== newDateStr) {
+          updateType = "RESCHEDULED";
+        }
+      } catch (dateError) {
+        console.error("Date comparison error:", {
+          message: dateError.message,
+          existingDate,
+          newDate,
+        });
+        throw dateError; // Rethrow to fail the request with clear error
       }
 
       // if (existingRecord.Item.EventDate?.S !== eventDetails.dateTime) {
