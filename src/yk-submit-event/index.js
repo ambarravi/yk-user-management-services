@@ -206,6 +206,9 @@ export const handler = async (event) => {
         const existingDateStr = existingDateObj.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
         const newDateStr = newDateObj.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
 
+        console.log("existingDateStr", existingDateStr);
+        console.log("newDateStr", newDateStr);
+
         if (existingDateStr !== newDateStr) {
           updateType = "RESCHEDULED";
         }
@@ -224,6 +227,11 @@ export const handler = async (event) => {
 
       // Check for venue change
       if (existingRecord.Item.EventLocation?.S !== eventDetails.eventLocation) {
+        console.log(
+          "existingRecord.Item.EventLocation?.S",
+          existingRecord.Item.EventLocation?.S
+        );
+        console.log("eventDetails.eventLocation", eventDetails.eventLocation);
         updateType = updateType ? "EVENT_UPDATED" : "VENUE_CHANGED";
       }
 
