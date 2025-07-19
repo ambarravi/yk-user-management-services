@@ -13,7 +13,8 @@ Resources:
         Variables:
           RETRY_COUNT: "1" # Default to 1 retry, configurable
           S3_FCM_KEY: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json" # Firebase service account key
-          SES_SENDER_EMAIL: !Ref SenderEmail # Sender email for SES
+          SENDER_EMAIL: "support@tikties.com"
+          EVENT_TABLE: "EventDetails"
       MemorySize: 256 # Sufficient for DynamoDB queries, FCM, and SES
       ReservedConcurrentExecutions: 5 # Limit concurrency to avoid DynamoDB throttling
       Code:
