@@ -94,25 +94,33 @@ Resources:
       PathPart: fetch-event-by-id
 
   FetchEventByIDPOSTMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApiId
-      ResourceId: !Ref FetchEventByIdResource
-      HttpMethod: POST
-      AuthorizationType: COGNITO_USER_POOLS
-      AuthorizerId: !Ref CognitoAuthorizerId
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { LambdaArn: !GetAtt FetchEventByIDLambda.Arn }
-      MethodResponses:
+  Type: AWS::ApiGateway::Method
+  Properties:
+    RestApiId: !Ref ApiGatewayRestApiId
+    ResourceId: !Ref FetchEventByIdResource
+    HttpMethod: POST
+    AuthorizationType: COGNITO_USER_POOLS
+    AuthorizerId: !Ref CognitoAuthorizerId
+    Integration:
+      Type: AWS_PROXY
+      IntegrationHttpMethod: POST
+      Uri: !Sub
+        - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+        - { LambdaArn: !GetAtt FetchEventByIDLambda.Arn }
+      IntegrationResponses:
         - StatusCode: 200
           ResponseParameters:
             method.response.header.Access-Control-Allow-Origin: "'*'"
             method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
             method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+          ResponseTemplates:
+            application/json: ""
+    MethodResponses:
+      - StatusCode: 200
+        ResponseParameters:
+          method.response.header.Access-Control-Allow-Origin: true
+          method.response.header.Access-Control-Allow-Methods: true
+          method.response.header.Access-Control-Allow-Headers: true
 
   FetchEventByIDOPTIONSMethod:
     Type: AWS::ApiGateway::Method
