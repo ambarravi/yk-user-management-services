@@ -178,7 +178,7 @@ export const handler = async (event) => {
     if (existingRecord.Item) {
       // After existingRecord.Item is fetched and before the event is updated
       const wasPublished = existingRecord.Item.EventStatus?.S === "Published";
-      let updateType = null;
+      let updateType = "EVENT_UPDATED";
 
       // Check for reschedule (date/time changed)
       const existingDate = existingRecord.Item.EventDate?.S;
@@ -235,23 +235,23 @@ export const handler = async (event) => {
         updateType = updateType ? "EVENT_UPDATED" : "VENUE_CHANGED";
       }
 
-      // Check for other field updates (excluding tags, images etc for simplicity)
-      const otherFieldsChanged = [
-        "eventTitle",
-        "eventDetails",
-        "highlight",
-        "ticketPrice",
-        "noOfSeats",
-        "eventType",
-      ].some((field) => {
-        const existingVal = existingRecord.Item[camelToPascal(field)]?.S || "";
-        const newVal = eventDetails[field] || "";
-        return existingVal !== newVal;
-      });
+      // // Check for other field updates (excluding tags, images etc for simplicity)
+      // const otherFieldsChanged = [
+      //   "eventTitle",
+      //   "eventDetails",
+      //   "highlight",
+      //   "ticketPrice",
+      //   "noOfSeats",
+      //   "eventType",
+      // ].some((field) => {
+      //   const existingVal = existingRecord.Item[camelToPascal(field)]?.S || "";
+      //   const newVal = eventDetails[field] || "";
+      //   return existingVal !== newVal;
+      // });
 
-      if (otherFieldsChanged) {
-        updateType = updateType ? "EVENT_UPDATED" : "EVENT_UPDATED";
-      }
+      // if (otherFieldsChanged) {
+      //   updateType = updateType ? "EVENT_UPDATED" : "EVENT_UPDATED";
+      // }
 
       // Send to SQS only if it was previously published
       if (updateType && wasPublished) {
