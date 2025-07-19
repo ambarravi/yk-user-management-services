@@ -18,7 +18,7 @@ import sw from "stopword";
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
-const sqsClient = new SQSClient({ region: REGION });
+const sqsClient = new SQSClient({ region: process.env.AWS_REGION });
 
 export const handler = async (event) => {
   try {
@@ -51,14 +51,13 @@ export const handler = async (event) => {
     console.log(EventID);
     const uniqueEventID = EventID || uuidv4();
     console.log(uniqueEventID);
-    const REGION = process.env.AWS_REGION;
     const TABLE = process.env.EVENT_TABLE;
     const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
     const sanitizeString = (value) =>
       value && value.trim() !== "" ? { S: value } : undefined;
 
-    if (!REGION || !TABLE || !S3_BUCKET_NAME) {
+    if (!TABLE || !S3_BUCKET_NAME) {
       throw new Error(
         "Missing required environment variables: AWS_REGION, EVENTS_TABLE, or S3_BUCKET_NAME."
       );
@@ -94,7 +93,7 @@ export const handler = async (event) => {
             { expiresIn: 300 }
           );
           imageUrls.push(
-            `https://${S3_BUCKET_NAME}.s3.${REGION}.amazonaws.com/${imageKey}`
+            `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${imageKey}`
           );
           presignedUrlsResult.push(presignedUrl);
           console.log(
