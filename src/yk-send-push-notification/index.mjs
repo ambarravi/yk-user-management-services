@@ -53,7 +53,7 @@ export const handler = async (event) => {
     const eventItem = eventDetails.Item;
 
     console.log(eventDetails.Item);
-    if (!eventItem.EventDateTime || isNaN(new Date(eventItem.EventDateTime))) {
+    if (!eventItem.EventDate || isNaN(new Date(eventItem.EventDate))) {
       console.warn(
         `Invalid or missing EventDateTime for event ${eventId} - skipping.`
       );
@@ -61,7 +61,7 @@ export const handler = async (event) => {
     }
 
     const now = new Date();
-    const eventTime = new Date(eventItem.EventDateTime);
+    const eventTime = new Date(eventItem.EventDate);
     if (eventTime < now) {
       console.log(`Event ${eventId} is in the past - no notification needed.`);
       continue;
