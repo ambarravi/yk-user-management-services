@@ -13,7 +13,7 @@ export const handler = async (event) => {
 
     const BOOKING_TABLE = "BookingDetails";
     const EVENT_TABLE = "EventDetails";
-    const GSI_NAME = "UserId-EventID-index";
+    const GSI_NAME = "UserId-index"; // ✅ New GSI that only has UserId as Partition Key
 
     let body = JSON.parse(event.body);
     let userId = body.userId;
