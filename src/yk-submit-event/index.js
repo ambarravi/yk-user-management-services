@@ -254,9 +254,9 @@ export const handler = async (event) => {
         "ReservedSeats = :reservedSeats",
         "AudienceBenefits = :audienceBenefits",
         "AdditionalInfo = :additionalInfo",
-        "OrganizerName = :organizerName",
+        //   "OrganizerName = :organizerName",
         "EventMode = :mode",
-        "OrgID = :orgID",
+        //    "OrgID = :orgID",
         "EventStatus = :eventStatus",
       ];
 
@@ -299,9 +299,9 @@ export const handler = async (event) => {
               }
             : { L: [] },
         ":additionalInfo": { S: eventDetails.additionalInfo || "" },
-        ":organizerName": { S: eventDetails.OrganizerName || "" },
+        //  ":organizerName": { S: eventDetails.OrganizerName || "" },
         ":mode": { S: eventDetails.eventMode || "" },
-        ":orgID": { S: OrgID },
+        //":orgID": { S: OrgID },
         ":eventStatus": { S: "AwaitingApproval" },
       };
 
