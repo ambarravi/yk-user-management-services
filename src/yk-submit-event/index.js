@@ -257,7 +257,7 @@ export const handler = async (event) => {
         //   "OrganizerName = :organizerName",
         "EventMode = :mode",
         //    "OrgID = :orgID",
-        "EventStatus = :eventStatus",
+        // "EventStatus = :eventStatus",
       ];
 
       const expressionAttributeValues = {
