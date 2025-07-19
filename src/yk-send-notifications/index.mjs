@@ -6,7 +6,6 @@ import {
   QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { v4 as uuidv4 } from "uuid";
-import fetch from "node-fetch";
 
 const sqsClient = new SQSClient({ region: process.env.AWS_REGION });
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
