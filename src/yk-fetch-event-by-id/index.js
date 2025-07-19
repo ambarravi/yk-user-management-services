@@ -4,6 +4,18 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 export const handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*", // or restrict to your domain
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+      body: "",
+    };
+  }
+
   try {
     console.log("Input event:", JSON.stringify(event));
 
