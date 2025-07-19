@@ -59,6 +59,7 @@ Resources:
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/UserId-EventID-index
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/UserId-index
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
               - Effect: Allow
                 Action:
