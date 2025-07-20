@@ -22,13 +22,17 @@ Resources:
       Role: !GetAtt SyncTokenLambdaExecutionRole.Arn
       TracingConfig:
         Mode: Active
-      StreamViewType: NEW_AND_OLD_IMAGES
-      EventSourceMappings:
-        - EventSourceArn: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/TiktoPushTokens/stream/*
-          Enabled: true
-          StartingPosition: LATEST
-          BatchSize: 100 # Process up to 100 stream records per invocation
-          MaximumBatchingWindowInSeconds: 10 # Batch records for up to 10 seconds
+
+  # Event Source Mapping for DynamoDB Stream
+  SyncTokenStreamMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/TiktoPushTokens/stream/*
+      FunctionName: !Ref SyncTokenLambda
+      Enabled: true
+      StartingPosition: LATEST
+      BatchSize: 100 # Process up to 100 stream records per invocation
+      MaximumBatchingWindowInSeconds: 10 # Batch records for up to 10 seconds
 
   # IAM Role for SyncTokenLambda
   SyncTokenLambdaExecutionRole:
@@ -76,3 +80,6 @@ Outputs:
   SyncTokenLambdaArn:
     Description: ARN of the Sync Token Lambda function
     Value: !GetAtt SyncTokenLambda.Arn
+  SyncTokenStreamMappingArn:
+    Description: ARN of the Event Source Mapping for DynamoDB Stream
+    Value: !Ref SyncTokenStreamMapping
