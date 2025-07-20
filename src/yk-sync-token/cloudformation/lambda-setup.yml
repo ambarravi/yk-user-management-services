@@ -1,11 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Parameters:
-  TiktoPushTokensStreamArn:
-    Type: String
-    Description: The exact ARN of the DynamoDB Stream for TiktoPushTokens table (e.g., arn:aws:dynamodb:eu-west-1:756157886151:table/TiktoPushTokens/stream/2025-07-20T12:34:56.789)
-    Default: arn:aws:dynamodb:eu-west-1:756157886151:table/TiktoPushTokens/stream/*
-
 Resources:
   # Lambda: Sync Token Information
   SyncTokenLambda:
@@ -29,17 +23,6 @@ Resources:
       TracingConfig:
         Mode: Active
 
-  # Event Source Mapping for DynamoDB Stream
-  SyncTokenStreamMapping:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties:
-      EventSourceArn: !Ref TiktoPushTokensStreamArn
-      FunctionName: !Ref SyncTokenLambda
-      Enabled: true
-      StartingPosition: LATEST
-      BatchSize: 100 # Process up to 100 stream records per invocation
-      MaximumBatchingWindowInSeconds: 10 # Batch records for up to 10 seconds
-
   # IAM Role for SyncTokenLambda
   SyncTokenLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -62,7 +45,7 @@ Resources:
                   - dynamodb:GetShardIterator
                   - dynamodb:DescribeStream
                   - dynamodb:ListStreams
-                Resource: !Ref TiktoPushTokensStreamArn
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/TiktoPushTokens/stream/*
               - Effect: Allow
                 Action:
                   - dynamodb:UpdateItem
@@ -86,6 +69,3 @@ Outputs:
   SyncTokenLambdaArn:
     Description: ARN of the Sync Token Lambda function
     Value: !GetAtt SyncTokenLambda.Arn
-  SyncTokenStreamMappingArn:
-    Description: ARN of the Event Source Mapping for DynamoDB Stream
-    Value: !Ref SyncTokenStreamMapping
