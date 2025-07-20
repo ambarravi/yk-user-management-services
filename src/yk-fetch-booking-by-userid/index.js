@@ -40,6 +40,8 @@ export const handler = async (event) => {
       ? queryResponse.Items.map((item) => unmarshall(item))
       : [];
 
+    console.log(records);
+
     const currentDate = new Date().toISOString();
 
     let filteredRecords;
