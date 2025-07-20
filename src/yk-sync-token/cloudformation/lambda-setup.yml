@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   TiktoPushTokensStreamArn:
     Type: String
-    Description: The ARN of the DynamoDB Stream for TiktoPushTokens table
+    Description: The exact ARN of the DynamoDB Stream for TiktoPushTokens table (e.g., arn:aws:dynamodb:eu-west-1:756157886151:table/TiktoPushTokens/stream/2025-07-20T12:34:56.789)
     Default: arn:aws:dynamodb:eu-west-1:756157886151:table/TiktoPushTokens/stream/*
 
 Resources:
