@@ -67,21 +67,21 @@ export const handler = async (event) => {
       continue;
     }
 
-    const recipients = eventItem.RegisteredUsers || [];
-    if (recipients.length === 0) {
-      console.warn(`No recipients for event ${eventId} - skipping.`);
-      continue;
-    }
+    // const recipients = eventItem.RegisteredUsers || [];
+    // if (recipients.length === 0) {
+    //   console.warn(`No recipients for event ${eventId} - skipping.`);
+    //   continue;
+    // }
 
-    const validRecipients = recipients.filter(
-      (user) => user.email && user.email.includes("@")
-    );
-    if (validRecipients.length === 0) {
-      console.warn(
-        `No valid recipient emails for event ${eventId} - skipping.`
-      );
-      continue;
-    }
+    // const validRecipients = recipients.filter(
+    //   (user) => user.email && user.email.includes("@")
+    // );
+    // if (validRecipients.length === 0) {
+    //   console.warn(
+    //     `No valid recipient emails for event ${eventId} - skipping.`
+    //   );
+    //   continue;
+    // }
 
     for (const user of validRecipients) {
       const email = user.email;

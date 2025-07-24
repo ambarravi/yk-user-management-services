@@ -46,6 +46,7 @@ jobs:
           - yk-monthly-free-plan-refresh
           - yk-get-dashboard-data
           - yk-sync-token
+          - yk-sync-eventDate
 
     steps:
       # Step 1: Checkout code

@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  # Lambda: Sync Token Information
+  SyncTokenLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-sync-eventDate
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 60 # 1 minute, sufficient for processing DynamoDB stream records
+      MemorySize: 128 # Minimal memory for lightweight token sync operations
+      ReservedConcurrentExecutions: 5 # Limit concurrency to avoid DynamoDB throttling
+      Code:
+        ZipFile: |
+          // Placeholder: Upload actual code via ZIP file
+          export const handler = async (event) => {
+            // Process DynamoDB Stream records from TiktoPushTokens
+            // Sync token information to UsersTable
+            return { statusCode: 200, body: "Placeholder" };
+          };
+      Role: !GetAtt SyncTokenLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  # IAM Role for SyncTokenLambda
+  SyncTokenLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SyncTokenLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetRecords
+                  - dynamodb:GetShardIterator
+                  - dynamodb:DescribeStream
+                  - dynamodb:ListStreams
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails/stream/*
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                  - dynamodb:GetItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/EventID-index
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-sync-event:*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+Outputs:
+  SyncTokenLambdaArn:
+    Description: ARN of the Sync Token Lambda function
+    Value: !GetAtt SyncTokenLambda.Arn
