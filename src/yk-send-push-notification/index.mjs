@@ -1,11 +1,10 @@
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, BatchGetItemCommand } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   QueryCommand,
   PutCommand,
   GetCommand,
-  BatchGetCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendBulkTemplatedEmailCommand } from "@aws-sdk/client-ses";
 import admin from "firebase-admin";
@@ -157,9 +156,13 @@ export const handler = async (event) => {
       continue;
     }
 
-    const validRecipients = recipients.filter(
-      (user) => user.email && user.email.includes("@") && user.pushToken
-    );
+    const validRecipients = recipients.filter((r) => {
+      const email = r.UserDetails?.Email;
+      const pushToken = r.UserDetails?.PushToken;
+
+      return email && email.includes("@") && pushToken;
+    });
+
     if (validRecipients.length === 0) {
       console.warn(`No valid recipients for event ${eventId} - skipping.`);
       continue;
@@ -421,27 +424,75 @@ async function sendNotifications(messages) {
 // Function to fetch bookings using EventID
 async function getBookingsForEvent(eventId) {
   try {
-    const result = await docClient.send(
+    // Step 1: Query BookingDetails using GSI on EventID
+    const bookingResult = await ddbClient.send(
       new QueryCommand({
         TableName: "BookingDetails",
         IndexName: "EventID-index",
         KeyConditionExpression: "EventID = :eid",
         ExpressionAttributeValues: {
-          ":eid": eventId,
+          ":eid": { S: eventId },
         },
       })
     );
 
-    console.log("Query result for bookings:", JSON.stringify(result));
+    const bookings = bookingResult.Items || [];
 
-    if (result.Items && result.Items.length > 0) {
-      return result.Items;
-    } else {
+    if (bookings.length === 0) {
       console.warn(`No valid recipients for event ${eventId} - skipping.`);
       return [];
     }
+
+    // Step 2: Extract UserIds
+    const userIds = bookings.map((item) => item.UserId?.S).filter((id) => !!id);
+
+    // Step 3: BatchGet from UsersTable
+    const userBatchResult = await ddbClient.send(
+      new BatchGetItemCommand({
+        RequestItems: {
+          UsersTable: {
+            Keys: userIds.map((uid) => ({ UserID: { S: uid } })),
+          },
+        },
+      })
+    );
+
+    const usersMap = {};
+    const userItems = userBatchResult.Responses?.UsersTable || [];
+    for (const user of userItems) {
+      usersMap[user.UserID.S] = user;
+    }
+
+    // Step 4: Merge booking with user info
+    const enriched = bookings.map((b) => {
+      const uid = b.UserId?.S;
+      const user = usersMap[uid];
+
+      return {
+        BookingID: b.BookingID?.S,
+        UserId: uid,
+        EventID: b.EventID?.S,
+        BookingStatus: b.BookingStatus?.S,
+        BookingName: b.BookingName?.S,
+        BookingEmail: b.BookingEmail?.S,
+        SeatsBooked: parseInt(b.SeatsBooked?.N || "0"),
+        TotalAmountPaid: parseFloat(b.TotalAmountPaid?.N || "0"),
+        // User Info
+        UserDetails: user
+          ? {
+              Name: user.Name?.S,
+              Email: user.Email?.S,
+              Phone: user.Phone?.S,
+              Token: user.pushToken?.s,
+              // add any other user fields
+            }
+          : null,
+      };
+    });
+
+    return enriched;
   } catch (error) {
-    console.error(" Error querying BookingDetails:", error);
+    console.error("Error in getBookingsForEvent:", error);
     throw error;
   }
 }
