@@ -1,10 +1,11 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   QueryCommand,
   PutCommand,
-  BatchGetItemCommand,
+  GetCommand,
+  BatchGetCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendBulkTemplatedEmailCommand } from "@aws-sdk/client-ses";
 import admin from "firebase-admin";
@@ -266,7 +267,7 @@ async function fetchRecipients(eventId) {
       try {
         const batchResponse = await withRetry(() =>
           docClient.send(
-            new BatchGetItemCommand({
+            new BatchGetCommand({
               RequestItems: {
                 [process.env.USERS_TABLE]: {
                   Keys: batchKeys,
