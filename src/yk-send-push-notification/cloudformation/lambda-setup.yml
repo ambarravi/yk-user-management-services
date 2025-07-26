@@ -1,22 +1,25 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Resources:
-  # Lambda: Send Push Notification and Email for Event Cancellation
+  # Lambda: Send Push Notification and Email for Event Updates
   SendPushNotificationLambda:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: yk-send-push-notification
       Handler: index.handler
       Runtime: nodejs20.x
-      Timeout: 300 # 5 minutes to handle multiple bookings
+      Timeout: 900
       Environment:
         Variables:
-          RETRY_COUNT: "1" # Default to 1 retry, configurable
-          S3_FCM_KEY: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json" # Firebase service account key
-          SENDER_EMAIL: "support@tikties.com"
+          S3_BUCKET: "tiktie-notifications"
+          S3_FCM_KEY: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json"
+          SENDER_EMAIL: !Ref SenderEmail
           EVENT_TABLE: "EventDetails"
-      MemorySize: 256 # Sufficient for DynamoDB queries, FCM, and SES
-      ReservedConcurrentExecutions: 5 # Limit concurrency to avoid DynamoDB throttling
+          BOOKING_TABLE: "BookingDetails"
+          USERS_TABLE: "UsersTable"
+          NOTIFICATION_LOGS_TABLE: "NotificationLogs"
+      MemorySize: 256
+      ReservedConcurrentExecutions: 5
       Code:
         ZipFile: |
           // Placeholder: Upload actual code via ZIP file
@@ -26,6 +29,122 @@ Resources:
       Role: !GetAtt SendPushNotificationLambdaExecutionRole.Arn
       TracingConfig:
         Mode: Active
+
+  # SES Template: CANCELLED
+  EventCancelledTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_CANCELLED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <style>
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; }
+              .logo { max-width: 150px; height: auto; display: block; margin: 0 auto 20px; }
+              .content { line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo">
+              <h2>{{subject}}</h2>
+              <p class="content">{{body}}</p>
+              <p class="content">Best regards,<br>Event Team</p>
+            </div>
+          </body>
+          </html>
+
+  # SES Template: RESCHEDULED
+  EventRescheduledTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_RESCHEDULED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <style>
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; }
+              .logo { max-width: 150px; height: auto; display: block; margin: 0 auto 20px; }
+              .content { line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo">
+              <h2>{{subject}}</h2>
+              <p class="content">{{body}}</p>
+              <p class="content">Best regards,<br>Event Team</p>
+            </div>
+          </body>
+          </html>
+
+  # SES Template: VENUE_CHANGED
+  EventVenueChangedTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_VENUE_CHANGED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <style>
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; }
+              .logo { max-width: 150px; height: auto; display: block; margin: 0 auto 20px; }
+              .content { line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo">
+              <h2>{{subject}}</h2>
+              <p class="content">{{body}}</p>
+              <p class="content">Best regards,<br>Event Team</p>
+            </div>
+          </body>
+          </html>
+
+  # SES Template: EVENT_UPDATED
+  EventUpdatedTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_EVENT_UPDATED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <style>
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; }
+              .logo { max-width: 150px; height: auto; display: block; margin: 0 auto 20px; }
+              .content { line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo">
+              <h2>{{subject}}</h2>
+              <p class="content">{{body}}</p>
+              <p class="content">Best regards,<br>Event Team</p>
+            </div>
+          </body>
+          </html>
 
   # IAM Role for SendPushNotificationLambda
   SendPushNotificationLambdaExecutionRole:
@@ -48,12 +167,12 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:Query
                   - dynamodb:PutItem
+                  - dynamodb:BatchGetItem
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/*
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/TiktoPushTokens
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NotificationLogs
               - Effect: Allow
                 Action:
@@ -86,6 +205,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - ses:SendEmail
+                  - ses:SendBulkTemplatedEmail
                 Resource: "*"
                 Condition:
                   StringEquals:
@@ -96,10 +216,10 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: EventCancellationQueue
-      VisibilityTimeout: 600 # 2x Lambda timeout (300s) to prevent duplicate processing
+      VisibilityTimeout: 1800
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt EventCancellationDLQ.Arn
-        maxReceiveCount: 3 # Move to DLQ after 3 failed attempts
+        maxReceiveCount: 3
 
   # SQS Dead Letter Queue
   EventCancellationDLQ:
@@ -113,7 +233,7 @@ Resources:
     Properties:
       EventSourceArn: !GetAtt EventCancellationQueue.Arn
       FunctionName: !Ref SendPushNotificationLambda
-      BatchSize: 10 # Process up to 10 messages at a time
+      BatchSize: 10
       Enabled: true
 
   # Lambda Permission for SQS
@@ -129,7 +249,11 @@ Parameters:
   SenderEmail:
     Type: String
     Description: The verified SES sender email address
-    Default: "support@tiktie.com"
+    Default: "support@tikties.com"
+  LogoUrl:
+    Type: String
+    Description: Public URL of the logo image for email templates
+    Default: "https://tiktie-notifications.s3.amazonaws.com/images/logo.png"
 
 Outputs:
   SendPushNotificationLambdaArn:

@@ -1,21 +1,31 @@
 {
   "name": "yk-send-push-notification",
   "version": "1.0.0",
-  "description": "AWS Lambda function to send push notifications and emails for event cancellations",
-  "main": "index.mjs",
+  "description": "AWS Lambda function to send push notifications and emails for event updates (cancellation, rescheduling, venue changes, etc.)",
+  "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "zip": "zip -r lambda.zip index.mjs node_modules"
+    "test": "jest",
+    "build": "npm install && npm run zip",
+    "zip": "zip -r lambda.zip index.mjs node_modules",
+    "lint": "eslint ."
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.658.1",
-    "@aws-sdk/client-s3": "^3.658.1",
-    "@aws-sdk/lib-dynamodb": "^3.658.1",
-    "@aws-sdk/client-ses": "^3.658.1",
-    "firebase-admin": "^12.6.0"
+    "@aws-sdk/client-dynamodb": "^3.670.0",
+    "@aws-sdk/client-s3": "^3.670.0",
+    "@aws-sdk/lib-dynamodb": "^3.670.0",
+    "@aws-sdk/client-ses": "^3.670.0",
+    "firebase-admin": "^12.7.0"
   },
-  "devDependencies": {},
-  "author": "",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.13",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1"
+  },
+  "author": "Your Team Name",
   "license": "ISC"
 }
