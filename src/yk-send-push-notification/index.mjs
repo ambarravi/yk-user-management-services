@@ -66,6 +66,19 @@ async function withRetry(operation, maxRetries = 3, baseDelay = 1000) {
 export const handler = async (event) => {
   console.log("Received event:", JSON.stringify(event, null, 2));
 
+  const requiredEnvVars = [
+    "EVENT_TABLE",
+    "BOOKING_TABLE",
+    "USERS_TABLE",
+    "NOTIFICATION_LOGS_TABLE",
+    "SENDER_EMAIL",
+  ];
+  for (const varName of requiredEnvVars) {
+    if (!process.env[varName]) {
+      throw new Error(`Missing required env var: ${varName}`);
+    }
+  }
+
   // Initialize Firebase
   try {
     await initializeFirebase();
@@ -138,7 +151,7 @@ export const handler = async (event) => {
     }
 
     // Fetch recipients
-    const recipients = await fetchRecipients(eventId);
+    const recipients = await getBookingsForEvent(eventId);
     if (recipients.length === 0) {
       console.warn(`No recipients for event ${eventId} - skipping.`);
       continue;
@@ -186,7 +199,7 @@ export const handler = async (event) => {
         hour12: true,
       });
 
-      const message = {
+      const pushMessage = {
         token: pushToken,
         notification: {
           title: `📢 Event Update: ${eventItem.EventTitle}`,
@@ -201,7 +214,7 @@ export const handler = async (event) => {
       };
 
       notifications.push({
-        message,
+        pushMessage,
         notificationId,
         userId: user.userId,
         eventId,
@@ -233,81 +246,81 @@ export const handler = async (event) => {
 };
 
 // Fetch recipients using BatchGetItem
-async function fetchRecipients(eventId) {
-  const recipients = [];
-  try {
-    const bookingQuery = await withRetry(() =>
-      docClient.send(
-        new QueryCommand({
-          TableName: process.env.BOOKING_TABLE,
-          IndexName: "EventID-index",
-          KeyConditionExpression: "EventID = :eventId",
-          ExpressionAttributeValues: {
-            ":eventId": eventId,
-          },
-        })
-      )
-    );
+// async function fetchRecipients(eventId) {
+//   const recipients = [];
+//   try {
+//     const bookingQuery = await withRetry(() =>
+//       docClient.send(
+//         new QueryCommand({
+//           TableName: process.env.BOOKING_TABLE,
+//           IndexName: "EventID-index",
+//           KeyConditionExpression: "EventID = :eventId",
+//           ExpressionAttributeValues: {
+//             ":eventId": eventId,
+//           },
+//         })
+//       )
+//     );
 
-    const bookings = bookingQuery.Items || [];
-    if (bookings.length === 0) {
-      console.log(`No bookings found for event ${eventId}`);
-      return recipients;
-    }
+//     const bookings = bookingQuery.Items || [];
+//     if (bookings.length === 0) {
+//       console.log(`No bookings found for event ${eventId}`);
+//       return recipients;
+//     }
 
-    // Prepare keys for BatchGetItem
-    const userKeys = bookings.map((booking) => ({
-      UserID: booking.UserId,
-    }));
+//     // Prepare keys for BatchGetItem
+//     const userKeys = bookings.map((booking) => ({
+//       UserID: booking.UserId,
+//     }));
 
-    // Batch fetch user details
-    const batchSize = 100; // DynamoDB BatchGetItem limit
-    for (let i = 0; i < userKeys.length; i += batchSize) {
-      const batchKeys = userKeys.slice(i, i + batchSize);
-      try {
-        const batchResponse = await withRetry(() =>
-          docClient.send(
-            new BatchGetCommand({
-              RequestItems: {
-                [process.env.USERS_TABLE]: {
-                  Keys: batchKeys,
-                },
-              },
-            })
-          )
-        );
+//     // Batch fetch user details
+//     const batchSize = 100; // DynamoDB BatchGetItem limit
+//     for (let i = 0; i < userKeys.length; i += batchSize) {
+//       const batchKeys = userKeys.slice(i, i + batchSize);
+//       try {
+//         const batchResponse = await withRetry(() =>
+//           docClient.send(
+//             new BatchGetCommand({
+//               RequestItems: {
+//                 [process.env.USERS_TABLE]: {
+//                   Keys: batchKeys,
+//                 },
+//               },
+//             })
+//           )
+//         );
 
-        const users = batchResponse.Responses[process.env.USERS_TABLE] || [];
-        users.forEach((user) => {
-          if (user) {
-            recipients.push({
-              userId: user.UserID,
-              email: user.Email,
-              pushToken: user.pushToken,
-            });
-          }
-        });
+//         const users = batchResponse.Responses[process.env.USERS_TABLE] || [];
+//         users.forEach((user) => {
+//           if (user) {
+//             recipients.push({
+//               userId: user.UserID,
+//               email: user.Email,
+//               pushToken: user.pushToken,
+//             });
+//           }
+//         });
 
-        // Handle unprocessed keys
-        if (
-          batchResponse.UnprocessedKeys &&
-          batchResponse.UnprocessedKeys[process.env.USERS_TABLE]
-        ) {
-          console.warn(
-            `Unprocessed keys in batch:`,
-            batchResponse.UnprocessedKeys
-          );
-        }
-      } catch (err) {
-        console.error(`Error in BatchGetItem for users:`, err);
-      }
-    }
-  } catch (err) {
-    console.error(`Error querying BookingTable for event ${eventId}:`, err);
-  }
+//         // Handle unprocessed keys
+//         if (
+//           batchResponse.UnprocessedKeys &&
+//           batchResponse.UnprocessedKeys[process.env.USERS_TABLE]
+//         ) {
+//           console.warn(
+//             `Unprocessed keys in batch:`,
+//             batchResponse.UnprocessedKeys
+//           );
+//         }
+//       } catch (err) {
+//         console.error(`Error in BatchGetItem for users:`, err);
+//       }
+//     }
+//   } catch (err) {
+//     console.error(`Error querying BookingTable for event ${eventId}:`, err);
+//   }
 
-  return recipients;
-}
+//   return recipients;
+// }
 
 // Check notification log for idempotency
 async function checkNotificationLog(notificationId) {
@@ -402,5 +415,33 @@ async function sendNotifications(messages) {
     } catch (error) {
       console.error("Error sending push notification:", error);
     }
+  }
+}
+
+// Function to fetch bookings using EventID
+async function getBookingsForEvent(eventId) {
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: "BookingDetails",
+        IndexName: "EventID-index",
+        KeyConditionExpression: "EventID = :eid",
+        ExpressionAttributeValues: {
+          ":eid": eventId,
+        },
+      })
+    );
+
+    console.log("Query result for bookings:", JSON.stringify(result));
+
+    if (result.Items && result.Items.length > 0) {
+      return result.Items;
+    } else {
+      console.warn(`No valid recipients for event ${eventId} - skipping.`);
+      return [];
+    }
+  } catch (error) {
+    console.error(" Error querying BookingDetails:", error);
+    throw error;
   }
 }
