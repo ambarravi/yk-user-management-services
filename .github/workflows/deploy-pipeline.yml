@@ -5,6 +5,9 @@ on:
     branches:
       - dev
       - main
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
@@ -53,12 +56,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up AWS CLI
-      - name: Set up AWS CLI
+      # Step 2: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::756157886151:role/GitHubActionsDeploymentRole-yk-user-management
+          role-session-name: GitHubActionsSession
           aws-region: ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
 
       # Step 3: Install dependencies
