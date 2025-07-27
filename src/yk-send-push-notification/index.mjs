@@ -487,10 +487,10 @@ async function getBookingsForEvent(eventId) {
         // User Info
         UserDetails: user
           ? {
-              Name: user.Name,
-              Email: user.Email,
-              Phone: user.Phone,
-              Token: user.pushToken,
+              Name: user.Name?.S,
+              Email: user.Email?.S,
+              Phone: user.Phone?.S,
+              Token: user.pushToken?.s,
               // add any other user fields
             }
           : null,
