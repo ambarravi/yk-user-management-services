@@ -469,27 +469,28 @@ async function getBookingsForEvent(eventId) {
 
     // Step 4: Merge booking with user info
     console.log("bookings", JSON.stringify(bookings));
-    console.log("user", JSON.stringify(user));
+
     const enriched = bookings.map((b) => {
-      const uid = b.UserId?.S;
+      const uid = b.UserId;
       const user = usersMap[uid];
+      console.log("user", JSON.stringify(user));
 
       return {
-        BookingID: b.BookingID?.S,
+        BookingID: b.BookingID,
         UserId: uid,
-        EventID: b.EventID?.S,
-        BookingStatus: b.BookingStatus?.S,
-        BookingName: b.BookingName?.S,
-        BookingEmail: b.BookingEmail?.S,
-        SeatsBooked: parseInt(b.SeatsBooked?.N || "0"),
-        TotalAmountPaid: parseFloat(b.TotalAmountPaid?.N || "0"),
+        EventID: b.EventID,
+        BookingStatus: b.BookingStatus,
+        BookingName: b.BookingName,
+        BookingEmail: b.BookingEmail,
+        SeatsBooked: parseInt(b.SeatsBooked || "0"),
+        TotalAmountPaid: parseFloat(b.TotalAmountPaid || "0"),
         // User Info
         UserDetails: user
           ? {
-              Name: user.Name?.S,
-              Email: user.Email?.S,
-              Phone: user.Phone?.S,
-              Token: user.pushToken?.s,
+              Name: user.Name,
+              Email: user.Email,
+              Phone: user.Phone,
+              Token: user.pushToken,
               // add any other user fields
             }
           : null,
