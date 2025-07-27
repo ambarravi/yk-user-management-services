@@ -420,7 +420,15 @@ async function sendBulkEmails(destinations, eventType) {
       DefaultTemplateData: JSON.stringify({ subject: "", body: "" }),
       Destinations: destinations,
     };
-    await withRetry(() => ses.send(new SendBulkTemplatedEmailCommand(params)));
+
+    const response = await withRetry(() =>
+      ses.send(new SendBulkTemplatedEmailCommand(params))
+    );
+
+    console.log("SES response:", JSON.stringify(response, null, 2));
+
+    // await withRetry(() => ses.send(new SendBulkTemplatedEmailCommand(params)));
+    // console.log("SES response:", JSON.stringify(response, null, 2));
     console.log(`Bulk email sent to ${destinations.length} recipients`);
   } catch (err) {
     console.error(`Failed to send bulk email:`, err);
