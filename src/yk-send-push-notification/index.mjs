@@ -161,6 +161,7 @@ export const handler = async (event) => {
     const validRecipients = recipients
       .filter((r) => {
         const email = r.UserDetails?.Email;
+
         // const pushToken = r.UserDetails?.PushToken;
 
         return email && email.includes("@");
@@ -169,6 +170,7 @@ export const handler = async (event) => {
         userId: r.UserDetails.UserID,
         email: r.UserDetails.Email,
         pushToken: r.UserDetails.PushToken,
+        name: r.BookingName,
       }));
 
     if (validRecipients.length === 0) {
@@ -190,9 +192,10 @@ export const handler = async (event) => {
       }
 
       const email = user.email;
+      const booking_name = user.name;
       const pushToken = user.pushToken;
       const subject = getSubject(eventType, eventItem);
-      const body = getBody(eventType, eventItem);
+      const body = getBody(eventType, eventItem, booking_name);
       console.log(
         `Preparing email for ${email}: Subject=${subject}, Body=${body}`
       );
@@ -272,83 +275,6 @@ export const handler = async (event) => {
   return { statusCode: 200, body: JSON.stringify("Done") };
 };
 
-// Fetch recipients using BatchGetItem
-// async function fetchRecipients(eventId) {
-//   const recipients = [];
-//   try {
-//     const bookingQuery = await withRetry(() =>
-//       docClient.send(
-//         new QueryCommand({
-//           TableName: process.env.BOOKING_TABLE,
-//           IndexName: "EventID-index",
-//           KeyConditionExpression: "EventID = :eventId",
-//           ExpressionAttributeValues: {
-//             ":eventId": eventId,
-//           },
-//         })
-//       )
-//     );
-
-//     const bookings = bookingQuery.Items || [];
-//     if (bookings.length === 0) {
-//       console.log(`No bookings found for event ${eventId}`);
-//       return recipients;
-//     }
-
-//     // Prepare keys for BatchGetItem
-//     const userKeys = bookings.map((booking) => ({
-//       UserID: booking.UserId,
-//     }));
-
-//     // Batch fetch user details
-//     const batchSize = 100; // DynamoDB BatchGetItem limit
-//     for (let i = 0; i < userKeys.length; i += batchSize) {
-//       const batchKeys = userKeys.slice(i, i + batchSize);
-//       try {
-//         const batchResponse = await withRetry(() =>
-//           docClient.send(
-//             new BatchGetCommand({
-//               RequestItems: {
-//                 [process.env.USERS_TABLE]: {
-//                   Keys: batchKeys,
-//                 },
-//               },
-//             })
-//           )
-//         );
-
-//         const users = batchResponse.Responses[process.env.USERS_TABLE] || [];
-//         users.forEach((user) => {
-//           if (user) {
-//             recipients.push({
-//               userId: user.UserID,
-//               email: user.Email,
-//               pushToken: user.pushToken,
-//             });
-//           }
-//         });
-
-//         // Handle unprocessed keys
-//         if (
-//           batchResponse.UnprocessedKeys &&
-//           batchResponse.UnprocessedKeys[process.env.USERS_TABLE]
-//         ) {
-//           console.warn(
-//             `Unprocessed keys in batch:`,
-//             batchResponse.UnprocessedKeys
-//           );
-//         }
-//       } catch (err) {
-//         console.error(`Error in BatchGetItem for users:`, err);
-//       }
-//     }
-//   } catch (err) {
-//     console.error(`Error querying BookingTable for event ${eventId}:`, err);
-//   }
-
-//   return recipients;
-// }
-
 // Check notification log for idempotency
 async function checkNotificationLog(notificationId) {
   try {
@@ -401,17 +327,46 @@ function getSubject(type, event) {
 }
 
 // Body generator
-function getBody(type, event) {
+function getBody(type, event, booking_name) {
+  const typeNormalized = type.toLowerCase();
+
+  let updateMessage = "has been <strong>updated</strong>";
+  let showDate = true;
+  let showVenue = true;
+
+  switch (typeNormalized) {
+    case "rescheduled":
+      updateMessage = "has been <strong>rescheduled</strong>";
+      break;
+    case "venue_changed":
+      updateMessage = "venue <strong>has been changed</strong>";
+      showDate = false; // only venue is changed
+      break;
+    case "event_updated":
+      updateMessage = "details <strong>have been updated</strong>";
+      break;
+    case "cancelled":
+      updateMessage = "has been <strong>cancelled</strong>";
+      showDate = false;
+      showVenue = false;
+      break;
+  }
+
   return `
-    Hello,
-
-    This is to inform you that the event "${event.EventTitle}" has an update.
-
-    Type: ${type}
-    New Date/Time: ${event.EventDate}
-    Venue: ${event.EventLocation || "No venue specified"}
-
-    Thank you,
+    Hello <strong>${booking_name}</strong>,<br/><br/>
+    This is to inform you that the event "<strong>${
+      event.EventTitle
+    }</strong>" ${updateMessage}.<br/><br/>
+    ${showDate ? `<strong>New Date/Time:</strong> ${event.EventDate}<br/>` : ""}
+    ${
+      showVenue
+        ? `<strong>Venue:</strong> ${
+            event.EventLocation || "No venue specified"
+          }<br/>`
+        : ""
+    }
+    <br/>
+    Thank you,<br/>
     Event Team
   `;
 }
@@ -522,6 +477,7 @@ async function getBookingsForEvent(eventId) {
         UserDetails: user
           ? {
               Name: user.Name?.S,
+              LastName: user.LastName?.S,
               Email: user.Email?.S,
               Phone: user.Phone?.S,
               Token: user.pushToken?.s,
