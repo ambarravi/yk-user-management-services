@@ -425,17 +425,19 @@ async function sendNotifications(messages) {
 async function getBookingsForEvent(eventId) {
   try {
     // Step 1: Query BookingDetails using GSI on EventID
+    console.log("getBookingsForEvent :", eventId);
     const bookingResult = await ddbClient.send(
       new QueryCommand({
         TableName: "BookingDetails",
         IndexName: "EventID-index",
         KeyConditionExpression: "EventID = :eid",
         ExpressionAttributeValues: {
-          ":eid": { S: eventId },
+          ":eid": eventId,
         },
       })
     );
 
+    console.log("Query result for bookings:", JSON.stringify(bookingResult));
     const bookings = bookingResult.Items || [];
 
     if (bookings.length === 0) {
