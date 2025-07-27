@@ -446,18 +446,20 @@ async function getBookingsForEvent(eventId) {
     }
 
     // Step 2: Extract UserIds
-    const userIds = bookings.map((item) => item.UserId?.S).filter((id) => !!id);
+    const userIds = bookings.map((item) => item.UserId).filter((id) => !!id);
 
     // Step 3: BatchGet from UsersTable
     const userBatchResult = await ddbClient.send(
       new BatchGetItemCommand({
         RequestItems: {
           UsersTable: {
-            Keys: userIds.map((uid) => ({ UserID: { S: uid } })),
+            Keys: userIds.map((uid) => ({ UserID: uid })),
           },
         },
       })
     );
+
+    console.log("userBatchResult", JSON.stringify(userBatchResult));
 
     const usersMap = {};
     const userItems = userBatchResult.Responses?.UsersTable || [];
