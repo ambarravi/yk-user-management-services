@@ -158,12 +158,18 @@ export const handler = async (event) => {
 
     console.log("recipients:", JSON.stringify(recipients));
 
-    const validRecipients = recipients.filter((r) => {
-      const email = r.UserDetails?.Email;
-      const pushToken = r.UserDetails?.PushToken;
+    const validRecipients = recipients
+      .filter((r) => {
+        const email = r.UserDetails?.Email;
+        // const pushToken = r.UserDetails?.PushToken;
 
-      return email && email.includes("@") && pushToken;
-    });
+        return email && email.includes("@");
+      })
+      .map((r) => ({
+        userId: r.UserDetails.UserID,
+        email: r.UserDetails.Email,
+        pushToken: r.UserDetails.PushToken,
+      }));
 
     if (validRecipients.length === 0) {
       console.warn(`No valid recipients for event ${eventId} - skipping.`);
@@ -193,40 +199,41 @@ export const handler = async (event) => {
         Destination: { ToAddresses: [email] },
         ReplacementTemplateData: JSON.stringify({ subject, body }),
       });
+      if (pushToken) {
+        // Prepare push notification
+        const eventDateTime = new Date(eventItem.EventDate);
+        const formattedEventDate = eventDateTime.toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "long",
+        });
+        const formattedEventTime = eventDateTime.toLocaleTimeString("en-IN", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
 
-      // Prepare push notification
-      const eventDateTime = new Date(eventItem.EventDate);
-      const formattedEventDate = eventDateTime.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "long",
-      });
-      const formattedEventTime = eventDateTime.toLocaleTimeString("en-IN", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
+        const pushMessage = {
+          token: pushToken,
+          notification: {
+            title: `📢 Event Update: ${eventItem.EventTitle}`,
+            body: `The event "${
+              eventItem.EventTitle
+            }" has been ${eventType.toLowerCase()} for ${formattedEventDate} at ${formattedEventTime}.`,
+          },
+          data: {
+            event_id: eventId,
+            event_type: eventType,
+          },
+        };
 
-      const pushMessage = {
-        token: pushToken,
-        notification: {
-          title: `📢 Event Update: ${eventItem.EventTitle}`,
-          body: `The event "${
-            eventItem.EventTitle
-          }" has been ${eventType.toLowerCase()} for ${formattedEventDate} at ${formattedEventTime}.`,
-        },
-        data: {
-          event_id: eventId,
-          event_type: eventType,
-        },
-      };
-
-      notifications.push({
-        pushMessage,
-        notificationId,
-        userId: user.userId,
-        eventId,
-        eventType,
-      });
+        notifications.push({
+          pushMessage,
+          notificationId,
+          userId: user.userId,
+          eventId,
+          eventType,
+        });
+      }
     }
 
     // Send bulk emails
@@ -238,13 +245,20 @@ export const handler = async (event) => {
     // Send push notifications and log
     if (notifications.length > 0) {
       console.log(`Sending ${notifications.length} push notifications`);
-      await sendNotifications(notifications.map((n) => n.message));
+      await sendNotifications(notifications.map((n) => n.pushMessage));
       await Promise.all(
         notifications.map(({ notificationId, userId, eventId, eventType }) =>
           logNotification(notificationId, userId, eventId, eventType)
         )
       );
     }
+
+    console.log({
+      totalRecipients: recipients.length,
+      validRecipients: validRecipients.length,
+      pushNotificationCount: notifications.length,
+      emailCount: emailDestinations.length,
+    });
 
     console.log(`Processed event ${eventId} successfully.`);
   }
