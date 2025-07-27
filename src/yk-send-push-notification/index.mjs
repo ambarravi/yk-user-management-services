@@ -468,6 +468,8 @@ async function getBookingsForEvent(eventId) {
     }
 
     // Step 4: Merge booking with user info
+    console.log("bookings", JSON.stringify(bookings));
+    console.log("user", JSON.stringify(user));
     const enriched = bookings.map((b) => {
       const uid = b.UserId?.S;
       const user = usersMap[uid];
