@@ -156,6 +156,8 @@ export const handler = async (event) => {
       continue;
     }
 
+    console.log("recipients:", JSON.stringify(recipients));
+
     const validRecipients = recipients.filter((r) => {
       const email = r.UserDetails?.Email;
       const pushToken = r.UserDetails?.PushToken;
@@ -167,6 +169,8 @@ export const handler = async (event) => {
       console.warn(`No valid recipients for event ${eventId} - skipping.`);
       continue;
     }
+
+    console.log("validRecipients:", JSON.stringify(validRecipients));
 
     const notifications = [];
     const emailDestinations = [];
