@@ -453,7 +453,7 @@ async function getBookingsForEvent(eventId) {
       new BatchGetItemCommand({
         RequestItems: {
           UsersTable: {
-            Keys: userIds.map((uid) => ({ UserID: uid })),
+            Keys: userIds.map((uid) => ({ UserID: { S: uid } })),
           },
         },
       })
