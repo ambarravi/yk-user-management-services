@@ -114,7 +114,7 @@ export const handler = async (event) => {
         dateTime: existingRecord.Item.EventDate?.S,
         readableEventID: existingRecord.Item.ReadableEventID?.S,
         eventType: existingRecord.Item.EventType?.S || "event",
-        type: "event_cancelled",
+        type: "CANCELLED",
       };
 
       if (!cancelledEventDetails.orgId) {
