@@ -193,11 +193,17 @@ export const handler = async (event) => {
       const pushToken = user.pushToken;
       const subject = getSubject(eventType, eventItem);
       const body = getBody(eventType, eventItem);
-
+      console.log(
+        `Preparing email for ${email}: Subject=${subject}, Body=${body}`
+      );
       // Prepare email destination for bulk sending
       emailDestinations.push({
         Destination: { ToAddresses: [email] },
-        ReplacementTemplateData: JSON.stringify({ subject, body }),
+        ReplacementTemplateData: JSON.stringify({
+          subject,
+          body,
+          LogoUrl: "https://tikties-logo.s3.amazonaws.com/images/logo.png",
+        }),
       });
       if (pushToken) {
         // Prepare push notification
@@ -420,6 +426,8 @@ async function sendBulkEmails(destinations, eventType) {
       DefaultTemplateData: JSON.stringify({ subject: "", body: "" }),
       Destinations: destinations,
     };
+
+    console.log("SES params:", JSON.stringify(params, null, 2));
 
     const response = await withRetry(() =>
       ses.send(new SendBulkTemplatedEmailCommand(params))
