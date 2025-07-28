@@ -171,6 +171,7 @@ export const handler = async (event) => {
         email: r.UserDetails.Email,
         pushToken: r.UserDetails.Token,
         name: r.BookingName,
+        bookingId: r.BookingID,
       }));
 
     if (validRecipients.length === 0) {
