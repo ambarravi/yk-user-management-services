@@ -221,19 +221,65 @@ export const handler = async (event) => {
           hour12: true,
         });
 
+        // Custom title/body based on eventType
+        const eventTypeContent = {
+          CANCELLED: {
+            titlePrefix: "🚫 Event Cancelled",
+            body: (title, date, time) =>
+              `We regret to inform you that the event "${title}" has been cancelled. Originally scheduled for ${date} at ${time}.`,
+          },
+          RESCHEDULED: {
+            titlePrefix: "📅 Event Rescheduled",
+            body: (title, date, time) =>
+              `The event "${title}" has been rescheduled to ${date} at ${time}. Please check the new schedule.`,
+          },
+          VENUE_CHANGED: {
+            titlePrefix: "📍 Venue Changed",
+            body: (title, date, time) =>
+              `The venue for the event "${title}" has been changed. It will now take place on ${date} at ${time}.`,
+          },
+          EVENT_UPDATED: {
+            titlePrefix: "🔄 Event Details Updated",
+            body: (title, date, time) =>
+              `The event "${title}" has been updated. It is scheduled for ${date} at ${time}. Please review the new details.`,
+          },
+        };
+
+        // Fallback if eventType is unknown
+        const pushTemplate = eventTypeContent[eventType] || {
+          titlePrefix: "📢 Event Update",
+          body: (title, date, time) =>
+            `The event "${title}" has been updated. Scheduled for ${date} at ${time}.`,
+        };
         const pushMessage = {
           token: pushToken,
           notification: {
-            title: `📢 Event Update: ${eventItem.EventTitle}`,
-            body: `The event "${
-              eventItem.EventTitle
-            }" has been ${eventType.toLowerCase()} for ${formattedEventDate} at ${formattedEventTime}.`,
+            title: `${pushTemplate.titlePrefix}: ${eventItem.EventTitle}`,
+            body: pushTemplate.body(
+              eventItem.EventTitle,
+              formattedEventDate,
+              formattedEventTime
+            ),
           },
           data: {
             event_id: eventId,
             event_type: eventType,
           },
         };
+
+        // const pushMessage = {
+        //   token: pushToken,
+        //   notification: {
+        //     title: `📢 Event Update: ${eventItem.EventTitle}`,
+        //     body: `The event "${
+        //       eventItem.EventTitle
+        //     }" has been ${eventType.toLowerCase()} for ${formattedEventDate} at ${formattedEventTime}.`,
+        //   },
+        //   data: {
+        //     event_id: eventId,
+        //     event_type: eventType,
+        //   },
+        // };
 
         notifications.push({
           pushMessage,
