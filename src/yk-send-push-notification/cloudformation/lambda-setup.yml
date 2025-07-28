@@ -85,7 +85,7 @@ Resources:
               <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
               <h2>{{subject}}</h2>
               <p>{{body}}</p>
-              <p>Best regards,<br/>Event Team</p>
+            
               <div class="footer">
                 You are receiving this email as part of your event participation.<br/>
                 For support, contact us at support@tikties.com
@@ -149,7 +149,7 @@ Resources:
               <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
               <h2>{{subject}}</h2>
               <p>{{body}}</p>
-              <p>Best regards,<br/>Event Team</p>
+           
               <div class="footer">
                 You are receiving this email as part of your event participation.<br/>
                 For support, contact us at support@tikties.com
@@ -213,7 +213,7 @@ Resources:
               <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
               <h2>{{subject}}</h2>
               <p>{{body}}</p>
-              <p>Best regards,<br/>Event Team</p>
+            
               <div class="footer">
                 You are receiving this email as part of your event participation.<br/>
                 For support, contact us at support@tikties.com
@@ -277,7 +277,7 @@ Resources:
               <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
               <h2>{{subject}}</h2>
               <p>{{body}}</p>
-              <p>Best regards,<br/>Event Team</p>
+             
               <div class="footer">
                 You are receiving this email as part of your event participation.<br/>
                 For support, contact us at support@tikties.com

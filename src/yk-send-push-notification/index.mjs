@@ -169,7 +169,7 @@ export const handler = async (event) => {
       .map((r) => ({
         userId: r.UserDetails.UserID,
         email: r.UserDetails.Email,
-        pushToken: r.UserDetails.PushToken,
+        pushToken: r.UserDetails.Token,
         name: r.BookingName,
       }));
 
@@ -480,7 +480,7 @@ async function getBookingsForEvent(eventId) {
               LastName: user.LastName?.S,
               Email: user.Email?.S,
               Phone: user.Phone?.S,
-              Token: user.pushToken?.s,
+              Token: user.pushToken?.S,
               // add any other user fields
             }
           : null,
