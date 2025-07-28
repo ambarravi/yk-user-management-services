@@ -167,7 +167,7 @@ export const handler = async (event) => {
         return email && email.includes("@");
       })
       .map((r) => ({
-        userId: r.UserDetails.UserID,
+        userId: r.UserID,
         email: r.UserDetails.Email,
         pushToken: r.UserDetails.Token,
         name: r.BookingName,
