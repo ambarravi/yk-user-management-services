@@ -161,18 +161,21 @@ export const handler = async (event) => {
     const validRecipients = recipients
       .filter((r) => {
         const email = r.UserDetails?.Email;
-
-        // const pushToken = r.UserDetails?.PushToken;
-
         return email && email.includes("@");
       })
-      .map((r) => ({
-        userId: r.UserId,
-        email: r.UserDetails.Email,
-        pushToken: r.UserDetails.Token,
-        name: r.BookingName,
-        bookingId: r.BookingID,
-      }));
+      .map((r) => {
+        const recipient = {
+          userId: r.UserId,
+          email: r.UserDetails.Email,
+          pushToken: r.UserDetails.Token,
+          name: r.BookingName,
+          bookingId: r.BookingID, // Add BookingID
+        };
+        console.log(
+          `Recipient userId: ${r.UserId}, pushToken: ${r.UserDetails.Token}, bookingId: ${r.BookingID}`
+        );
+        return recipient;
+      });
 
     if (validRecipients.length === 0) {
       console.warn(`No valid recipients for event ${eventId} - skipping.`);
@@ -184,33 +187,69 @@ export const handler = async (event) => {
     const notifications = [];
     const emailDestinations = [];
     for (const user of validRecipients) {
-      const notificationId = `${eventId}_${user.userId}_${eventType}`;
+      // Push notification ID
+      const pushNotificationId = `PUSH_${eventId}_${user.userId}_${eventType}`;
+      // Email notification ID
+      const emailNotificationId = `EMAIL_${eventId}_${user.userId}_${eventType}`;
 
-      // Check if notification was already sent
-      if (await checkNotificationLog(notificationId)) {
-        console.log(`Skipping notification ${notificationId}: already sent`);
-        continue;
-      }
+      // Check if push notification can be sent
+      const pushCheck = await checkNotificationLog(pushNotificationId);
+      const canSendPush =
+        !pushCheck.exists ||
+        (pushCheck.timestamp &&
+          (new Date().getTime() - new Date(pushCheck.timestamp).getTime()) /
+            1000 >
+            3600 &&
+          (pushCheck.sendCount || 0) < 5);
+
+      // Check if email notification can be sent
+      const emailCheck = await checkNotificationLog(emailNotificationId);
+      const canSendEmail =
+        !emailCheck.exists ||
+        (emailCheck.timestamp &&
+          (new Date().getTime() - new Date(emailCheck.timestamp).getTime()) /
+            1000 >
+            3600);
 
       const email = user.email;
       const booking_name = user.name;
       const pushToken = user.pushToken;
       const subject = getSubject(eventType, eventItem);
       const body = getBody(eventType, eventItem, booking_name);
-      console.log(
-        `Preparing email for ${email}: Subject=${subject}, Body=${body}`
-      );
-      // Prepare email destination for bulk sending
-      emailDestinations.push({
-        Destination: { ToAddresses: [email] },
-        ReplacementTemplateData: JSON.stringify({
-          subject,
-          body,
-          LogoUrl: "https://tikties-logo.s3.amazonaws.com/images/logo.png",
-        }),
-      });
-      if (pushToken) {
-        // Prepare push notification
+
+      // Prepare email if allowed
+      if (canSendEmail) {
+        console.log(
+          `Preparing email for ${email}: Subject=${subject}, Body=${body}`
+        );
+        emailDestinations.push({
+          Destination: { ToAddresses: [email] },
+          ReplacementTemplateData: JSON.stringify({
+            subject,
+            body,
+            LogoUrl: "https://tikties-logo.s3.amazonaws.com/images/logo.png",
+          }),
+          notificationId: emailNotificationId,
+          userId: user.userId,
+          bookingId: user.bookingId,
+          sendCount: emailCheck.exists ? (emailCheck.sendCount || 0) + 1 : 1,
+        });
+      } else {
+        console.log(
+          `Skipping email notification ${emailNotificationId}: sent within last hour`
+        );
+      }
+
+      // Prepare push notification if allowed
+      if (
+        canSendPush &&
+        pushToken &&
+        typeof pushToken === "string" &&
+        pushToken.length > 0
+      ) {
+        console.log(
+          `Preparing push notification for user ${user.userId} with token ${pushToken}`
+        );
         const eventDateTime = new Date(eventItem.EventDate);
         const formattedEventDate = eventDateTime.toLocaleDateString("en-IN", {
           day: "numeric",
@@ -222,7 +261,6 @@ export const handler = async (event) => {
           hour12: true,
         });
 
-        // Custom title/body based on eventType
         const eventTypeContent = {
           CANCELLED: {
             titlePrefix: "🚫 Event Cancelled",
@@ -246,12 +284,12 @@ export const handler = async (event) => {
           },
         };
 
-        // Fallback if eventType is unknown
         const pushTemplate = eventTypeContent[eventType] || {
           titlePrefix: "📢 Event Update",
           body: (title, date, time) =>
             `The event "${title}" has been updated. Scheduled for ${date} at ${time}.`,
         };
+
         const pushMessage = {
           token: pushToken,
           notification: {
@@ -268,34 +306,41 @@ export const handler = async (event) => {
           },
         };
 
-        // const pushMessage = {
-        //   token: pushToken,
-        //   notification: {
-        //     title: `📢 Event Update: ${eventItem.EventTitle}`,
-        //     body: `The event "${
-        //       eventItem.EventTitle
-        //     }" has been ${eventType.toLowerCase()} for ${formattedEventDate} at ${formattedEventTime}.`,
-        //   },
-        //   data: {
-        //     event_id: eventId,
-        //     event_type: eventType,
-        //   },
-        // };
-
         notifications.push({
           pushMessage,
-          notificationId,
+          notificationId: pushNotificationId,
           userId: user.userId,
           eventId,
-          eventType,
+          eventType: `PUSH_${eventType}`,
+          bookingId: user.bookingId,
+          sendCount: pushCheck.exists ? (pushCheck.sendCount || 0) + 1 : 1,
         });
+      } else if (!canSendPush) {
+        console.log(
+          `Skipping push notification ${pushNotificationId}: sent within last hour`
+        );
+      } else {
+        console.log(`No valid pushToken for user ${user.userId}`);
       }
     }
 
-    // Send bulk emails
+    // Send bulk emails and log
     if (emailDestinations.length > 0) {
       console.log(`Sending ${emailDestinations.length} emails`);
       await sendBulkEmails(emailDestinations, eventType);
+      await Promise.all(
+        emailDestinations.map(
+          ({ notificationId, userId, bookingId, sendCount }) =>
+            logNotification(
+              notificationId,
+              userId,
+              eventId,
+              `EMAIL_${eventType}`,
+              bookingId,
+              sendCount
+            )
+        )
+      );
     }
 
     // Send push notifications and log
@@ -303,8 +348,23 @@ export const handler = async (event) => {
       console.log(`Sending ${notifications.length} push notifications`);
       await sendNotifications(notifications.map((n) => n.pushMessage));
       await Promise.all(
-        notifications.map(({ notificationId, userId, eventId, eventType }) =>
-          logNotification(notificationId, userId, eventId, eventType)
+        notifications.map(
+          ({
+            notificationId,
+            userId,
+            eventId,
+            eventType,
+            bookingId,
+            sendCount,
+          }) =>
+            logNotification(
+              notificationId,
+              userId,
+              eventId,
+              eventType,
+              bookingId,
+              sendCount
+            )
         )
       );
     }
@@ -322,23 +382,41 @@ export const handler = async (event) => {
   return { statusCode: 200, body: JSON.stringify("Done") };
 };
 
-// Check notification log for idempotency
+// Check notification log for idempotency and re-send eligibility
 async function checkNotificationLog(notificationId) {
+  console.log(`Checking notification log for ${notificationId}`);
   try {
     const command = new GetCommand({
       TableName: process.env.NOTIFICATION_LOGS_TABLE,
       Key: { NotificationID: notificationId },
     });
     const response = await withRetry(() => docClient.send(command));
-    return !!response.Item;
+    if (response.Item) {
+      console.log(
+        `Found existing notification: ${JSON.stringify(response.Item)}`
+      );
+      return {
+        exists: true,
+        timestamp: response.Item.Timestamp,
+        sendCount: response.Item.SendCount || 0,
+      };
+    }
+    return { exists: false };
   } catch (error) {
     console.error(`Error checking notification log ${notificationId}:`, error);
-    return false;
+    return { exists: false };
   }
 }
 
-// Log notification for idempotency
-async function logNotification(notificationId, userId, eventId, eventType) {
+// Log notification with BookingID and SendCount
+async function logNotification(
+  notificationId,
+  userId,
+  eventId,
+  eventType,
+  bookingId,
+  sendCount
+) {
   try {
     const command = new PutCommand({
       TableName: process.env.NOTIFICATION_LOGS_TABLE,
@@ -347,7 +425,9 @@ async function logNotification(notificationId, userId, eventId, eventType) {
         UserID: userId,
         EventID: eventId,
         EventType: eventType,
+        BookingID: bookingId,
         Timestamp: new Date().toISOString(),
+        SendCount: sendCount,
       },
     });
     await withRetry(() => docClient.send(command));
@@ -387,7 +467,7 @@ function getBody(type, event, booking_name) {
       break;
     case "venue_changed":
       updateMessage = "venue <strong>has been changed</strong>";
-      showDate = false; // only venue is changed
+      showDate = false;
       break;
     case "event_updated":
       updateMessage = "details <strong>have been updated</strong>";
@@ -426,7 +506,10 @@ async function sendBulkEmails(destinations, eventType) {
       Source: process.env.SENDER_EMAIL,
       Template: templateName,
       DefaultTemplateData: JSON.stringify({ subject: "", body: "" }),
-      Destinations: destinations,
+      Destinations: destinations.map((d) => ({
+        Destination: d.Destination,
+        ReplacementTemplateData: d.ReplacementTemplateData,
+      })),
     };
 
     console.log("SES params:", JSON.stringify(params, null, 2));
@@ -436,9 +519,6 @@ async function sendBulkEmails(destinations, eventType) {
     );
 
     console.log("SES response:", JSON.stringify(response, null, 2));
-
-    // await withRetry(() => ses.send(new SendBulkTemplatedEmailCommand(params)));
-    // console.log("SES response:", JSON.stringify(response, null, 2));
     console.log(`Bulk email sent to ${destinations.length} recipients`);
   } catch (err) {
     console.error(`Failed to send bulk email:`, err);
@@ -452,7 +532,13 @@ async function sendNotifications(messages) {
       const response = await withRetry(() => admin.messaging().send(message));
       console.log("Push notification sent successfully:", response);
     } catch (error) {
-      console.error("Error sending push notification:", error);
+      console.error(
+        "Error sending push notification:",
+        JSON.stringify(error, null, 2)
+      );
+      if (error.code) {
+        console.error(`FCM error code: ${error.code}`);
+      }
     }
   }
 }
@@ -460,7 +546,6 @@ async function sendNotifications(messages) {
 // Function to fetch bookings using EventID
 async function getBookingsForEvent(eventId) {
   try {
-    // Step 1: Query BookingDetails using GSI on EventID
     console.log("getBookingsForEvent :", eventId);
     const bookingResult = await ddbClient.send(
       new QueryCommand({
@@ -481,10 +566,8 @@ async function getBookingsForEvent(eventId) {
       return [];
     }
 
-    // Step 2: Extract UserIds
     const userIds = bookings.map((item) => item.UserId).filter((id) => !!id);
 
-    // Step 3: BatchGet from UsersTable
     const userBatchResult = await ddbClient.send(
       new BatchGetItemCommand({
         RequestItems: {
@@ -503,7 +586,6 @@ async function getBookingsForEvent(eventId) {
       usersMap[user.UserID.S] = user;
     }
 
-    // Step 4: Merge booking with user info
     console.log("bookings", JSON.stringify(bookings));
 
     const enriched = bookings.map((b) => {
@@ -520,7 +602,6 @@ async function getBookingsForEvent(eventId) {
         BookingEmail: b.BookingEmail,
         SeatsBooked: parseInt(b.SeatsBooked || "0"),
         TotalAmountPaid: parseFloat(b.TotalAmountPaid || "0"),
-        // User Info
         UserDetails: user
           ? {
               Name: user.Name?.S,
@@ -528,7 +609,6 @@ async function getBookingsForEvent(eventId) {
               Email: user.Email?.S,
               Phone: user.Phone?.S,
               Token: user.pushToken?.S,
-              // add any other user fields
             }
           : null,
       };
