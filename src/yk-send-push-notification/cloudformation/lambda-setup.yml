@@ -43,18 +43,53 @@ Resources:
           <html>
           <head>
             <title>{{subject}}</title>
+            <meta charset="UTF-8" />
             <style>
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; }
-              .logo { max-width: 150px; height: auto; display: block; margin: 0 auto 20px; }
-              .content { line-height: 1.6; }
+              body {
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 30px auto;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              }
+              .logo {
+                max-width: 120px;
+                margin: 0 auto 20px;
+                display: block;
+              }
+              h2 {
+                text-align: center;
+                color: #222222;
+              }
+              p {
+                color: #555555;
+                line-height: 1.6;
+              }
+              .footer {
+                margin-top: 40px;
+                font-size: 12px;
+                color: #999999;
+                text-align: center;
+              }
             </style>
           </head>
           <body>
             <div class="container">
-              <img src="{{LogoUrl}}" alt="Event Logo" class="logo">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
               <h2>{{subject}}</h2>
-              <p class="content">{{body}}</p>
-              <p class="content">Best regards,<br>Event Team</p>
+              <p>{{body}}</p>
+              <p>Best regards,<br/>Event Team</p>
+              <div class="footer">
+                You are receiving this email as part of your event participation.<br/>
+                For support, contact us at support@tikties.com
+              </div>
             </div>
           </body>
           </html>
