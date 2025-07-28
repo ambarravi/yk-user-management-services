@@ -178,7 +178,7 @@ export const handler = async (event) => {
     if (existingRecord.Item) {
       // After existingRecord.Item is fetched and before the event is updated
       const wasPublished = existingRecord.Item.EventStatus?.S === "Published";
-      let updateType = "EVENT_UPDATED";
+      let updateType = null; //"EVENT_UPDATED";
 
       // Check for reschedule (date/time changed)
       const existingDate = existingRecord.Item.EventDate?.S;
@@ -226,32 +226,47 @@ export const handler = async (event) => {
       // }
 
       // Check for venue change
-      if (existingRecord.Item.EventLocation?.S !== eventDetails.eventLocation) {
+      if (
+        !updateType && // Only set if no higher-priority change (e.g., RESCHEDULED)
+        existingRecord.Item.EventLocation?.S.trim() !==
+          eventDetails.eventLocation.trim()
+      ) {
         console.log(
-          "existingRecord.Item.EventLocation?.S",
-          existingRecord.Item.EventLocation?.S
+          "Venue changed from",
+          existingRecord.Item.EventLocation?.S,
+          "to",
+          eventDetails.eventLocation
         );
-        console.log("eventDetails.eventLocation", eventDetails.eventLocation);
-        updateType = updateType ? "EVENT_UPDATED" : "VENUE_CHANGED";
+        updateType = "VENUE_CHANGED";
       }
 
-      // // Check for other field updates (excluding tags, images etc for simplicity)
-      // const otherFieldsChanged = [
-      //   "eventTitle",
-      //   "eventDetails",
-      //   "highlight",
-      //   "ticketPrice",
-      //   "noOfSeats",
-      //   "eventType",
-      // ].some((field) => {
-      //   const existingVal = existingRecord.Item[camelToPascal(field)]?.S || "";
-      //   const newVal = eventDetails[field] || "";
-      //   return existingVal !== newVal;
-      // });
+      if (!updateType) {
+        const otherFieldsChanged = [
+          "eventTitle",
+          "eventDetails",
+          "highlight",
+          "ticketPrice",
+          "noOfSeats",
+          "eventType",
+          "categoryID",
+          "categoryName",
+          "cityID",
+          "additionalInfo",
+          "eventMode",
+        ].some((field) => {
+          const dynamoKey = camelToPascal(field);
+          const existingVal =
+            existingRecord.Item[dynamoKey]?.S ||
+            existingRecord.Item[dynamoKey]?.N ||
+            "";
+          const newVal = eventDetails[field] || "";
+          return existingVal !== newVal.toString();
+        });
 
-      // if (otherFieldsChanged) {
-      //   updateType = updateType ? "EVENT_UPDATED" : "EVENT_UPDATED";
-      // }
+        if (otherFieldsChanged) {
+          updateType = "EVENT_UPDATED";
+        }
+      }
 
       // Send to SQS only if it was previously published
       if (updateType && wasPublished) {
