@@ -72,10 +72,6 @@ Resources:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
               - Effect: Allow
                 Action:
-                  - sqs:SendMessage
-                Resource: !GetAtt EventPublishQueue.Arn
-              - Effect: Allow
-                Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
@@ -85,6 +81,12 @@ Resources:
                   - xray:PutTraceSegments
                   - xray:PutTelemetryRecords
                 Resource: "*"
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource:
+                  - !GetAtt EventPublishQueue.Arn
+                  - arn:aws:sqs:eu-west-1:756157886151:EventCancellationQueue
 
   # Lambda Permission for API Gateway
   UpdateEventStatusLambdaPermission:
