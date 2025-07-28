@@ -112,9 +112,9 @@ export const handler = async (event) => {
         eventType: "CANCELLED",
       };
 
-      if (!cancelledEventDetails.orgId) {
-        throw new Error("OrgId not found in event record.");
-      }
+      // if (!cancelledEventDetails.orgId) {
+      //   throw new Error("OrgId not found in event record.");
+      // }
 
       const sqsMessage = {
         QueueUrl: cancellationQueueUrl,
