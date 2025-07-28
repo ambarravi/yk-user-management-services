@@ -169,7 +169,7 @@ export const handler = async (event) => {
           email: r.UserDetails.Email,
           pushToken: r.UserDetails.Token,
           name: r.BookingName,
-          bookingId: r.BookingID, // Add BookingID
+          bookingId: r.BookingID,
         };
         console.log(
           `Recipient userId: ${r.UserId}, pushToken: ${r.UserDetails.Token}, bookingId: ${r.BookingID}`
@@ -187,12 +187,9 @@ export const handler = async (event) => {
     const notifications = [];
     const emailDestinations = [];
     for (const user of validRecipients) {
-      // Push notification ID
       const pushNotificationId = `PUSH_${eventId}_${user.userId}_${eventType}`;
-      // Email notification ID
       const emailNotificationId = `EMAIL_${eventId}_${user.userId}_${eventType}`;
 
-      // Check if push notification can be sent
       const pushCheck = await checkNotificationLog(pushNotificationId);
       const canSendPush =
         !pushCheck.exists ||
@@ -202,7 +199,6 @@ export const handler = async (event) => {
             3600 &&
           (pushCheck.sendCount || 0) < 5);
 
-      // Check if email notification can be sent
       const emailCheck = await checkNotificationLog(emailNotificationId);
       const canSendEmail =
         !emailCheck.exists ||
@@ -217,7 +213,6 @@ export const handler = async (event) => {
       const subject = getSubject(eventType, eventItem);
       const body = getBody(eventType, eventItem, booking_name);
 
-      // Prepare email if allowed
       if (canSendEmail) {
         console.log(
           `Preparing email for ${email}: Subject=${subject}, Body=${body}`
@@ -240,7 +235,6 @@ export const handler = async (event) => {
         );
       }
 
-      // Prepare push notification if allowed
       if (
         canSendPush &&
         pushToken &&
@@ -274,8 +268,8 @@ export const handler = async (event) => {
           },
           VENUE_CHANGED: {
             titlePrefix: "📍 Venue Changed",
-            body: (title, date, time) =>
-              `The venue for the event "${title}" has been changed. It will now take place on ${date} at ${time}.`,
+            body: (title, date, time, location) =>
+              `The venue for the event "${title}" has been changed to ${location}. It will take place on ${date} at ${time}.`,
           },
           EVENT_UPDATED: {
             titlePrefix: "🔄 Event Details Updated",
@@ -297,7 +291,8 @@ export const handler = async (event) => {
             body: pushTemplate.body(
               eventItem.EventTitle,
               formattedEventDate,
-              formattedEventTime
+              formattedEventTime,
+              eventItem.EventLocation || "No venue specified"
             ),
           },
           data: {
@@ -324,7 +319,6 @@ export const handler = async (event) => {
       }
     }
 
-    // Send bulk emails and log
     if (emailDestinations.length > 0) {
       console.log(`Sending ${emailDestinations.length} emails`);
       await sendBulkEmails(emailDestinations, eventType);
@@ -343,7 +337,6 @@ export const handler = async (event) => {
       );
     }
 
-    // Send push notifications and log
     if (notifications.length > 0) {
       console.log(`Sending ${notifications.length} push notifications`);
       await sendNotifications(notifications.map((n) => n.pushMessage));
@@ -418,6 +411,7 @@ async function logNotification(
   sendCount
 ) {
   try {
+    const ttl = Math.floor(Date.now() / 1000) + 30 * 24 * 3600; // 30 days
     const command = new PutCommand({
       TableName: process.env.NOTIFICATION_LOGS_TABLE,
       Item: {
@@ -428,6 +422,7 @@ async function logNotification(
         BookingID: bookingId,
         Timestamp: new Date().toISOString(),
         SendCount: sendCount,
+        TTL: ttl,
       },
     });
     await withRetry(() => docClient.send(command));
