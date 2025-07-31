@@ -17,7 +17,7 @@ const s3 = new S3Client({});
 const ddb = new DynamoDBClient({});
 const ses = new SESClient({});
 
-const LOGO_URL = "https://tikties-assets.s3.amazonaws.com/logo.png";
+const LOGO_URL = "https://tikties-logo.s3.amazonaws.com/images/logo.png";
 
 export const handler = async (event) => {
   for (const record of event.Records) {
