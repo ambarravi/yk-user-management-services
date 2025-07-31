@@ -52,7 +52,6 @@ Resources:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails/index/*
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NotificationLogs
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NotificationLogs/index/EventID-Timestamp-index
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
