@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - main
+
 permissions:
   id-token: write
   contents: read
@@ -13,6 +14,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 5 # ✅ Limit parallel executions to prevent API throttling
       matrix:
         function:
           - yk-sign-up-trigger
@@ -53,11 +55,9 @@ jobs:
           - yk-validate-image
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Configure AWS credentials (OIDC)
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -65,40 +65,58 @@ jobs:
           role-session-name: GitHubActionsSession
           aws-region: ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
 
-      # Step 3: Install dependencies
+      - name: Set AWS CLI retry configuration
+        run: |
+          aws configure set retry_mode standard
+          aws configure set max_attempts 10
+
       - name: Install dependencies
         run: |
           cd src/${{ matrix.function }}
           npm install --production
 
-      # Step 4: Zip Lambda function code
       - name: Zip Lambda function code
         run: |
           cd src/${{ matrix.function }}
           zip -r function.zip . -x "*.yml"
 
-      # Step 5: Upload zipped Lambda function to S3
       - name: Upload Lambda function code to S3
         run: |
           aws s3 cp src/${{ matrix.function }}/function.zip s3://yk-zips/${{ matrix.function }}/function.zip \
             --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
 
-      # Step 6: Deploy using CloudFormation
-      - name: Run CloudFormation for Lambda
+      - name: Run CloudFormation for Lambda with Retry
         run: |
-          aws cloudformation deploy \
-            --template-file src/${{ matrix.function }}/cloudformation/lambda-setup.yml \
-            --stack-name user-management-${{ matrix.function }}-stack \
-            --parameter-overrides \
-              StageName=${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }} \
-              Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
-              ApiGatewayRestApiId=${{ github.ref == 'refs/heads/main' && '27sqbwaad7' || '27sqbwaad7' }} \
-              ApiGatewayRootResourceId=${{ github.ref == 'refs/heads/main' && '78iwchywp5' || '78iwchywp5' }} \
-              CognitoAuthorizerId=${{ github.ref == 'refs/heads/main' && 'c0oigh' || 'c0oigh' }} \
-            --capabilities CAPABILITY_NAMED_IAM
+          attempt=0
+          max_attempts=5
+          delay=15
+          until [ "$attempt" -ge "$max_attempts" ]
+          do
+            echo "Attempt $((attempt+1)) to deploy stack..."
+            aws cloudformation deploy \
+              --template-file src/${{ matrix.function }}/cloudformation/lambda-setup.yml \
+              --stack-name user-management-${{ matrix.function }}-stack \
+              --parameter-overrides \
+                StageName=${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }} \
+                Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
+                ApiGatewayRestApiId=${{ github.ref == 'refs/heads/main' && '27sqbwaad7' || '27sqbwaad7' }} \
+                ApiGatewayRootResourceId=${{ github.ref == 'refs/heads/main' && '78iwchywp5' || '78iwchywp5' }} \
+                CognitoAuthorizerId=${{ github.ref == 'refs/heads/main' && 'c0oigh' || 'c0oigh' }} \
+              --capabilities CAPABILITY_NAMED_IAM && break
+            attempt=$((attempt+1))
+            echo "Retrying in ${delay} seconds..."
+            sleep $delay
+            delay=$((delay * 2))
+          done
+
+          if [ "$attempt" -eq "$max_attempts" ]; then
+            echo "Deployment failed after $max_attempts attempts."
+            exit 1
+          fi
+
       - name: Wait for resources to be available
         run: sleep 30
-      # Step 7: Update Lambda function code
+
       - name: Update Lambda function code
         run: |
           aws lambda update-function-code \
