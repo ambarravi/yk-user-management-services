@@ -67,6 +67,7 @@ export const handler = async (event) => {
 
       // Extract EventID from folder path
       const match = key.match(/event-images\/(EVT-[^/]+)\//);
+      console.log("match", match);
       const readableEventID = match?.[1];
       if (!readableEventID) throw new Error("EventID not found in key");
 
@@ -83,6 +84,7 @@ export const handler = async (event) => {
       );
 
       const eventItem = eventDetailsRes.Items?.[0];
+      console.log("eventItem", eventItem);
       if (!eventItem) throw new Error("Event not found");
 
       const EventID = eventItem.EventID.S;
@@ -90,7 +92,7 @@ export const handler = async (event) => {
       const OrganizerID = eventItem.OrgID.S;
 
       // Update status to UnderReview
-      await ddb.send(
+      let eventDetailsUpdate = await ddb.send(
         new UpdateItemCommand({
           TableName: "EventDetails",
           Key: { EventID: { S: EventID } },
@@ -99,6 +101,7 @@ export const handler = async (event) => {
           ExpressionAttributeValues: { ":r": { S: "UnderReview" } },
         })
       );
+      console.log("eventDetailsUpdate", eventDetailsUpdate);
 
       // Get Organizer Email
       const orgRes = await ddb.send(
@@ -111,7 +114,10 @@ export const handler = async (event) => {
         })
       );
 
+      console.log("orgRes", orgRes);
+
       const contactEmail = orgRes.Items?.[0]?.contactEmail?.S;
+      console.log("contactEmail", contactEmail);
       if (!contactEmail) throw new Error("Organizer contactEmail not found");
 
       // Send Email via SES
@@ -136,7 +142,7 @@ export const handler = async (event) => {
       const timestamp = new Date().toISOString();
       const ttl = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 days
 
-      await ddb.send(
+      let notificationResult = await ddb.send(
         new PutItemCommand({
           TableName: "NotificationLogs",
           Item: {
@@ -151,6 +157,8 @@ export const handler = async (event) => {
           },
         })
       );
+
+      console.log("notificationResult", notificationResult);
     } catch (err) {
       console.error("Error processing image:", err);
     }
