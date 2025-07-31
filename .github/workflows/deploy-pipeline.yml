@@ -14,7 +14,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 5 # ✅ Limit parallel executions to prevent API throttling
+      max-parallel: 10 # ✅ Limit parallel executions to prevent API throttling
       matrix:
         function:
           - yk-sign-up-trigger

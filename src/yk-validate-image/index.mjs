@@ -33,21 +33,28 @@ export const handler = async (event) => {
         })
       );
 
+      console.log(
+        "Moderation Labels:",
+        JSON.stringify(moderationResult.ModerationLabels, null, 2)
+      );
+
       const BLOCKED_LABELS = [
-        "Explicit Nudity",
-        "Suggestive",
-        "Partial Nudity",
-        "Female Swimwear Or Underwear",
-        "Male Swimwear Or Underwear",
-        "Sexual Situations",
-        "Graphic Violence",
-        "Violence",
-        "Revealing Clothes",
+        "explicit nudity",
+        "suggestive",
+        "partial nudity",
+        "female swimwear or underwear",
+        "male swimwear or underwear",
+        "sexual situations",
+        "graphic violence",
+        "violence",
+        "revealing clothes",
       ];
 
-      const flagged = moderationResult.ModerationLabels?.some((label) =>
-        BLOCKED_LABELS.includes(label.Name)
-      );
+      const flagged = moderationResult.ModerationLabels?.some((label) => {
+        const name = label.Name?.toLowerCase();
+        const parent = label.ParentName?.toLowerCase();
+        return BLOCKED_LABELS.includes(name) || BLOCKED_LABELS.includes(parent);
+      });
 
       if (!flagged) {
         console.log(`Image ${key} passed moderation.`);
