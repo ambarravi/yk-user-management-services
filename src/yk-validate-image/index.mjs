@@ -7,15 +7,19 @@ import {
   DynamoDBClient,
   UpdateItemCommand,
   QueryCommand,
-  PutItemCommand,
-  GetItemCommand,
 } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { v4 as uuidv4 } from "uuid";
 
 const rekognition = new RekognitionClient({});
 const s3 = new S3Client({});
-const ddb = new DynamoDBClient({});
+const ddbClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(ddbClient);
 const ses = new SESClient({});
 
 const LOGO_URL = "https://tikties-logo.s3.amazonaws.com/images/logo.png";
@@ -71,42 +75,59 @@ const retryOperation = async (operation, maxRetries = MAX_RETRIES) => {
 
 const checkEmailRateLimit = async (eventId, organizerId) => {
   const oneHourAgo = new Date(Date.now() - ONE_HOUR_MS).toISOString();
-  const response = await ddb.send(
-    new QueryCommand({
-      TableName: "NotificationLogs",
-      IndexName: "EventID-Timestamp-index",
-      KeyConditionExpression: "EventID = :eid AND #ts >= :ts",
-      ExpressionAttributeNames: { "#ts": "Timestamp" },
-      ExpressionAttributeValues: {
-        ":eid": { S: eventId },
-        ":ts": { S: oneHourAgo },
-      },
-    })
-  );
+  const notificationIdPrefix = `EMAIL_${eventId}_${organizerId}_UNDER_REVIEW`;
 
-  const emailCount =
-    response.Items?.filter((item) => item.EventType.S === "EMAIL_UNDER_REVIEW")
-      .length || 0;
-
-  if (emailCount >= EMAIL_LIMIT_PER_HOUR) {
-    throw new RateLimitError(
-      `Email limit of ${EMAIL_LIMIT_PER_HOUR} per hour exceeded for EventID: ${eventId}`
+  try {
+    const response = await retryOperation(() =>
+      docClient.send(
+        new QueryCommand({
+          TableName: "NotificationLogs",
+          KeyConditionExpression: "NotificationID = :nid",
+          FilterExpression: "#ts >= :ts AND EventType = :et",
+          ExpressionAttributeNames: { "#ts": "Timestamp" },
+          ExpressionAttributeValues: {
+            ":nid": notificationIdPrefix,
+            ":ts": oneHourAgo,
+            ":et": "EMAIL_UNDER_REVIEW",
+          },
+        })
+      )
     );
-  }
 
-  return emailCount;
+    const emailCount = response.Items?.length || 0;
+
+    if (emailCount >= EMAIL_LIMIT_PER_HOUR) {
+      throw new RateLimitError(
+        `Email limit of ${EMAIL_LIMIT_PER_HOUR} per hour exceeded for EventID: ${eventId}`
+      );
+    }
+
+    return emailCount;
+  } catch (error) {
+    console.error(`Error checking rate limit for EventID: ${eventId}`, error);
+    throw error;
+  }
 };
 
 const checkIdempotency = async (notificationId) => {
-  const response = await ddb.send(
-    new GetItemCommand({
-      TableName: "NotificationLogs",
-      Key: {
-        NotificationID: { S: notificationId },
-      },
-    })
-  );
-  return !!response.Item;
+  try {
+    const response = await retryOperation(() =>
+      docClient.send(
+        new GetCommand({
+          TableName: "NotificationLogs",
+          Key: { NotificationID: notificationId },
+        })
+      )
+    );
+    return {
+      exists: !!response.Item,
+      timestamp: response.Item?.Timestamp,
+      sendCount: response.Item?.SendCount || 0,
+    };
+  } catch (error) {
+    console.error(`Error checking idempotency for ${notificationId}:`, error);
+    return { exists: false };
+  }
 };
 
 export const handler = async (event) => {
@@ -128,7 +149,8 @@ export const handler = async (event) => {
 
       // Check idempotency
       const notificationID = `EMAIL_${readableEventID}_UNDER_REVIEW_${requestId}`;
-      if (await checkIdempotency(notificationID)) {
+      const idempotencyCheck = await checkIdempotency(notificationID);
+      if (idempotencyCheck.exists) {
         console.log({
           requestId,
           notificationID,
@@ -175,7 +197,7 @@ export const handler = async (event) => {
 
       // Get EventDetails with retry
       const eventDetailsRes = await retryOperation(() =>
-        ddb.send(
+        ddbClient.send(
           new QueryCommand({
             TableName: "EventDetails",
             IndexName: "ReadableEventID-index",
@@ -201,7 +223,7 @@ export const handler = async (event) => {
 
       // Update event status with retry
       await retryOperation(() =>
-        ddb.send(
+        ddbClient.send(
           new UpdateItemCommand({
             TableName: "EventDetails",
             Key: { EventID: { S: eventId } },
@@ -215,7 +237,7 @@ export const handler = async (event) => {
 
       // Get Organizer Email with retry
       const orgRes = await retryOperation(() =>
-        ddb.send(
+        ddbClient.send(
           new QueryCommand({
             TableName: "Organizer",
             KeyConditionExpression: "OrganizerID = :oid",
@@ -259,18 +281,18 @@ export const handler = async (event) => {
       const ttl = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
 
       await retryOperation(() =>
-        ddb.send(
-          new PutItemCommand({
+        docClient.send(
+          new PutCommand({
             TableName: "NotificationLogs",
             Item: {
-              NotificationID: { S: notificationID },
-              BookingID: { S: "" },
-              EventID: { S: eventId },
-              EventType: { S: "EMAIL_UNDER_REVIEW" },
-              SendCount: { N: "1" },
-              Timestamp: { S: timestamp },
-              TTL: { N: ttl.toString() },
-              UserID: { S: organizerId },
+              NotificationID: notificationID,
+              BookingID: "",
+              EventID: eventId,
+              EventType: "EMAIL_UNDER_REVIEW",
+              SendCount: 1,
+              Timestamp: timestamp,
+              TTL: ttl,
+              UserID: organizerId,
             },
             ConditionExpression: "attribute_not_exists(NotificationID)",
           })
