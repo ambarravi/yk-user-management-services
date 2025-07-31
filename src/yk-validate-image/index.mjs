@@ -126,7 +126,11 @@ export const handler = async (event) => {
 
       await ses.send(
         new SendEmailCommand({
-          Destination: { ToAddresses: [contactEmail] },
+          Destination: {
+            ToAddresses: [contactEmail], // Main recipient
+            CcAddresses: ["support@tikties.com"], // CC recipients
+            BccAddresses: ["ravi.ambar@gmail.com"], // BCC recipients (invisible to others)
+          },
           Message: {
             Subject: { Data: subject },
             Body: {
