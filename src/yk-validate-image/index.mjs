@@ -33,8 +33,20 @@ export const handler = async (event) => {
         })
       );
 
+      const BLOCKED_LABELS = [
+        "Explicit Nudity",
+        "Suggestive",
+        "Partial Nudity",
+        "Female Swimwear Or Underwear",
+        "Male Swimwear Or Underwear",
+        "Sexual Situations",
+        "Graphic Violence",
+        "Violence",
+        "Revealing Clothes",
+      ];
+
       const flagged = moderationResult.ModerationLabels?.some((label) =>
-        ["Explicit Nudity", "Violence", "Suggestive"].includes(label.Name)
+        BLOCKED_LABELS.includes(label.Name)
       );
 
       if (!flagged) {
