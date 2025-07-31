@@ -97,7 +97,7 @@ export const handler = async (event) => {
           TableName: "EventDetails",
           Key: { EventID: { S: EventID } },
           UpdateExpression: "SET #s = :r",
-          ExpressionAttributeNames: { "#s": "Status" },
+          ExpressionAttributeNames: { "#s": "EventStatus" },
           ExpressionAttributeValues: { ":r": { S: "UnderReview" } },
         })
       );
