@@ -50,6 +50,7 @@ jobs:
           - yk-get-dashboard-data
           - yk-sync-token
           - yk-sync-eventDate
+          - yk-validate-image
 
     steps:
       # Step 1: Checkout code
