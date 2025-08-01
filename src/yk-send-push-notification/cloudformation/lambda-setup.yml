@@ -17,6 +17,7 @@ Resources:
           EVENT_TABLE: "EventDetails"
           BOOKING_TABLE: "BookingDetails"
           USERS_TABLE: "UsersTable"
+          ORGANIZER_TABLE: "Organizer"
           NOTIFICATION_LOGS_TABLE: "NotificationLogs"
       MemorySize: 256
       ReservedConcurrentExecutions: 5
@@ -36,6 +37,132 @@ Resources:
     Properties:
       Template:
         TemplateName: EventUpdateTemplate_CANCELLED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <meta charset="UTF-8" />
+            <style>
+              body {
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 30px auto;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              }
+              .logo {
+                max-width: 120px;
+                margin: 0 auto 20px;
+                display: block;
+              }
+              h2 {
+                text-align: center;
+                color: #222222;
+              }
+              p {
+                color: #555555;
+                line-height: 1.6;
+              }
+              .footer {
+                margin-top: 40px;
+                font-size: 12px;
+                color: #999999;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
+              <h2>{{subject}}</h2>
+              <p>{{body}}</p>
+            
+              <div class="footer">
+                You are receiving this email as part of your event participation.<br/>
+                For support, contact us at support@tikties.com
+              </div>
+            </div>
+          </body>
+          </html>
+
+  EventApprovedTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_APPROVED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <meta charset="UTF-8" />
+            <style>
+              body {
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 30px auto;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              }
+              .logo {
+                max-width: 120px;
+                margin: 0 auto 20px;
+                display: block;
+              }
+              h2 {
+                text-align: center;
+                color: #222222;
+              }
+              p {
+                color: #555555;
+                line-height: 1.6;
+              }
+              .footer {
+                margin-top: 40px;
+                font-size: 12px;
+                color: #999999;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
+              <h2>{{subject}}</h2>
+              <p>{{body}}</p>
+            
+              <div class="footer">
+                You are receiving this email as part of your event participation.<br/>
+                For support, contact us at support@tikties.com
+              </div>
+            </div>
+          </body>
+          </html>
+
+  EventUnderReviewTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_UNDERREVIEW
         SubjectPart: "{{subject}}"
         TextPart: "{{body}}"
         HtmlPart: |

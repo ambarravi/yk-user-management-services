@@ -62,6 +62,20 @@ async function withRetry(operation, maxRetries = 3, baseDelay = 1000) {
   }
 }
 
+async function getOrganizerEmail(organizerId) {
+  try {
+    const command = new GetCommand({
+      TableName: process.env.ORGANIZER_TABLE,
+      Key: { OrganizerID: organizerId },
+    });
+    const response = await withRetry(() => docClient.send(command));
+    return response.Item?.contactEmail;
+  } catch (error) {
+    console.error(`Error fetching organizer email for ${organizerId}:`, error);
+    return null;
+  }
+}
+
 export const handler = async (event) => {
   console.log("Received event:", JSON.stringify(event, null, 2));
 
@@ -71,6 +85,7 @@ export const handler = async (event) => {
     "USERS_TABLE",
     "NOTIFICATION_LOGS_TABLE",
     "SENDER_EMAIL",
+    "ORGANIZER_TABLE",
   ];
   for (const varName of requiredEnvVars) {
     if (!process.env[varName]) {
@@ -105,6 +120,8 @@ export const handler = async (event) => {
       "RESCHEDULED",
       "VENUE_CHANGED",
       "EVENT_UPDATED",
+      "APPROVED",
+      "UNDERREVIEW",
     ];
     if (!allowedTypes.includes(eventType)) {
       console.warn(`Unsupported eventType "${eventType}" - skipping.`);
@@ -144,38 +161,57 @@ export const handler = async (event) => {
 
     const now = new Date();
     const eventTime = new Date(eventItem.EventDate);
-    if (eventTime < now) {
+    if (
+      eventTime < now &&
+      eventType !== "APPROVED" &&
+      eventType !== "UNDERREVIEW"
+    ) {
       console.log(`Event ${eventId} is in the past - no notification needed.`);
       continue;
     }
 
-    // Fetch recipients
-    const recipients = await getBookingsForEvent(eventId);
-    if (recipients.length === 0) {
-      console.warn(`No recipients for event ${eventId} - skipping.`);
-      continue;
+    let recipients = [];
+    let organizerEmail = null;
+    if (eventType === "APPROVED" || eventType === "UNDERREVIEW") {
+      organizerEmail = await getOrganizerEmail(eventItem.OrganizerID);
+      if (!organizerEmail || !organizerEmail.includes("@")) {
+        console.warn(
+          `Invalid or missing organizer email for event ${eventId} - skipping.`
+        );
+        continue;
+      }
+    } else {
+      recipients = await getBookingsForEvent(eventId);
+      if (recipients.length === 0) {
+        console.warn(`No recipients for event ${eventId} - skipping.`);
+        continue;
+      }
     }
 
     console.log("recipients:", JSON.stringify(recipients));
 
-    const validRecipients = recipients
-      .filter((r) => {
-        const email = r.UserDetails?.Email;
-        return email && email.includes("@");
-      })
-      .map((r) => {
-        const recipient = {
-          userId: r.UserId,
-          email: r.UserDetails.Email,
-          pushToken: r.UserDetails.Token,
-          name: r.BookingName,
-          bookingId: r.BookingID,
-        };
-        console.log(
-          `Recipient userId: ${r.UserId}, pushToken: ${r.UserDetails.Token}, bookingId: ${r.BookingID}`
-        );
-        return recipient;
-      });
+    const validRecipients =
+      eventType === "APPROVED" || eventType === "UNDERREVIEW"
+        ? [
+            {
+              userId: eventItem.OrganizerID,
+              email: organizerEmail,
+              name: "Organizer",
+              bookingId: eventId,
+            },
+          ]
+        : recipients
+            .filter((r) => {
+              const email = r.UserDetails?.Email;
+              return email && email.includes("@");
+            })
+            .map((r) => ({
+              userId: r.UserId,
+              email: r.UserDetails.Email,
+              pushToken: r.UserDetails.Token,
+              name: r.BookingName,
+              bookingId: r.BookingID,
+            }));
 
     if (validRecipients.length === 0) {
       console.warn(`No valid recipients for event ${eventId} - skipping.`);
@@ -218,7 +254,13 @@ export const handler = async (event) => {
           `Preparing email for ${email}: Subject=${subject}, Body=${body}`
         );
         emailDestinations.push({
-          Destination: { ToAddresses: [email] },
+          Destination: {
+            ToAddresses: [email],
+            BccAddresses:
+              eventType === "APPROVED" || eventType === "UNDERREVIEW"
+                ? ["tikto.superman@gmail.com"]
+                : [],
+          },
           ReplacementTemplateData: JSON.stringify({
             subject,
             body,
@@ -239,7 +281,9 @@ export const handler = async (event) => {
         canSendPush &&
         pushToken &&
         typeof pushToken === "string" &&
-        pushToken.length > 0
+        pushToken.length > 0 &&
+        eventType !== "APPROVED" &&
+        eventType !== "UNDERREVIEW"
       ) {
         console.log(
           `Preparing push notification for user ${user.userId} with token ${pushToken}`
@@ -310,11 +354,15 @@ export const handler = async (event) => {
           bookingId: user.bookingId,
           sendCount: pushCheck.exists ? (pushCheck.sendCount || 0) + 1 : 1,
         });
-      } else if (!canSendPush) {
+      } else if (
+        !canSendPush &&
+        eventType !== "APPROVED" &&
+        eventType !== "UNDERREVIEW"
+      ) {
         console.log(
           `Skipping push notification ${pushNotificationId}: sent within last hour`
         );
-      } else {
+      } else if (eventType !== "APPROVED" && eventType !== "UNDERREVIEW") {
         console.log(`No valid pushToken for user ${user.userId}`);
       }
     }
@@ -443,6 +491,10 @@ function getSubject(type, event) {
       return `Venue Changed: ${event.EventTitle}`;
     case "EVENT_UPDATED":
       return `Event Updated: ${event.EventTitle}`;
+    case "APPROVED":
+      return `Congratulations! Your Event "${event.EventTitle}" Has Been Approved`;
+    case "UNDERREVIEW":
+      return `Event "${event.EventTitle}" Under Review`;
     default:
       return `Update: ${event.EventTitle}`;
   }
@@ -452,45 +504,83 @@ function getSubject(type, event) {
 function getBody(type, event, booking_name) {
   const typeNormalized = type.toLowerCase();
 
-  let updateMessage = "has been <strong>updated</strong>";
-  let showDate = true;
-  let showVenue = true;
-
   switch (typeNormalized) {
+    case "approved":
+      return `
+        Dear ${booking_name},<br/><br/>
+        We are delighted to inform you that your event "<strong>${event.EventTitle}</strong>" has been approved by our administration team. You may now proceed to publish your event and begin hosting.<br/><br/>
+        Thank you for choosing our platform. We wish you a successful event!<br/><br/>
+        Best regards,<br/>
+        The Tikties Team
+      `;
+    case "underreview":
+      return `
+        Dear ${booking_name},<br/><br/>
+        Thank you for submitting your application to host the event "<strong>${event.EventTitle}</strong>." We would like to inform you that your application is currently under review. Our team is carefully verifying the details, and we will notify you once the review process is complete.<br/><br/>
+        For any urgent inquiries, please contact our support team at <a href="mailto:support@tikties.com">support@tikties.com</a>.<br/><br/>
+        Thank you for your patience.<br/><br/>
+        Best regards,<br/>
+        The Tikties Team
+      `;
     case "rescheduled":
-      updateMessage = "has been <strong>rescheduled</strong>";
-      break;
+      return `
+        Hello <strong>${booking_name}</strong>,<br/><br/>
+        This is to inform you that the event "<strong>${
+          event.EventTitle
+        }</strong>" has been <strong>rescheduled</strong>.<br/><br/>
+        <strong>New Date/Time:</strong> ${event.EventDate}<br/>
+        <strong>Venue:</strong> ${
+          event.EventLocation || "No venue specified"
+        }<br/><br/>
+        Thank you,<br/>
+        The Tikties Team
+      `;
     case "venue_changed":
-      updateMessage = "venue <strong>has been changed</strong>";
-      showDate = false;
-      break;
+      return `
+        Hello <strong>${booking_name}</strong>,<br/><br/>
+        This is to inform you that the venue for the event "<strong>${
+          event.EventTitle
+        }</strong>" has been <strong>changed</strong>.<br/><br/>
+        <strong>Venue:</strong> ${
+          event.EventLocation || "No venue specified"
+        }<br/><br/>
+        Thank you,<br/>
+        The Tikties Team
+      `;
     case "event_updated":
-      updateMessage = "details <strong>have been updated</strong>";
-      break;
+      return `
+        Hello <strong>${booking_name}</strong>,<br/><br/>
+        This is to inform you that the event "<strong>${
+          event.EventTitle
+        }</strong>" details <strong>have been updated</strong>.<br/><br/>
+        <strong>New Date/Time:</strong> ${event.EventDate}<br/>
+        <strong>Venue:</strong> ${
+          event.EventLocation || "No venue specified"
+        }<br/><br/>
+        Thank you,<br/>
+        The Tikties Team
+      `;
     case "cancelled":
-      updateMessage = "has been <strong>cancelled</strong>";
-      showDate = false;
-      showVenue = false;
-      break;
+      return `
+        Hello <strong>${booking_name}</strong>,<br/><br/>
+        This is to inform you that the event "<strong>${event.EventTitle}</strong>" has been <strong>cancelled</strong>.<br/><br/>
+        Thank you,<br/>
+        The Tikties Team
+      `;
+    default:
+      return `
+        Hello <strong>${booking_name}</strong>,<br/><br/>
+        This is to inform you that the event "<strong>${
+          event.EventTitle
+        }</strong>" has been <strong>updated</strong>.<br/><br/>
+        <strong>New Date/Time:</strong> ${event.EventDate}<br/>
+        <strong>Venue:</strong> ${
+          event.EventLocation || "No venue specified"
+        }<br/><br/>
+        Thank you,<br/>
+        The Tikties Team
+      `;
   }
-
-  return `
-    Hello <strong>${booking_name}</strong>,<br/><br/>
-    This is to inform you that the event "<strong>${
-      event.EventTitle
-    }</strong>" ${updateMessage}.<br/><br/>
-    ${showDate ? `<strong>New Date/Time:</strong> ${event.EventDate}<br/>` : ""}
-    ${
-      showVenue
-        ? `<strong>Venue:</strong> ${
-            event.EventLocation || "No venue specified"
-          }<br/>`
-        : ""
-    }
-    <br/>
-    Thank you,<br/>
-    Event Team
-  `;
 }
 
 // Send bulk emails using SES

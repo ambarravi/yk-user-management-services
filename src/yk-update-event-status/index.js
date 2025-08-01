@@ -125,6 +125,33 @@ export const handler = async (event) => {
       console.log(`Sent cancelled event ${eventID} to EventCancellationQueue.`);
     }
 
+    if (eventStatus === "Approved" || currentStatus === "UnderReview") {
+      const cancellationQueueUrl = process.env.EVENT_CANCELLATION_QUEUE_URL;
+
+      if (!cancellationQueueUrl) {
+        throw new Error(
+          "Missing environment variable: EVENT_CANCELLATION_QUEUE_URL"
+        );
+      }
+
+      const cancelledEventDetails = {
+        eventId: existingRecord.Item.EventID?.S,
+        eventType: eventStatus.toUpperCase(),
+      };
+
+      // if (!cancelledEventDetails.orgId) {
+      //   throw new Error("OrgId not found in event record.");
+      // }
+
+      const sqsMessage = {
+        QueueUrl: cancellationQueueUrl,
+        MessageBody: JSON.stringify(cancelledEventDetails),
+      };
+
+      await sqsClient.send(new SendMessageCommand(sqsMessage));
+      console.log(`Sent cancelled event ${eventID} to EventCancellationQueue.`);
+    }
+
     console.log(`Updated event ${eventID} to ${eventStatus}.`);
 
     let eventDetails = {};
@@ -170,12 +197,12 @@ export const handler = async (event) => {
       );
 
       // Send to SQS (existing functionality)
-      const sqsMessage = {
-        QueueUrl: QUEUE_URL,
-        MessageBody: JSON.stringify(eventDetails),
-      };
-      await sqsClient.send(new SendMessageCommand(sqsMessage));
-      console.log(`Sent event ${eventID} to SQS queue.`);
+      // const sqsMessage = {
+      //   QueueUrl: QUEUE_URL,
+      //   MessageBody: JSON.stringify(eventDetails),
+      // };
+      // await sqsClient.send(new SendMessageCommand(sqsMessage));
+      // console.log(`Sent event ${eventID} to SQS queue.`);
     }
 
     return {
