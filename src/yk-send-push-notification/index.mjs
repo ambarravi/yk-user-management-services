@@ -173,7 +173,7 @@ export const handler = async (event) => {
     let recipients = [];
     let organizerEmail = null;
     if (eventType === "APPROVED" || eventType === "UNDERREVIEW") {
-      organizerEmail = await getOrganizerEmail(eventItem.OrganizerID);
+      organizerEmail = await getOrganizerEmail(eventItem.OrgID);
       if (!organizerEmail || !organizerEmail.includes("@")) {
         console.warn(
           `Invalid or missing organizer email for event ${eventId} - skipping.`
