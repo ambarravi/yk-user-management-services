@@ -26,6 +26,10 @@ export const handler = async (event) => {
       throw new Error("Request body is missing.");
     }
 
+    // Log the client IP address for tracking
+    const ipAddress = event.requestContext?.identity?.sourceIp || "unknown";
+    console.log("Client IP Address:", ipAddress);
+
     console.log("Input event body:", event.body);
     const parsedBody = JSON.parse(event.body);
 
@@ -74,11 +78,6 @@ export const handler = async (event) => {
     const maxImages = 3;
     for (let i = 0; i < Math.min(newImages.length, maxImages); i++) {
       const image = newImages[i];
-      // if (!image || !image.type) {
-      //   console.warn(`Skipping invalid image at index ${i}:`, image);
-      //   continue;
-      // }
-
       if (image.status === "new") {
         console.log("New Image");
         const imageKey = `event-images/${readableEventID}/${image.name}`;
@@ -125,14 +124,13 @@ export const handler = async (event) => {
     const eventPayload = {
       EventID: { S: uniqueEventID },
       OrgID: { S: OrgID },
-
       EventTitle: { S: eventDetails.eventTitle || "" },
       EventDate: { S: eventDetails.dateTime || "" },
       EventLocation: { S: eventDetails.eventLocation || "" },
       EventDetails: { S: eventDetails.eventDetails || "" },
       EventImages: imageUrls.length
         ? { L: imageUrls.map((url) => ({ S: url })) }
-        : { L: [] }, // Empty list if no images
+        : { L: [] },
       CityID: { S: eventDetails.cityID || "" },
       CategoryID: { S: eventDetails.categoryID || "" },
       CategoryName: { S: eventDetails.categoryName || "" },
@@ -147,16 +145,17 @@ export const handler = async (event) => {
         eventDetails.audienceBenefits.length > 0
           ? {
               L: eventDetails.audienceBenefits
-                .filter((benefit) => benefit.trim() !== "") // Remove empty strings
+                .filter((benefit) => benefit.trim() !== "")
                 .map((benefit) => ({
                   S: benefit,
                 })),
             }
-          : { L: [] }, // Empty array if no benefits are provided
+          : { L: [] },
       AdditionalInfo: { S: eventDetails.additionalInfo || "" },
       OrganizerName: { S: eventDetails.OrganizerName || "" },
       EventMode: { S: eventDetails.eventMode || "" },
       EventStatus: { S: "AwaitingApproval" },
+      OrganizerIp: { S: ipAddress }, // Add IP address to event payload
     };
 
     const collegeID = await getCollegeID(OrgID);
@@ -178,7 +177,7 @@ export const handler = async (event) => {
     if (existingRecord.Item) {
       // After existingRecord.Item is fetched and before the event is updated
       const wasPublished = existingRecord.Item.EventStatus?.S === "Published";
-      let updateType = null; //"EVENT_UPDATED";
+      let updateType = null;
 
       // Check for reschedule (date/time changed)
       const existingDate = existingRecord.Item.EventDate?.S;
@@ -203,8 +202,8 @@ export const handler = async (event) => {
         }
 
         // Compare dates up to minute precision
-        const existingDateStr = existingDateObj.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
-        const newDateStr = newDateObj.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+        const existingDateStr = existingDateObj.toISOString().slice(0, 16);
+        const newDateStr = newDateObj.toISOString().slice(0, 16);
 
         console.log("existingDateStr", existingDateStr);
         console.log("newDateStr", newDateStr);
@@ -218,16 +217,12 @@ export const handler = async (event) => {
           existingDate,
           newDate,
         });
-        throw dateError; // Rethrow to fail the request with clear error
+        throw dateError;
       }
-
-      // if (existingRecord.Item.EventDate?.S !== eventDetails.dateTime) {
-      //   updateType = "RESCHEDULED";
-      // }
 
       // Check for venue change
       if (
-        !updateType && // Only set if no higher-priority change (e.g., RESCHEDULED)
+        !updateType &&
         existingRecord.Item.EventLocation?.S.trim() !==
           eventDetails.eventLocation.trim()
       ) {
@@ -289,13 +284,11 @@ export const handler = async (event) => {
         }
       }
 
-      // Helper to convert camelCase to PascalCase (used to match keys like EventTitle)
+      // Helper to convert camelCase to PascalCase
       function camelToPascal(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
       }
-    }
 
-    if (existingRecord.Item) {
       console.log("Event already exists. Updating...");
       const updateExpressionParts = [
         "EventTitle = :eventTitle",
@@ -314,10 +307,8 @@ export const handler = async (event) => {
         "ReservedSeats = :reservedSeats",
         "AudienceBenefits = :audienceBenefits",
         "AdditionalInfo = :additionalInfo",
-        //   "OrganizerName = :organizerName",
         "EventMode = :mode",
-        //    "OrgID = :orgID",
-        // "EventStatus = :eventStatus",
+        "OrganizerIp = :organizerIp", // Add IP address to update
       ];
 
       const expressionAttributeValues = {
@@ -359,10 +350,8 @@ export const handler = async (event) => {
               }
             : { L: [] },
         ":additionalInfo": { S: eventDetails.additionalInfo || "" },
-        //  ":organizerName": { S: eventDetails.OrganizerName || "" },
         ":mode": { S: eventDetails.eventMode || "" },
-        //":orgID": { S: OrgID },
-        //":eventStatus": { S: "AwaitingApproval" },
+        ":organizerIp": { S: ipAddress }, // Add IP address value
       };
 
       // Check if CollegeID is present
@@ -459,11 +448,10 @@ export const handler = async (event) => {
 };
 
 const generateReadableEventID = async () => {
-  const eventSequenceValue = "EventSequenceID"; // This value will always be the same
-  const tableName = "EventIDGenerator"; // Your table name
+  const eventSequenceValue = "EventSequenceID";
+  const tableName = "EventIDGenerator";
 
   try {
-    // Step 1: Retrieve the current sequence number
     const getParams = {
       TableName: tableName,
       Key: { EventSequence: { S: eventSequenceValue } },
@@ -482,7 +470,6 @@ const generateReadableEventID = async () => {
     const currentSequence = parseInt(getResult.Item.Sequence.N, 10);
     console.log("Current Sequence:", currentSequence);
 
-    // Step 2: Increment the sequence number
     const newSequence = currentSequence + 1;
 
     const updateParams = {
@@ -500,7 +487,6 @@ const generateReadableEventID = async () => {
     );
     console.log("Update Result:", updateResult);
 
-    // Step 3: Return the readable event ID
     return `EVT-${newSequence.toString().padStart(6, "0")}`;
   } catch (error) {
     console.error("Error generating ReadableEventID:", error);
@@ -544,10 +530,10 @@ export const getCollegeID = async (OrgID) => {
 const generateTagsFromTitle = (title = "", existingTags = "") => {
   const titleWords = title
     .toLowerCase()
-    .replace(/[^\w\s]/gi, "") // remove punctuation
-    .split(/\s+/); // split by whitespace
+    .replace(/[^\w\s]/gi, "")
+    .split(/\s+/);
 
-  const filteredWords = sw.removeStopwords(titleWords); // remove common stopwords
+  const filteredWords = sw.removeStopwords(titleWords);
 
   const existing = existingTags
     .split(",")
@@ -555,5 +541,5 @@ const generateTagsFromTitle = (title = "", existingTags = "") => {
     .filter((tag) => tag);
 
   const allTagsSet = new Set([...existing, ...filteredWords]);
-  return Array.from(allTagsSet).join(","); // comma-separated string
+  return Array.from(allTagsSet).join(",");
 };
