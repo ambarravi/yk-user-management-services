@@ -38,6 +38,8 @@ const BLOCKED_LABELS = [
   "graphic violence",
   "violence",
   "revealing clothes",
+  "non-explicit nudity",
+  "partially exposed female breast",
 ];
 
 // Custom error classes
@@ -73,28 +75,41 @@ const retryOperation = async (operation, maxRetries = MAX_RETRIES) => {
   throw lastError;
 };
 
-const checkEmailRateLimit = async (eventId, organizerId) => {
-  const oneHourAgo = new Date(Date.now() - ONE_HOUR_MS).toISOString();
+const checkEmailRateLimit = async (eventId, organizerId, requestId) => {
   const notificationIdPrefix = `EMAIL_${eventId}_${organizerId}_UNDER_REVIEW`;
+  let emailCount = 0;
 
   try {
-    const response = await retryOperation(() =>
-      docClient.send(
-        new QueryCommand({
-          TableName: "NotificationLogs",
-          KeyConditionExpression: "NotificationID = :nid",
-          FilterExpression: "#ts >= :ts AND EventType = :et",
-          ExpressionAttributeNames: { "#ts": "Timestamp" },
-          ExpressionAttributeValues: {
-            ":nid": notificationIdPrefix,
-            ":ts": oneHourAgo,
-            ":et": "EMAIL_UNDER_REVIEW",
-          },
-        })
-      )
-    );
+    // Check recent notifications within the last hour
+    for (let i = 0; i < EMAIL_LIMIT_PER_HOUR; i++) {
+      const notificationId = `${notificationIdPrefix}_${i}`;
+      const response = await retryOperation(() =>
+        docClient.send(
+          new GetCommand({
+            TableName: "NotificationLogs",
+            Key: { NotificationID: notificationId },
+          })
+        )
+      );
 
-    const emailCount = response.Items?.length || 0;
+      if (response.Item) {
+        const timestamp = response.Item.Timestamp;
+        if (
+          timestamp &&
+          (new Date().getTime() - new Date(timestamp).getTime()) / 1000 <= 3600
+        ) {
+          emailCount += 1;
+        }
+      }
+    }
+
+    console.log({
+      requestId,
+      eventId,
+      organizerId,
+      emailCount,
+      message: "Email rate limit check completed",
+    });
 
     if (emailCount >= EMAIL_LIMIT_PER_HOUR) {
       throw new RateLimitError(
@@ -104,12 +119,17 @@ const checkEmailRateLimit = async (eventId, organizerId) => {
 
     return emailCount;
   } catch (error) {
-    console.error(`Error checking rate limit for EventID: ${eventId}`, error);
+    console.error({
+      requestId,
+      eventId,
+      error: error.message,
+      message: "Error checking rate limit",
+    });
     throw error;
   }
 };
 
-const checkIdempotency = async (notificationId) => {
+const checkIdempotency = async (notificationId, requestId) => {
   try {
     const response = await retryOperation(() =>
       docClient.send(
@@ -119,13 +139,25 @@ const checkIdempotency = async (notificationId) => {
         })
       )
     );
+    const exists = !!response.Item;
+    console.log({
+      requestId,
+      notificationId,
+      exists,
+      message: "Idempotency check completed",
+    });
     return {
-      exists: !!response.Item,
+      exists,
       timestamp: response.Item?.Timestamp,
       sendCount: response.Item?.SendCount || 0,
     };
   } catch (error) {
-    console.error(`Error checking idempotency for ${notificationId}:`, error);
+    console.error({
+      requestId,
+      notificationId,
+      error: error.message,
+      message: "Error checking idempotency",
+    });
     return { exists: false };
   }
 };
@@ -149,7 +181,10 @@ export const handler = async (event) => {
 
       // Check idempotency
       const notificationID = `EMAIL_${readableEventID}_UNDER_REVIEW_${requestId}`;
-      const idempotencyCheck = await checkIdempotency(notificationID);
+      const idempotencyCheck = await checkIdempotency(
+        notificationID,
+        requestId
+      );
       if (idempotencyCheck.exists) {
         console.log({
           requestId,
@@ -219,7 +254,7 @@ export const handler = async (event) => {
       const organizerId = eventItem.OrgID.S;
 
       // Check email rate limit
-      await checkEmailRateLimit(eventId, organizerId);
+      await checkEmailRateLimit(eventId, organizerId, requestId);
 
       // Update event status with retry
       await retryOperation(() =>
