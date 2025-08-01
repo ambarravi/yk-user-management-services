@@ -125,7 +125,7 @@ export const handler = async (event) => {
       console.log(`Sent cancelled event ${eventID} to EventCancellationQueue.`);
     }
 
-    if (eventStatus === "Approved" || currentStatus === "UnderReview") {
+    if (eventStatus === "Approved" || eventStatus === "UnderReview") {
       const cancellationQueueUrl = process.env.EVENT_CANCELLATION_QUEUE_URL;
 
       if (!cancellationQueueUrl) {
