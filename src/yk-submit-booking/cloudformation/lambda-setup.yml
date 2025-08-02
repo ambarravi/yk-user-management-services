@@ -34,7 +34,6 @@ Resources:
           OTP_TABLE: "BookingOtpTable" # Added for OTP generation and validation
           RETRY_COUNT: "1" # Default to 1 retry, configurable
           SES_SENDER_EMAIL: !Ref SenderEmail # Sender email for SES
-          AWS_REGION: !Ref AWS::Region # Ensure region is set
       MemorySize: 128 # Sufficient for DynamoDB transactions and SES
       Code:
         ZipFile: |
