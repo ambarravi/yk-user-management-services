@@ -31,7 +31,6 @@ Resources:
         Variables:
           OTP_TABLE: "BookingOtpTable"
           SES_SENDER_EMAIL: !Ref SenderEmail # Sender email for SES
-          AWS_REGION: !Ref AWS::Region # Ensure region is set
       MemorySize: 128 # Sufficient for DynamoDB and SES operations
       Code:
         ZipFile: |

@@ -89,7 +89,7 @@ jobs:
       - name: Run CloudFormation for Lambda with Retry
         run: |
           attempt=0
-          max_attempts=5
+          max_attempts=2
           delay=15
           until [ "$attempt" -ge "$max_attempts" ]
           do
