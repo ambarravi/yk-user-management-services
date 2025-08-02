@@ -43,48 +43,6 @@ Resources:
       TracingConfig:
         Mode: Active
 
-  # IAM Role for SubmitBookingLambda
-  SubmitBookingLambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: SubmitBookingLambdaPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - dynamodb:GetItem
-                  - dynamodb:Query
-                  - dynamodb:PutItem
-                  - dynamodb:UpdateItem
-                  - dynamodb:TransactWriteItems
-                Resource:
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingOtpTable
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-submit-booking:*
-              - Effect: Allow
-                Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - ses:SendEmail
-                  - ses:SendRawEmail
-                Resource: "*"
-
   # IAM Role for SendBookingOtpLambda
   SendBookingOtpLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -131,23 +89,6 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
 
-  # Lambda Permission for API Gateway (SubmitBooking)
-  SubmitBookingLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref SubmitBookingLambda
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
-
-  # API Gateway Resource (SubmitBooking)
-  SubmitBookingResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApiId
-      ParentId: !Ref ApiGatewayRootResourceId
-      PathPart: submit-booking
-
   # API Gateway Resource (SendBookingOtp)
   SendBookingOtpResource:
     Type: AWS::ApiGateway::Resource
@@ -155,53 +96,6 @@ Resources:
       RestApiId: !Ref ApiGatewayRestApiId
       ParentId: !Ref ApiGatewayRootResourceId
       PathPart: send-booking-otp
-
-  # API Gateway POST Method (SubmitBooking)
-  SubmitBookingPOSTMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApiId
-      ResourceId: !Ref SubmitBookingResource
-      HttpMethod: POST
-      AuthorizationType: COGNITO_USER_POOLS
-      AuthorizerId: !Ref CognitoAuthorizerId
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { LambdaArn: !GetAtt SubmitBookingLambda.Arn }
-      MethodResponses:
-        - StatusCode: 200
-          ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: "'*'"
-            method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
-            method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
-
-  # API Gateway OPTIONS Method (SubmitBooking)
-  SubmitBookingOPTIONSMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGatewayRestApiId
-      ResourceId: !Ref SubmitBookingResource
-      HttpMethod: OPTIONS
-      AuthorizationType: NONE
-      Integration:
-        Type: MOCK
-        RequestTemplates:
-          application/json: '{ "statusCode": 200 }'
-        IntegrationResponses:
-          - StatusCode: 200
-            ResponseParameters:
-              method.response.header.Access-Control-Allow-Origin: "'*'"
-              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
-              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
-      MethodResponses:
-        - StatusCode: 200
-          ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: true
-            method.response.header.Access-Control-Allow-Methods: true
-            method.response.header.Access-Control-Allow-Headers: true
 
   # API Gateway POST Method (SendBookingOtp)
   SendBookingOtpPOSTMethod:
@@ -251,9 +145,6 @@ Resources:
             method.response.header.Access-Control-Allow-Headers: true
 
 Outputs:
-  SubmitBookingLambdaArn:
-    Description: ARN of the Submit Booking Lambda function
-    Value: !GetAtt SubmitBookingLambda.Arn
   SendBookingOtpLambdaArn:
     Description: ARN of the Send Booking OTP Lambda function
     Value: !GetAtt SendBookingOtpLambda.Arn
