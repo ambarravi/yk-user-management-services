@@ -10,7 +10,7 @@ const ses = new AWS.SES({ REGION }); // Replace with your SES region
 const TABLE_NAME = "BookingOtpTable";
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MINUTES = 2; // 2 minutes expiry
-const SENDER_EMAIL = "no-reply@tikties.com"; // Replace with your verified SES sender email
+const SENDER_EMAIL = "support@tikties.com"; // Replace with your verified SES sender email
 
 // Generate a random OTP
 function generateOtp(length = OTP_LENGTH) {

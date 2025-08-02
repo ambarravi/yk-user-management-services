@@ -19,31 +19,6 @@ Parameters:
     Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
 
 Resources:
-  # Lambda: Submit Booking
-  SubmitBookingLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: yk-submit-booking
-      Handler: index.handler
-      Runtime: nodejs20.x
-      Timeout: 60 # 1 minute for booking transactions and email
-      Environment:
-        Variables:
-          EVENT_TABLE: "EventDetails"
-          BOOKING_TABLE: "BookingDetails"
-          RETRY_COUNT: "1" # Default to 1 retry, configurable
-          SES_SENDER_EMAIL: !Ref SenderEmail # Sender email for SES
-      MemorySize: 128 # Sufficient for DynamoDB transactions and SES
-      Code:
-        ZipFile: |
-          // Placeholder: Upload actual code via ZIP file
-          exports.handler = async () => {
-            return { statusCode: 200, body: "Placeholder" };
-          };
-      Role: !GetAtt SubmitBookingLambdaExecutionRole.Arn
-      TracingConfig:
-        Mode: Active
-
   # Lambda: Send Booking OTP
   SendBookingOtpLambda:
     Type: AWS::Lambda::Function
@@ -92,11 +67,7 @@ Resources:
                   - dynamodb:UpdateItem
                   - dynamodb:TransactWriteItems
                 Resource:
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/UserId-EventID-index
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NotificationLogs
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingOtpTable
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup

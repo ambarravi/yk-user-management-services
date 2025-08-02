@@ -69,7 +69,7 @@ jobs:
       - name: Set AWS CLI retry configuration
         run: |
           aws configure set retry_mode standard
-          aws configure set max_attempts 10
+          aws configure set max_attempts 2
 
       - name: Install dependencies
         run: |
