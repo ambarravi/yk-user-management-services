@@ -53,7 +53,7 @@ jobs:
           - yk-sync-token
           - yk-sync-eventDate
           - yk-validate-image
-          - yk-sent-booking-otp
+          - yk-send-booking-otp
 
     steps:
       - name: Checkout code

@@ -1,7 +1,7 @@
 {
-  "name": "yojanakaar-fetch-booking-by-user",
+  "name": "yojanakaar-send-booking-otp",
   "version": "1.0.0",
-  "description": "Function to insert/update booking tickets",
+  "description": "Send OTP",
   "main": "index.mjs",
   "type": "module",
   "scripts": {
