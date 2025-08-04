@@ -90,8 +90,7 @@ Resources:
       RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref CognitoConfigResource
       HttpMethod: GET # Changed from POST to GET to match your fetchCognitoConfig
-      AuthorizationType: COGNITO_USER_POOLS
-      AuthorizerId: !Ref CognitoAuthorizerId
+      AuthorizationType: NONE
       ApiKeyRequired: true # Require API key
       Integration:
         Type: AWS_PROXY
