@@ -170,7 +170,7 @@ const sendConfirmationEmail = async (email, retryCount = RETRY_COUNT) => {
 };
 
 export const handler = async (event) => {
-  console.log("event", event);
+  console.log(event);
   try {
     const requestBody = JSON.parse(event.body);
     const { bookingDetails } = requestBody;
