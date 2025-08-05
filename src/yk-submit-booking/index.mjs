@@ -1,14 +1,13 @@
-const {
+import {
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
   UpdateItemCommand,
   QueryCommand,
   TransactWriteItemsCommand,
-} = require("@aws-sdk/client-dynamodb");
-const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
-const { v4: uuidv4 } = require("uuid");
-const crypto = require("crypto");
+} from "@aws-sdk/client-dynamodb";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { v4 as uuidv4 } from "uuid";
 
 const ddbClient = new DynamoDBClient({
   region: process.env.AWS_REGION || "eu-west-1",
@@ -21,90 +20,12 @@ const sesClient = new SESClient({
 const RETRY_COUNT = parseInt(process.env.RETRY_COUNT, 10) || 1;
 const OTP_TABLE = process.env.OTP_TABLE || "BookingOtpTable";
 const SENDER_EMAIL = process.env.SES_SENDER_EMAIL || "support@tikties.com";
-const OTP_LENGTH = 6;
-const OTP_EXPIRY_MINUTES = 2; // 2 minutes expiry
 
 // Get current time in IST
 const getCurrentIST = () => {
   const now = new Date();
   const istOffsetMs = 5.5 * 60 * 60 * 1000; // IST = UTC + 5.5 hrs
   return new Date(now.getTime() + istOffsetMs);
-};
-
-// Generate a random OTP
-const generateOtp = (length = OTP_LENGTH) => {
-  const digits = "0123456789";
-  let otp = "";
-  for (let i = 0; i < length; i++) {
-    otp += digits[crypto.randomInt(0, digits.length)];
-  }
-  return otp;
-};
-
-// Send OTP via email using SES with retry
-const sendOtpEmail = async (toEmail, otp, retryCount = RETRY_COUNT) => {
-  const params = {
-    Source: SENDER_EMAIL,
-    Destination: { ToAddresses: [toEmail] },
-    Message: {
-      Subject: { Data: "Your Tikties Booking OTP", Charset: "UTF-8" },
-      Body: {
-        Text: {
-          Data: `Your OTP for booking verification is ${otp}. It is valid for ${OTP_EXPIRY_MINUTES} minutes.`,
-          Charset: "UTF-8",
-        },
-      },
-    },
-  };
-
-  try {
-    const response = await sesClient.send(new SendEmailCommand(params));
-    console.log(
-      `OTP email sent to ${toEmail}, MessageId: ${response.MessageId}`
-    );
-    return true;
-  } catch (error) {
-    console.error(`Failed to send OTP email to ${toEmail}: ${error.message}`);
-    if (retryCount > 0) {
-      console.log(
-        `Retrying OTP email send for ${toEmail} (${retryCount} retries left)...`
-      );
-      return sendOtpEmail(toEmail, otp, retryCount - 1);
-    }
-    throw new Error(`Failed to send OTP email: ${error.message}`);
-  }
-};
-
-// Store OTP in DynamoDB with TTL and explicit expiration time
-const storeOtp = async (email, otp, retryCount = RETRY_COUNT) => {
-  const currentTime = Math.floor(Date.now() / 1000);
-  const ttl = currentTime + OTP_EXPIRY_MINUTES * 60;
-  const expTime = currentTime + OTP_EXPIRY_MINUTES * 60;
-  const params = {
-    TableName: OTP_TABLE,
-    Item: {
-      email: { S: email },
-      otp: { S: otp },
-      ttl: { N: ttl.toString() },
-      exp_time: { N: expTime.toString() },
-      created_at: { N: currentTime.toString() },
-    },
-  };
-
-  try {
-    await ddbClient.send(new PutItemCommand(params));
-    console.log(`OTP stored for ${email}`);
-    return true;
-  } catch (error) {
-    console.error(`Failed to store OTP for ${email}: ${error.message}`);
-    if (retryCount > 0) {
-      console.log(
-        `Retrying storeOtp for ${email} (${retryCount} retries left)...`
-      );
-      return storeOtp(email, otp, retryCount - 1);
-    }
-    throw new Error(`Failed to store OTP: ${error.message}`);
-  }
 };
 
 // Validate OTP from BookingOtpTable
@@ -248,44 +169,11 @@ const sendConfirmationEmail = async (email, retryCount = RETRY_COUNT) => {
   }
 };
 
-exports.handler = async (event) => {
-  console.log(event);
+export const handler = async (event) => {
+  console.log("event", event);
   try {
     const requestBody = JSON.parse(event.body);
-    const { sendOtp, bookingDetails } = requestBody;
-
-    // Handle OTP generation and sending
-    if (sendOtp) {
-      const { bookingEmail } = bookingDetails || {};
-      if (!bookingEmail) {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({
-            message: "Email is required for OTP generation",
-          }),
-        };
-      }
-
-      const otp = generateOtp();
-      if (!(await storeOtp(bookingEmail, otp))) {
-        return {
-          statusCode: 500,
-          body: JSON.stringify({ message: "Failed to store OTP" }),
-        };
-      }
-
-      if (!(await sendOtpEmail(bookingEmail, otp))) {
-        return {
-          statusCode: 500,
-          body: JSON.stringify({ message: "Failed to send OTP email" }),
-        };
-      }
-
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ message: "OTP sent successfully" }),
-      };
-    }
+    const { bookingDetails } = requestBody;
 
     // Handle booking with OTP validation
     const {
@@ -580,8 +468,7 @@ exports.handler = async (event) => {
   }
 };
 
-// Booking cancellation handler
-exports.cancelBookingHandler = async (event) => {
+export const cancelBookingHandler = async (event) => {
   try {
     const requestBody = JSON.parse(event.body);
     const { bookingId, eventId, userId, ticketCount } = requestBody;

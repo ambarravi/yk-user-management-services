@@ -1,5 +1,5 @@
 {
-  "name": "yojanakaar-fetch-booking-by-user",
+  "name": "yojanakaar-submit-booking-by-user",
   "version": "1.0.0",
   "description": "Function to insert/update booking tickets",
   "main": "index.mjs",
