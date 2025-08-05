@@ -80,6 +80,7 @@ async function storeOtp(email, otp) {
 // Lambda handler
 export const handler = async (event) => {
   try {
+    console.log("event", event);
     const body = JSON.parse(event.body || "{}");
     const path = event.path || "";
 
