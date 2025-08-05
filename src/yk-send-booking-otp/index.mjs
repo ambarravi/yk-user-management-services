@@ -1,16 +1,16 @@
-const AWS = require("aws-sdk");
-const crypto = require("crypto");
+import AWS from "aws-sdk";
+import crypto from "crypto";
 
 // Initialize AWS clients
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const REGION = process.env.AWS_REGION || "us-east-1";
-const ses = new AWS.SES({ REGION }); // Replace with your SES region
+const ses = new AWS.SES({ region: REGION });
 
 // Configuration
 const TABLE_NAME = "BookingOtpTable";
 const OTP_LENGTH = 6;
-const OTP_EXPIRY_MINUTES = 2; // 2 minutes expiry
-const SENDER_EMAIL = "support@tikties.com"; // Replace with your verified SES sender email
+const OTP_EXPIRY_MINUTES = 2;
+const SENDER_EMAIL = "support@tikties.com";
 
 // Generate a random OTP
 function generateOtp(length = OTP_LENGTH) {
@@ -48,18 +48,18 @@ async function sendEmail(toEmail, otp) {
   }
 }
 
-// Store OTP in DynamoDB with TTL and explicit expiration time
+// Store OTP in DynamoDB
 async function storeOtp(email, otp) {
-  const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
-  const ttl = currentTime + OTP_EXPIRY_MINUTES * 60; // TTL 2 minutes from now
-  const expTime = currentTime + OTP_EXPIRY_MINUTES * 60; // Explicit expiration 2 minutes from now
+  const currentTime = Math.floor(Date.now() / 1000);
+  const ttl = currentTime + OTP_EXPIRY_MINUTES * 60;
+  const expTime = ttl;
   const params = {
     TableName: TABLE_NAME,
     Item: {
-      email: email,
-      otp: otp,
-      ttl: ttl, // DynamoDB TTL attribute
-      exp_time: expTime, // Explicit expiration time for validation
+      email,
+      otp,
+      ttl,
+      exp_time: expTime,
       created_at: currentTime,
     },
   };
@@ -74,8 +74,8 @@ async function storeOtp(email, otp) {
   }
 }
 
-// Lambda handler
-exports.handler = async (event) => {
+// Lambda Handler
+export const handler = async (event) => {
   try {
     const body = JSON.parse(event.body || "{}");
     const path = event.path || "";
@@ -90,19 +90,17 @@ exports.handler = async (event) => {
         };
       }
 
-      // Generate and store OTP
       const otp = generateOtp();
-      if (!(await storeOtp(email, otp))) {
-        console.error("Failed to store OTP");
+      const stored = await storeOtp(email, otp);
+      if (!stored) {
         return {
           statusCode: 500,
           body: JSON.stringify({ message: "Failed to store OTP" }),
         };
       }
 
-      // Send OTP via email
-      if (!(await sendEmail(email, otp))) {
-        console.error("Failed to send OTP");
+      const sent = await sendEmail(email, otp);
+      if (!sent) {
         return {
           statusCode: 500,
           body: JSON.stringify({ message: "Failed to send OTP" }),
