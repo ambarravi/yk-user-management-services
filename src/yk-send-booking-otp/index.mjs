@@ -1,10 +1,12 @@
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { randomInt } from "crypto";
 
 // Initialize AWS clients
-const dynamodb = DynamoDBDocumentClient.from({});
 const REGION = process.env.AWS_REGION || "us-east-1";
+const dynamoDBClient = new DynamoDBClient({ region: REGION });
+const dynamodb = DynamoDBDocumentClient.from(dynamoDBClient);
 const ses = new SESClient({ region: REGION });
 
 // Configuration
@@ -78,7 +80,6 @@ async function storeOtp(email, otp) {
 // Lambda handler
 export const handler = async (event) => {
   try {
-    console.log("Event : ", event);
     const body = JSON.parse(event.body || "{}");
     const path = event.path || "";
 
