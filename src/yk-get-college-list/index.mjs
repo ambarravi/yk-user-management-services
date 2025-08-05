@@ -6,15 +6,15 @@ const client = new DynamoDBClient({ region });
 
 export async function handler(event) {
   const city = (event.queryStringParameters?.city || "").toLowerCase().trim();
-  const searchText = (event.queryStringParameters?.searchText || "")
+  const searchText = (event.queryStringParameters?.search || "")
     .toLowerCase()
-    .trim();
+    .trim(); // Changed from searchText to search
   console.log("Request parameters:", JSON.stringify({ city, searchText }));
 
-  if (!city || !searchText) {
+  if (!city) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: "city and searchText are required" }),
+      body: JSON.stringify({ error: "city is required" }),
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
@@ -28,15 +28,19 @@ export async function handler(event) {
     KeyConditionExpression: "City = :city",
     ExpressionAttributeValues: {
       ":city": { S: city },
-      ":searchText": { S: searchText },
     },
-    FilterExpression:
-      "contains(#nameLower, :searchText) OR begins_with(#shortformLower, :searchText)",
-    ExpressionAttributeNames: {
-      "#nameLower": "NameLower",
-      "#shortformLower": "ShortformLower",
-    },
-    Select: "ALL_ATTRIBUTES",
+    ...(searchText && {
+      FilterExpression:
+        "contains(#nameLower, :searchText) OR begins_with(#shortformLower, :searchText)",
+      ExpressionAttributeValues: {
+        ":city": { S: city },
+        ":searchText": { S: searchText },
+      },
+      ExpressionAttributeNames: {
+        "#nameLower": "NameLower",
+        "#shortformLower": "ShortformLower",
+      },
+    }),
   };
 
   async function queryDynamoDB() {
