@@ -81,11 +81,13 @@ async function storeOtp(email, otp) {
 export const handler = async (event) => {
   try {
     console.log("event", event);
-    const body = JSON.parse(event.body || "{}");
+    const requestBody = JSON.parse(event.body);
+    const { email } = requestBody;
+    // const body = JSON.parse(event.body || "{}");
     const path = event.path || "";
 
     if (path.includes("send-booking-otp")) {
-      const email = body.email;
+      //  const email = body.email;
       if (!email) {
         console.log("Email is required");
         return {
