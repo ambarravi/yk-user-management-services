@@ -1,23 +1,24 @@
-import AWS from "aws-sdk";
-import crypto from "crypto";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { randomInt } from "crypto";
 
 // Initialize AWS clients
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+const dynamodb = DynamoDBDocumentClient.from({});
 const REGION = process.env.AWS_REGION || "us-east-1";
-const ses = new AWS.SES({ region: REGION });
+const ses = new SESClient({ region: REGION });
 
 // Configuration
 const TABLE_NAME = "BookingOtpTable";
 const OTP_LENGTH = 6;
-const OTP_EXPIRY_MINUTES = 2;
-const SENDER_EMAIL = "support@tikties.com";
+const OTP_EXPIRY_MINUTES = 2; // 2 minutes expiry
+const SENDER_EMAIL = "support@tikties.com"; // Replace with your verified SES sender email
 
 // Generate a random OTP
 function generateOtp(length = OTP_LENGTH) {
   const digits = "0123456789";
   let otp = "";
   for (let i = 0; i < length; i++) {
-    otp += digits[crypto.randomInt(0, digits.length)];
+    otp += digits[randomInt(0, digits.length)];
   }
   return otp;
 }
@@ -39,7 +40,7 @@ async function sendEmail(toEmail, otp) {
   };
 
   try {
-    const response = await ses.sendEmail(params).promise();
+    const response = await ses.send(new SendEmailCommand(params));
     console.log(`Email sent to ${toEmail}, MessageId: ${response.MessageId}`);
     return true;
   } catch (error) {
@@ -48,24 +49,24 @@ async function sendEmail(toEmail, otp) {
   }
 }
 
-// Store OTP in DynamoDB
+// Store OTP in DynamoDB with TTL and explicit expiration time
 async function storeOtp(email, otp) {
-  const currentTime = Math.floor(Date.now() / 1000);
-  const ttl = currentTime + OTP_EXPIRY_MINUTES * 60;
-  const expTime = ttl;
+  const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+  const ttl = currentTime + OTP_EXPIRY_MINUTES * 60; // TTL 2 minutes from now
+  const expTime = currentTime + OTP_EXPIRY_MINUTES * 60; // Explicit expiration 2 minutes from now
   const params = {
     TableName: TABLE_NAME,
     Item: {
-      email,
-      otp,
-      ttl,
-      exp_time: expTime,
+      email: email,
+      otp: otp,
+      ttl: ttl, // DynamoDB TTL attribute
+      exp_time: expTime, // Explicit expiration time for validation
       created_at: currentTime,
     },
   };
 
   try {
-    await dynamodb.put(params).promise();
+    await dynamodb.send(new PutCommand(params));
     console.log(`OTP stored for ${email}`);
     return true;
   } catch (error) {
@@ -74,9 +75,10 @@ async function storeOtp(email, otp) {
   }
 }
 
-// Lambda Handler
+// Lambda handler
 export const handler = async (event) => {
   try {
+    console.log("Event : ", event);
     const body = JSON.parse(event.body || "{}");
     const path = event.path || "";
 
@@ -90,17 +92,19 @@ export const handler = async (event) => {
         };
       }
 
+      // Generate and store OTP
       const otp = generateOtp();
-      const stored = await storeOtp(email, otp);
-      if (!stored) {
+      if (!(await storeOtp(email, otp))) {
+        console.error("Failed to store OTP");
         return {
           statusCode: 500,
           body: JSON.stringify({ message: "Failed to store OTP" }),
         };
       }
 
-      const sent = await sendEmail(email, otp);
-      if (!sent) {
+      // Send OTP via email
+      if (!(await sendEmail(email, otp))) {
+        console.error("Failed to send OTP");
         return {
           statusCode: 500,
           body: JSON.stringify({ message: "Failed to send OTP" }),

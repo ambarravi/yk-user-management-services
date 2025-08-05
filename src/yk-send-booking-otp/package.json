@@ -5,13 +5,12 @@
   "main": "index.mjs",
   "type": "module",
   "scripts": {
-    "test": "node index.js",
-    "lint": "eslint . --ext .js"
+    "test": "node index.mjs",
+    "lint": "eslint . --ext .js,.mjs"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "3.731.1",
-    "@aws-sdk/client-ses": "3.731.1",
-    "uuid": "9.0.0"
+    "@aws-sdk/lib-dynamodb": "3.731.1",
+    "@aws-sdk/client-ses": "3.731.1"
   },
   "devDependencies": {
     "eslint": "^8.0.0"
