@@ -158,11 +158,11 @@ export const handler = async (event) => {
       },
     };
 
-    collegeEvents = await fetchEventsFromDDB(
-      "GSI_College_Date",
-      collegeCondition
-    );
-    interCollegeEvents = collegeEvents.filter(
+    // collegeEvents = await fetchEventsFromDDB(
+    //   "GSI_College_Date",
+    //   collegeCondition
+    // );
+    interCollegeEvents = cityCondition.filter(
       (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
     );
     privateCollegeEvents = collegeEvents.filter(

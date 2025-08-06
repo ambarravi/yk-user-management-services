@@ -290,6 +290,10 @@ export const handler = async (event) => {
       }
 
       console.log("Event already exists. Updating...");
+      let eventSt = existingRecord.Item.EventStatus.S.trim();
+      if (eventSt !== "Published") {
+        eventSt = "AwaitingApproval";
+      }
       const updateExpressionParts = [
         "EventTitle = :eventTitle",
         "EventDate = :eventDate",
@@ -352,7 +356,7 @@ export const handler = async (event) => {
             : { L: [] },
         ":additionalInfo": { S: eventDetails.additionalInfo || "" },
         ":mode": { S: eventDetails.eventMode || "" },
-        eventStatus: { S: "AwaitingApproval" },
+        eventStatus: { S: eventSt },
         ":organizerIp": { S: ipAddress }, // Add IP address value
       };
 
