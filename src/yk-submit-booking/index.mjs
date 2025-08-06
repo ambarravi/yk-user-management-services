@@ -422,7 +422,7 @@ export const handler = async (event) => {
           <body>
             <div class="container">
               <div class="header">
-                <img src="https://tiktie-logo-bucket.s3.eu-west-1.amazonaws.com/tiktie-logo.png" alt="Tiktie Logo">
+                <img src="https://tikties-logo.s3.amazonaws.com/images/logo.png" alt="Tikties Logo">
                 <h2>Booking Confirmation</h2>
               </div>
               <div class="content">

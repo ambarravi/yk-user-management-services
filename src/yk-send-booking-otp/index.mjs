@@ -27,6 +27,7 @@ function generateOtp(length = OTP_LENGTH) {
 
 // Send OTP via email using AWS SES
 async function sendEmail(toEmail, otp) {
+  let LogoUrl = "https://tikties-logo.s3.amazonaws.com/images/logo.png";
   const params = {
     Source: SENDER_EMAIL,
     Destination: { ToAddresses: [toEmail] },
@@ -37,9 +38,89 @@ async function sendEmail(toEmail, otp) {
           Data: `Your OTP for booking verification is ${otp}. It is valid for ${OTP_EXPIRY_MINUTES} minutes.`,
           Charset: "UTF-8",
         },
+        Html: {
+          Data: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Your Tikties Booking OTP</title>
+              <meta charset="UTF-8" />
+              <style>
+                body {
+                  background-color: #f4f4f4;
+                  font-family: Arial, sans-serif;
+                  margin: 0;
+                  padding: 0;
+                }
+                .container {
+                  background-color: #ffffff;
+                  max-width: 600px;
+                  margin: 30px auto;
+                  padding: 30px;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                }
+                .logo {
+                  max-width: 120px;
+                  margin: 0 auto 20px;
+                  display: block;
+                }
+                h2 {
+                  text-align: center;
+                  color: #222222;
+                  font-size: 24px;
+                  margin-bottom: 20px;
+                }
+                .otp-container {
+                  text-align: center;
+                  margin: 30px 0;
+                }
+                .otp {
+                  font-size: 48px;
+                  font-weight: bold;
+                  color: #007bff;
+                  letter-spacing: 5px;
+                  padding: 15px;
+                  border: 2px dashed #007bff;
+                  display: inline-block;
+                  border-radius: 8px;
+                }
+                p {
+                  color: #555555;
+                  line-height: 1.6;
+                  text-align: center;
+                }
+                .footer {
+                  margin-top: 40px;
+                  font-size: 12px;
+                  color: #999999;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <img src="${LogoUrl}" alt="Tikties Logo" class="logo" />
+                <h2>Your Verification OTP</h2>
+                <p>Please use the following OTP to verify your booking:</p>
+                <div class="otp-container">
+                  <span class="otp">${otp}</span>
+                </div>
+                <p>This OTP is valid for ${OTP_EXPIRY_MINUTES} minutes.</p>
+                <div class="footer">
+                  You are receiving this email as part of your booking verification.<br/>
+                  For support, contact us at support@tikties.com
+                </div>
+              </div>
+            </body>
+            </html>
+          `,
+          Charset: "UTF-8",
+        },
       },
     },
   };
+  // SES send email logic here
 
   try {
     const response = await ses.send(new SendEmailCommand(params));
