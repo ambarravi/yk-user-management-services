@@ -48,6 +48,9 @@ const fetchEventsFromDDB = async (indexName, keyCondition, useScan = false) => {
 
     if (useScan) {
       params.FilterExpression = keyCondition.filterexpression;
+      if (keyCondition.names) {
+        params.ExpressionAttributeNames = keyCondition.names; // Apply names for Scan
+      }
     } else {
       console.log("Query block ", keyCondition.keyexpression);
       params.KeyConditionExpression = keyCondition.keyexpression;
@@ -66,7 +69,7 @@ const fetchEventsFromDDB = async (indexName, keyCondition, useScan = false) => {
     return Items ? Items.map((item) => unmarshall(item)) : [];
   } catch (error) {
     console.error("DynamoDB Error:", error);
-    return [];
+    throw new Error("Failed to fetch events from DynamoDB");
   }
 };
 
@@ -163,7 +166,16 @@ const searchEvents = async (searchQuery, CityID, CollegeID) => {
 };
 
 export const handler = async (event) => {
-  let ParsedEvent = JSON.parse(event.body);
+  let ParsedEvent;
+  try {
+    ParsedEvent = JSON.parse(event.body);
+  } catch (error) {
+    console.error("Error parsing event body:", error);
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Invalid request body" }),
+    };
+  }
   console.log("Received Event:", ParsedEvent);
 
   const { CityID, CollegeID, SearchQuery } = ParsedEvent;
@@ -181,83 +193,79 @@ export const handler = async (event) => {
     return istTime.toISOString().slice(0, 16); // Keep till minutes like '2025-04-19T11:55'
   };
 
-  if (SearchQuery) {
-    searchResults = await searchEvents(SearchQuery, CityID, CollegeID);
-  }
-  if (CityID) {
-    const cityCondition = {
-      keyexpression: "#CityID = :cityId AND #EventDate > :currentDate", // Use placeholders
-      values: {
-        ":cityId": { S: CityID },
-        ":currentDate": { S: getISTISOString() },
-      },
-      names: {
-        "#CityID": "CityID",
-        "#EventDate": "EventDate",
-      },
+  try {
+    if (SearchQuery) {
+      searchResults = await searchEvents(SearchQuery, CityID, CollegeID);
+    }
+    if (CityID) {
+      const cityCondition = {
+        keyexpression: "#CityID = :cityId AND #EventDate > :currentDate",
+        values: {
+          ":cityId": { S: CityID },
+          ":currentDate": { S: getISTISOString() },
+        },
+        names: {
+          "#CityID": "CityID",
+          "#EventDate": "EventDate",
+        },
+      };
+
+      console.log("Call for City");
+      console.log(cityCondition, "cityCondition");
+      cityEvents = await fetchEventsFromDDB(
+        "GSI_City_College_Date",
+        cityCondition
+      );
+      cityEventFilter = cityEvents.filter(
+        (ev) => ev.EventStatus === "Published" && ev.EventType === "open"
+      );
+    }
+
+    if (CollegeID) {
+      const collegeCondition = {
+        keyexpression: "#CollegeID = :collegeId AND #EventDate > :currentDate",
+        values: {
+          ":collegeId": { S: CollegeID },
+          ":currentDate": { S: getISTISOString() },
+        },
+        names: {
+          "#CollegeID": "CollegeID",
+          "#EventDate": "EventDate",
+        },
+      };
+
+      collegeEvents = await fetchEventsFromDDB(
+        "GSI_College_Date",
+        collegeCondition
+      );
+
+      privateCollegeEvents = collegeEvents.filter(
+        (ev) => ev.EventStatus === "Published" && ev.EventType === "private"
+      );
+
+      interCollegeEvents = collegeEvents.filter(
+        (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
+      );
+    }
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        CityEvents: CityID ? cityEventFilter.map(formatEventDetails) : [],
+        PrivateCollegeEvents: CollegeID
+          ? privateCollegeEvents.map(formatEventDetails)
+          : [],
+        InterCollegeEvents: CollegeID
+          ? interCollegeEvents.map(formatEventDetails)
+          : [],
+        SearchResults: searchResults.map(formatEventDetails),
+      }),
     };
-
-    console.log("Call for CIty");
-    console.log(cityCondition, "cityCondition");
-    cityEvents = await fetchEventsFromDDB(
-      "GSI_City_College_Date",
-      cityCondition
-    );
-    cityEventFilter = cityEvents.filter(
-      (ev) => ev.EventStatus === "Published" && ev.EventType === "open"
-    );
-  }
-
-  if (CollegeID) {
-    const collegeCondition = {
-      keyexpression: "#CollegeID = :collegeId AND #EventDate > :currentDate",
-      values: {
-        ":collegeId": { S: CollegeID },
-        ":currentDate": { S: getISTISOString() },
-      },
-      names: {
-        "#CollegeID": "CollegeID",
-        "#EventDate": "EventDate",
-      },
+  } catch (error) {
+    console.error("Handler Error:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Failed to process request" }),
     };
-
-    const intercollegeCondition = {
-      keyexpression: "#CollegeID = :collegeId AND #EventDate > :currentDate",
-      values: {
-        ":collegeId": { S: CollegeID },
-        ":currentDate": { S: getISTISOString() },
-      },
-      names: {
-        "#CollegeID": "CollegeID",
-        "#EventDate": "EventDate",
-      },
-    };
-
-    collegeEvents = await fetchEventsFromDDB(
-      "GSI_College_Date",
-      collegeCondition
-    );
-
-    privateCollegeEvents = collegeEvents.filter(
-      (ev) => ev.EventStatus === "Published" && ev.EventType === "private"
-    );
-
-    interCollegeEvents = cityEvents.filter(
-      (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
-    );
   }
-
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      CityEvents: CityID ? cityEventFilter.map(formatEventDetails) : [],
-      PrivateCollegeEvents: CollegeID
-        ? privateCollegeEvents.map(formatEventDetails)
-        : [],
-      InterCollegeEvents: CollegeID
-        ? interCollegeEvents.map(formatEventDetails)
-        : [],
-      SearchResults: searchResults.map(formatEventDetails),
-    }),
-  };
 };
