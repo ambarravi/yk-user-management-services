@@ -162,7 +162,7 @@ export const handler = async (event) => {
     //   "GSI_College_Date",
     //   collegeCondition
     // );
-    interCollegeEvents = cityCondition.filter(
+    interCollegeEvents = cityEvents.filter(
       (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
     );
     privateCollegeEvents = collegeEvents.filter(
