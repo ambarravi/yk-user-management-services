@@ -112,7 +112,7 @@ const searchEvents = async (searchQuery, CityID, CollegeID) => {
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
     const istTime = new Date(now.getTime() + istOffset);
-    return istTime.toISOString().slice(0, 16); // Keep till minutes like '2025-04-19T11:55'
+    return istTime.toISOString().slice(0, 16); // Keep till minutes like '2025-08-06T17:52'
   };
 
   let filterExpression = `contains(Tags, :searchVal) AND #EventStatus = :status AND #EventDate > :currentDate`;
@@ -148,7 +148,7 @@ const searchEvents = async (searchQuery, CityID, CollegeID) => {
   const condition = {
     filterexpression: filterExpression,
     values: expressionAttributeValues,
-    names: expressionAttributeNames,
+    names: expressionAttributeNames, // Ensure names are included
   };
 
   // Use Scan on EventDate-index
