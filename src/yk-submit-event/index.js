@@ -308,6 +308,7 @@ export const handler = async (event) => {
         "AudienceBenefits = :audienceBenefits",
         "AdditionalInfo = :additionalInfo",
         "EventMode = :mode",
+        "EventStatus = :eventStatus",
         "OrganizerIp = :organizerIp", // Add IP address to update
       ];
 
@@ -351,6 +352,7 @@ export const handler = async (event) => {
             : { L: [] },
         ":additionalInfo": { S: eventDetails.additionalInfo || "" },
         ":mode": { S: eventDetails.eventMode || "" },
+        eventStatus: { S: "AwaitingApproval" },
         ":organizerIp": { S: ipAddress }, // Add IP address value
       };
 
