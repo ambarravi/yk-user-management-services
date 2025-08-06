@@ -70,31 +70,93 @@ const fetchEventsFromDDB = async (indexName, keyCondition, useScan = false) => {
   }
 };
 
+// /**
+//  * Fetch events based on search query
+//  * @param {string} searchQuery - User search input
+//  * @returns {Promise<Array>}
+//  */
+// const searchEvents = async (searchQuery) => {
+//   const indexes = [{ name: "EventDate-index", field: "Tags" }];
+
+//   let allResults = [];
+
+//   for (const index of indexes) {
+//     const condition = {
+//       filterexpression: `contains(${index.field}, :searchVal)`,
+//       values: {
+//         ":searchVal": { S: searchQuery },
+//       },
+//     };
+
+//     const results = await fetchEventsFromDDB(index.name, condition, true);
+//     allResults = allResults.concat(results);
+//   }
+
+//   // Deduplicate events based on EventID
+//   const uniqueEvents = Array.from(
+//     new Map(allResults.map((ev) => [ev.EventID, ev])).values()
+//   );
+
+//   return uniqueEvents;
+// };
+
 /**
- * Fetch events based on search query
+ * Fetch events based on search query, respecting event type and college/city filters
  * @param {string} searchQuery - User search input
+ * @param {string} [CityID] - Optional CityID to filter public events
+ * @param {string} [CollegeID] - Optional CollegeID to filter private/inter events
  * @returns {Promise<Array>}
  */
-const searchEvents = async (searchQuery) => {
-  const indexes = [{ name: "EventDate-index", field: "Tags" }];
+const searchEvents = async (searchQuery, CityID, CollegeID) => {
+  const getISTISOString = () => {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
+    const istTime = new Date(now.getTime() + istOffset);
+    return istTime.toISOString().slice(0, 16); // Keep till minutes like '2025-04-19T11:55'
+  };
 
-  let allResults = [];
+  let filterExpression = `contains(Tags, :searchVal) AND #EventStatus = :status AND #EventDate > :currentDate`;
+  let expressionAttributeValues = {
+    ":searchVal": { S: searchQuery },
+    ":status": { S: "Published" },
+    ":currentDate": { S: getISTISOString() },
+  };
+  let expressionAttributeNames = {
+    "#EventStatus": "EventStatus",
+    "#EventDate": "EventDate",
+  };
 
-  for (const index of indexes) {
-    const condition = {
-      filterexpression: `contains(${index.field}, :searchVal)`,
-      values: {
-        ":searchVal": { S: searchQuery },
-      },
-    };
-
-    const results = await fetchEventsFromDDB(index.name, condition, true);
-    allResults = allResults.concat(results);
+  // Build filter expression based on CollegeID and CityID
+  if (CollegeID) {
+    // Students can see private events for their college, inter-college events, and public events
+    filterExpression += ` AND (#EventType = :open OR (#EventType = :private AND #CollegeID = :collegeId) OR #EventType = :inter)`;
+    expressionAttributeValues[":open"] = { S: "open" };
+    expressionAttributeValues[":private"] = { S: "private" };
+    expressionAttributeValues[":inter"] = { S: "inter" };
+    expressionAttributeValues[":collegeId"] = { S: CollegeID };
+    expressionAttributeNames["#EventType"] = "EventType";
+    expressionAttributeNames["#CollegeID"] = "CollegeID";
+  } else if (CityID) {
+    // Non-students can only see public events in their city
+    filterExpression += ` AND #EventType = :open AND #CityID = :cityId`;
+    expressionAttributeValues[":open"] = { S: "open" };
+    expressionAttributeValues[":cityId"] = { S: CityID };
+    expressionAttributeNames["#EventType"] = "EventType";
+    expressionAttributeNames["#CityID"] = "CityID";
   }
+
+  const condition = {
+    filterexpression: filterExpression,
+    values: expressionAttributeValues,
+    names: expressionAttributeNames,
+  };
+
+  // Use Scan on EventDate-index
+  const results = await fetchEventsFromDDB("EventDate-index", condition, true);
 
   // Deduplicate events based on EventID
   const uniqueEvents = Array.from(
-    new Map(allResults.map((ev) => [ev.EventID, ev])).values()
+    new Map(results.map((ev) => [ev.EventID, ev])).values()
   );
 
   return uniqueEvents;
@@ -120,7 +182,7 @@ export const handler = async (event) => {
   };
 
   if (SearchQuery) {
-    searchResults = await searchEvents(SearchQuery);
+    searchResults = await searchEvents(SearchQuery, CityID, CollegeID);
   }
   if (CityID) {
     const cityCondition = {
