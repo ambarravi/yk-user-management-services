@@ -106,6 +106,7 @@ export const handler = async (event) => {
 
   const { CityID, CollegeID, SearchQuery } = ParsedEvent;
   let cityEvents = [];
+  let cityEventFilter = [];
   let collegeEvents = [];
   let searchResults = [];
   let interCollegeEvents = [];
@@ -140,7 +141,7 @@ export const handler = async (event) => {
       "GSI_City_College_Date",
       cityCondition
     );
-    cityEvents = cityEvents.filter(
+    cityEventFilter = cityEvents.filter(
       (ev) => ev.EventStatus === "Published" && ev.EventType === "open"
     );
   }
@@ -158,22 +159,36 @@ export const handler = async (event) => {
       },
     };
 
-    // collegeEvents = await fetchEventsFromDDB(
-    //   "GSI_College_Date",
-    //   collegeCondition
-    // );
-    interCollegeEvents = cityEvents.filter(
-      (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
+    const intercollegeCondition = {
+      keyexpression: "#CollegeID = :collegeId AND #EventDate > :currentDate",
+      values: {
+        ":collegeId": { S: CollegeID },
+        ":currentDate": { S: getISTISOString() },
+      },
+      names: {
+        "#CollegeID": "CollegeID",
+        "#EventDate": "EventDate",
+      },
+    };
+
+    collegeEvents = await fetchEventsFromDDB(
+      "GSI_College_Date",
+      collegeCondition
     );
+
     privateCollegeEvents = collegeEvents.filter(
       (ev) => ev.EventStatus === "Published" && ev.EventType === "private"
+    );
+
+    interCollegeEvents = cityEvents.filter(
+      (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
     );
   }
 
   return {
     statusCode: 200,
     body: JSON.stringify({
-      CityEvents: CityID ? cityEvents.map(formatEventDetails) : [],
+      CityEvents: CityID ? cityEventFilter.map(formatEventDetails) : [],
       PrivateCollegeEvents: CollegeID
         ? privateCollegeEvents.map(formatEventDetails)
         : [],
