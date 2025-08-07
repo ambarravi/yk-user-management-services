@@ -356,7 +356,7 @@ export const handler = async (event) => {
             : { L: [] },
         ":additionalInfo": { S: eventDetails.additionalInfo || "" },
         ":mode": { S: eventDetails.eventMode || "" },
-        eventStatus: { S: eventSt },
+        ":eventStatus": { S: eventSt },
         ":organizerIp": { S: ipAddress }, // Add IP address value
       };
 
