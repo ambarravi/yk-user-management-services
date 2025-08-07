@@ -243,9 +243,13 @@ export const handler = async (event) => {
         (ev) => ev.EventStatus === "Published" && ev.EventType === "private"
       );
 
-      interCollegeEvents = collegeEvents.filter(
+      interCollegeEvents = cityEvents.filter(
         (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
       );
+
+      // interCollegeEvents = collegeEvents.filter(
+      //   (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
+      // );
     }
 
     return {
