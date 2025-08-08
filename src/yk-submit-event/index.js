@@ -11,7 +11,6 @@ import {
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
-
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
 import sw from "stopword";
@@ -26,7 +25,6 @@ export const handler = async (event) => {
       throw new Error("Request body is missing.");
     }
 
-    // Log the client IP address for tracking
     const ipAddress = event.requestContext?.identity?.sourceIp || "unknown";
     console.log("Client IP Address:", ipAddress);
 
@@ -39,38 +37,44 @@ export const handler = async (event) => {
       eventImages = [],
       newImages = [],
       oldImages = [],
+      EventStatus,
       ...eventDetails
     } = parsedBody;
     let readableEventID = parsedBody.readableEventID;
+
+    // Validate required fields
+    const errors = [];
+    if (!OrgID) errors.push("Organization ID (OrgID) is required.");
+    if (!eventDetails.location) errors.push("Event Location is required.");
+    if (!eventDetails.OrganizerName) errors.push("Organizer Name is required.");
+    if (
+      parseInt(eventDetails.reserveSeats) > parseInt(eventDetails.noOfSeats)
+    ) {
+      errors.push("Reserved Seats cannot exceed Number of Seats.");
+    }
+    if (errors.length > 0) {
+      throw new Error(errors.join(" "));
+    }
 
     eventDetails.tags = generateTagsFromTitle(
       eventDetails.eventTitle,
       eventDetails.tags
     );
 
-    if (!OrgID) {
-      throw new Error("Organization ID (OrgID) is required.");
-    }
-
-    console.log(EventID);
     const uniqueEventID = EventID || uuidv4();
-    console.log(uniqueEventID);
     const TABLE = process.env.EVENT_TABLE;
     const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-    const sanitizeString = (value) =>
-      value && value.trim() !== "" ? { S: value } : undefined;
-
     if (!TABLE || !S3_BUCKET_NAME) {
       throw new Error(
-        "Missing required environment variables: AWS_REGION, EVENTS_TABLE, or S3_BUCKET_NAME."
+        "Missing required environment variables: AWS_REGION, EVENT_TABLE, or S3_BUCKET_NAME."
       );
     }
 
     // Validate and process event images
     if (!EventID) {
       readableEventID = await generateReadableEventID();
-      console.log(" ReadableEventID not found :", readableEventID);
+      console.log("Generated ReadableEventID:", readableEventID);
     }
     console.log("Final ReadableEventID:", readableEventID);
     const presignedUrlsResult = [];
@@ -100,22 +104,17 @@ export const handler = async (event) => {
             presignedUrl
           );
         } catch (err) {
-          console.error("Error details:", {
-            message: err.message,
-            stack: err.stack,
-          });
-          console.error(
-            `Failed to generate presigned URL for image ${i + 1}:`,
-            err
+          console.error("Error generating presigned URL:", err);
+          throw new Error(
+            `Failed to generate presigned URL for image ${i + 1}`
           );
         }
       }
     }
 
-    console.log("Check for Old images", oldImages);
-
+    console.log("Check for old images:", oldImages);
     oldImages.forEach((x) => {
-      console.log("old image url", x.url);
+      console.log("Old image URL:", x.url);
       imageUrls.push(x.url);
     });
     console.log("Final image URLs:", imageUrls);
@@ -126,7 +125,7 @@ export const handler = async (event) => {
       OrgID: { S: OrgID },
       EventTitle: { S: eventDetails.eventTitle || "" },
       EventDate: { S: eventDetails.dateTime || "" },
-      EventLocation: { S: eventDetails.eventLocation || "" },
+      EventLocation: { S: eventDetails.location || "" },
       EventDetails: { S: eventDetails.eventDetails || "" },
       EventImages: imageUrls.length
         ? { L: imageUrls.map((url) => ({ S: url })) }
@@ -137,25 +136,24 @@ export const handler = async (event) => {
       EventType: { S: eventDetails.eventType || "" },
       Tags: { S: eventDetails.tags || "" },
       EventHighLight: { S: eventDetails.highlight || "" },
-      Price: { N: eventDetails.ticketPrice || "0" },
-      Seats: { N: eventDetails.noOfSeats || "0" },
-      ReservedSeats: { N: eventDetails.reserveSeats || "0" },
+      Price: { S: String(eventDetails.ticketPrice || "0") },
+      Seats: { S: String(eventDetails.noOfSeats || "0") },
+      ReservedSeats: { S: String(eventDetails.reserveSeats || "0") },
       AudienceBenefits:
         eventDetails.audienceBenefits &&
         eventDetails.audienceBenefits.length > 0
           ? {
               L: eventDetails.audienceBenefits
-                .filter((benefit) => benefit.trim() !== "")
-                .map((benefit) => ({
-                  S: benefit,
-                })),
+                .filter((benefit) => benefit && benefit.trim() !== "")
+                .map((benefit) => ({ S: benefit })),
             }
           : { L: [] },
       AdditionalInfo: { S: eventDetails.additionalInfo || "" },
       OrganizerName: { S: eventDetails.OrganizerName || "" },
       EventMode: { S: eventDetails.eventMode || "" },
-      EventStatus: { S: "AwaitingApproval" },
-      OrganizerIp: { S: ipAddress }, // Add IP address to event payload
+      EventStatus: { S: EventStatus || "AwaitingApproval" },
+      OrganizerIp: { S: ipAddress },
+      ReadableEventID: { S: readableEventID },
     };
 
     const collegeID = await getCollegeID(OrgID);
@@ -175,7 +173,6 @@ export const handler = async (event) => {
     console.log("Existing Record:", existingRecord);
 
     if (existingRecord.Item) {
-      // After existingRecord.Item is fetched and before the event is updated
       const wasPublished = existingRecord.Item.EventStatus?.S === "Published";
       let updateType = null;
 
@@ -183,14 +180,12 @@ export const handler = async (event) => {
       const existingDate = existingRecord.Item.EventDate?.S;
       const newDate = eventDetails.dateTime;
 
-      // Validate dates before comparison
       if (!existingDate || !newDate) {
         throw new Error(
           "Missing date information in existing or new event data"
         );
       }
 
-      // Robust date comparison
       try {
         const existingDateObj = new Date(existingDate);
         const newDateObj = new Date(newDate);
@@ -201,7 +196,6 @@ export const handler = async (event) => {
           );
         }
 
-        // Compare dates up to minute precision
         const existingDateStr = existingDateObj.toISOString().slice(0, 16);
         const newDateStr = newDateObj.toISOString().slice(0, 16);
 
@@ -223,18 +217,19 @@ export const handler = async (event) => {
       // Check for venue change
       if (
         !updateType &&
-        existingRecord.Item.EventLocation?.S.trim() !==
-          eventDetails.eventLocation.trim()
+        existingRecord.Item.EventLocation?.S?.trim() !==
+          eventDetails.location?.trim()
       ) {
         console.log(
           "Venue changed from",
           existingRecord.Item.EventLocation?.S,
           "to",
-          eventDetails.eventLocation
+          eventDetails.location
         );
         updateType = "VENUE_CHANGED";
       }
 
+      // Check for other field changes
       if (!updateType) {
         const otherFieldsChanged = [
           "eventTitle",
@@ -263,7 +258,6 @@ export const handler = async (event) => {
         }
       }
 
-      // Send to SQS only if it was previously published
       if (updateType && wasPublished) {
         const sqsPayload = {
           eventId: uniqueEventID,
@@ -284,16 +278,10 @@ export const handler = async (event) => {
         }
       }
 
-      // Helper to convert camelCase to PascalCase
-      function camelToPascal(str) {
-        return str.charAt(0).toUpperCase() + str.slice(1);
-      }
+      // Preserve EventStatus for updates
+      const eventSt =
+        EventStatus || existingRecord.Item.EventStatus?.S || "AwaitingApproval";
 
-      console.log("Event already exists. Updating...");
-      let eventSt = existingRecord.Item.EventStatus.S.trim();
-      if (eventSt !== "Published") {
-        eventSt = "AwaitingApproval";
-      }
       const updateExpressionParts = [
         "EventTitle = :eventTitle",
         "EventDate = :eventDate",
@@ -313,13 +301,13 @@ export const handler = async (event) => {
         "AdditionalInfo = :additionalInfo",
         "EventMode = :mode",
         "EventStatus = :eventStatus",
-        "OrganizerIp = :organizerIp", // Add IP address to update
+        "OrganizerIp = :organizerIp",
       ];
 
       const expressionAttributeValues = {
         ":eventTitle": { S: eventDetails.eventTitle || "" },
         ":eventDate": { S: eventDetails.dateTime || "" },
-        ":eventLocation": { S: eventDetails.eventLocation || "" },
+        ":eventLocation": { S: eventDetails.location || "" },
         ":eventDetails": { S: eventDetails.eventDetails || "" },
         ":eventImages": imageUrls.length
           ? { L: imageUrls.map((url) => ({ S: url })) }
@@ -330,37 +318,24 @@ export const handler = async (event) => {
         ":eventType": { S: eventDetails.eventType || "" },
         ":tags": { S: eventDetails.tags || "" },
         ":eventHighLight": { S: eventDetails.highlight || "" },
-        ":price": {
-          N: eventDetails.ticketPrice
-            ? eventDetails.ticketPrice.toString()
-            : "0",
-        },
-        ":seats": {
-          N: eventDetails.noOfSeats ? eventDetails.noOfSeats.toString() : "0",
-        },
-        ":reservedSeats": {
-          N: eventDetails.reserveSeats
-            ? eventDetails.reserveSeats.toString()
-            : "0",
-        },
+        ":price": { S: String(eventDetails.ticketPrice || "0") },
+        ":seats": { S: String(eventDetails.noOfSeats || "0") },
+        ":reservedSeats": { S: String(eventDetails.reserveSeats || "0") },
         ":audienceBenefits":
           eventDetails.audienceBenefits &&
           eventDetails.audienceBenefits.length > 0
             ? {
                 L: eventDetails.audienceBenefits
-                  .filter((benefit) => benefit.trim() !== "")
-                  .map((benefit) => ({
-                    S: benefit,
-                  })),
+                  .filter((benefit) => benefit && benefit.trim() !== "")
+                  .map((benefit) => ({ S: benefit })),
               }
             : { L: [] },
         ":additionalInfo": { S: eventDetails.additionalInfo || "" },
         ":mode": { S: eventDetails.eventMode || "" },
         ":eventStatus": { S: eventSt },
-        ":organizerIp": { S: ipAddress }, // Add IP address value
+        ":organizerIp": { S: ipAddress },
       };
 
-      // Check if CollegeID is present
       if (eventDetails.collegeID) {
         updateExpressionParts.push("CollegeID = :collegeID");
         expressionAttributeValues[":collegeID"] = { S: eventDetails.collegeID };
@@ -384,13 +359,13 @@ export const handler = async (event) => {
       const listResponse = await s3Client.send(
         new ListObjectsV2Command(listParams)
       );
-      console.log(listResponse);
+      console.log("List S3 Response:", listResponse);
       if (listResponse.Contents) {
         const keysToDelete = listResponse.Contents.filter(
           (item) => !imageUrls.some((url) => url.includes(item.Key))
         ).map((item) => ({ Key: item.Key }));
 
-        console.log("KeystoDelete", keysToDelete);
+        console.log("Keys to Delete:", keysToDelete);
         if (keysToDelete.length > 0) {
           const deleteParams = {
             Bucket: S3_BUCKET_NAME,
@@ -404,11 +379,8 @@ export const handler = async (event) => {
       console.log("Event updated successfully.");
     } else {
       console.log("Inserting new event...");
-
-      console.log("Generated ReadableEventID:", readableEventID);
-      eventPayload.ReadableEventID = {
-        S: readableEventID,
-      };
+      eventPayload.ReadableEventID = { S: readableEventID };
+      eventPayload.EventStatus = { S: "AwaitingApproval" };
 
       const insertParams = {
         TableName: TABLE,
@@ -496,10 +468,6 @@ const generateReadableEventID = async () => {
     return `EVT-${newSequence.toString().padStart(6, "0")}`;
   } catch (error) {
     console.error("Error generating ReadableEventID:", error);
-    console.error("Error details:", {
-      message: error.message,
-      stack: error.stack,
-    });
     throw new Error("Error generating ReadableEventID");
   }
 };
@@ -525,10 +493,6 @@ export const getCollegeID = async (OrgID) => {
     return response.Item?.collegeID?.S || null;
   } catch (error) {
     console.error("Error fetching CollegeID:", error);
-    console.error("Error details:", {
-      message: error.message,
-      stack: error.stack,
-    });
     throw new Error("Failed to retrieve CollegeID from Organizer table.");
   }
 };
