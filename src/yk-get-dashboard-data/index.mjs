@@ -24,10 +24,11 @@ export const handler = async (event) => {
     // 1. Query EventDetails for this OrgID
     const eventCommand = new QueryCommand({
       TableName: "EventDetails",
-      IndexName: "OrgID-index",
-      KeyConditionExpression: "OrgID = :orgID",
+      IndexName: "OrgID-EventStatus-index", // GSI where OrgID is partition key and EventStatus is sort key
+      KeyConditionExpression: "OrgID = :orgID AND EventStatus = :eventStatus",
       ExpressionAttributeValues: {
         ":orgID": { S: orgID },
+        ":eventStatus": { S: "Published" },
       },
     });
 
