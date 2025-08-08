@@ -425,6 +425,11 @@ export const handler = async (event) => {
   }
 };
 
+// Helper to convert camelCase to PascalCase
+function camelToPascal(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 const generateReadableEventID = async () => {
   const eventSequenceValue = "EventSequenceID";
   const tableName = "EventIDGenerator";
