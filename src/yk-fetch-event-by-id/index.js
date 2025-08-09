@@ -101,6 +101,7 @@ export const handler = async (event) => {
         aboutOrganization: orgDetails.aboutOrganization,
         contactPerson: orgDetails.contactPerson,
         contactNumber: orgDetails.contactNumber,
+        collegeName: eventDetails.CollegeName,
       },
     };
 
