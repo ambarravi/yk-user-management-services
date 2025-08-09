@@ -119,6 +119,9 @@ export const handler = async (event) => {
     });
     console.log("Final image URLs:", imageUrls);
 
+    // Fetch college details from Organizer table
+    const { collegeID, collegeName } = await getCollegeDetails(OrgID);
+
     // Prepare event data for DynamoDB
     const eventPayload = {
       EventID: { S: uniqueEventID },
@@ -127,6 +130,7 @@ export const handler = async (event) => {
       EventDate: { S: eventDetails.dateTime || "" },
       EventLocation: { S: eventDetails.location || "" },
       EventDetails: { S: eventDetails.eventDetails || "" },
+ Await
       EventImages: imageUrls.length
         ? { L: imageUrls.map((url) => ({ S: url })) }
         : { L: [] },
@@ -156,9 +160,11 @@ export const handler = async (event) => {
       ReadableEventID: { S: readableEventID },
     };
 
-    const collegeID = await getCollegeID(OrgID);
     if (collegeID) {
       eventPayload.CollegeID = { S: collegeID };
+    }
+    if (collegeName) {
+      eventPayload.CollegeName = { S: collegeName };
     }
 
     // Check if the event already exists
@@ -340,6 +346,10 @@ export const handler = async (event) => {
         updateExpressionParts.push("CollegeID = :collegeID");
         expressionAttributeValues[":collegeID"] = { S: eventDetails.collegeID };
       }
+      if (collegeName) {
+        updateExpressionParts.push("CollegeName = :collegeName");
+        expressionAttributeValues[":collegeName"] = { S: collegeName };
+      }
 
       const updateParams = {
         TableName: TABLE,
@@ -477,7 +487,7 @@ const generateReadableEventID = async () => {
   }
 };
 
-export const getCollegeID = async (OrgID) => {
+export const getCollegeDetails = async (OrgID) => {
   if (!OrgID) {
     throw new Error("Organization ID (OrgID) is required.");
   }
@@ -491,14 +501,17 @@ export const getCollegeID = async (OrgID) => {
     const params = {
       TableName: ORGANIZER_TABLE,
       Key: { OrganizerID: { S: OrgID } },
-      ProjectionExpression: "collegeID",
+      ProjectionExpression: "collegeID, collegeName",
     };
 
     const response = await dynamoDBClient.send(new GetItemCommand(params));
-    return response.Item?.collegeID?.S || null;
+    return {
+      collegeID: response.Item?.collegeID?.S || null,
+      collegeName: response.Item?.collegeName?.S || "",
+    };
   } catch (error) {
-    console.error("Error fetching CollegeID:", error);
-    throw new Error("Failed to retrieve CollegeID from Organizer table.");
+    console.error("Error fetching college details:", error);
+    throw new Error("Failed to retrieve college details from Organizer table.");
   }
 };
 
