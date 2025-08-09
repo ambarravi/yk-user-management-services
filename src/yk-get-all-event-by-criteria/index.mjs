@@ -26,6 +26,7 @@ const formatEventDetails = (event) => ({
   spl_banner: event.EventHighLight || "",
   images: event.EventImages ? event.EventImages.map((img) => img) : [],
   organizerName: event.OrganizerName || "",
+  collegeName: event.CollegeName || "", // Added CollegeName
   categoryName: event.CategoryName || "",
 });
 
@@ -72,36 +73,6 @@ const fetchEventsFromDDB = async (indexName, keyCondition, useScan = false) => {
     throw new Error("Failed to fetch events from DynamoDB");
   }
 };
-
-// /**
-//  * Fetch events based on search query
-//  * @param {string} searchQuery - User search input
-//  * @returns {Promise<Array>}
-//  */
-// const searchEvents = async (searchQuery) => {
-//   const indexes = [{ name: "EventDate-index", field: "Tags" }];
-
-//   let allResults = [];
-
-//   for (const index of indexes) {
-//     const condition = {
-//       filterexpression: `contains(${index.field}, :searchVal)`,
-//       values: {
-//         ":searchVal": { S: searchQuery },
-//       },
-//     };
-
-//     const results = await fetchEventsFromDDB(index.name, condition, true);
-//     allResults = allResults.concat(results);
-//   }
-
-//   // Deduplicate events based on EventID
-//   const uniqueEvents = Array.from(
-//     new Map(allResults.map((ev) => [ev.EventID, ev])).values()
-//   );
-
-//   return uniqueEvents;
-// };
 
 /**
  * Fetch events based on search query, respecting event type and college/city filters
@@ -173,6 +144,11 @@ export const handler = async (event) => {
     console.error("Error parsing event body:", error);
     return {
       statusCode: 400,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
       body: JSON.stringify({ error: "Invalid request body" }),
     };
   }
@@ -246,14 +222,15 @@ export const handler = async (event) => {
       interCollegeEvents = cityEvents.filter(
         (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
       );
-
-      // interCollegeEvents = collegeEvents.filter(
-      //   (ev) => ev.EventStatus === "Published" && ev.EventType === "inter"
-      // );
     }
 
     return {
       statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
       body: JSON.stringify({
         CityEvents: CityID ? cityEventFilter.map(formatEventDetails) : [],
         PrivateCollegeEvents: CollegeID
@@ -269,6 +246,11 @@ export const handler = async (event) => {
     console.error("Handler Error:", error);
     return {
       statusCode: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
       body: JSON.stringify({ error: "Failed to process request" }),
     };
   }
