@@ -130,7 +130,6 @@ export const handler = async (event) => {
       EventDate: { S: eventDetails.dateTime || "" },
       EventLocation: { S: eventDetails.location || "" },
       EventDetails: { S: eventDetails.eventDetails || "" },
- Await
       EventImages: imageUrls.length
         ? { L: imageUrls.map((url) => ({ S: url })) }
         : { L: [] },
