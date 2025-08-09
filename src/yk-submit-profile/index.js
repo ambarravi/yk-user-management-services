@@ -59,6 +59,7 @@ export const handler = async (event) => {
 
     // Check if collegeID is a custom name (not numeric or UUID-like)
     let collegeID = profileData.collegeID || "";
+    let collegeName = ""; // Initialize CollegeName
     const isCustomCollege =
       collegeID &&
       !collegeID.match(/^\d+$/) &&
@@ -81,9 +82,9 @@ export const handler = async (event) => {
       if (!collegeRecord.Item) {
         // College not found, create new college entry
         collegeID = uuidv4(); // Generate new UUID for CollegeID
+        collegeName = profileData.collegeID; // Use profileData.collegeID as CollegeName
 
         // Generate Shortform: First letter of each word in college name
-        const collegeName = profileData.collegeID;
         const shortform = collegeName
           .split(/\s+/) // Split by whitespace
           .map((word) => word.charAt(0)) // Take first letter of each word
@@ -109,7 +110,22 @@ export const handler = async (event) => {
         );
         await dynamoDBClient.send(new PutItemCommand(collegeInsertParams));
         console.log("New college inserted successfully.");
+      } else {
+        // College exists, get CollegeName from CollegeTable
+        collegeName = collegeRecord.Item.Name?.S || profileData.collegeID;
       }
+    } else if (collegeID && !isCustomCollege) {
+      // Non-custom collegeID, fetch CollegeName from CollegeTable
+      const collegeGetParams = {
+        TableName: COLLEGE_TABLE,
+        Key: {
+          CollegeID: { S: collegeID },
+        },
+      };
+      const collegeRecord = await dynamoDBClient.send(
+        new GetItemCommand(collegeGetParams)
+      );
+      collegeName = collegeRecord.Item?.Name?.S || "";
     }
 
     // Fetch existing organizer record
@@ -167,6 +183,7 @@ export const handler = async (event) => {
               cityName = :cityName,
               #state = :state,
               collegeID = :collegeID,
+              collegeName = :collegeName,
               address = :address,
               associatedCollegeUniversity = :associatedCollegeUniversity,
               logoPath = :logoPath,
@@ -187,6 +204,7 @@ export const handler = async (event) => {
           ":cityName": { S: profileData.cityName },
           ":state": { S: profileData.state || "" },
           ":collegeID": { S: collegeID },
+          ":collegeName": { S: collegeName },
           ":address": { S: profileData.address },
           ":associatedCollegeUniversity": { BOOL: associatedCollegeUniversity },
           ":logoPath": { S: logoPath },
@@ -213,6 +231,7 @@ export const handler = async (event) => {
           cityName: { S: profileData.cityName },
           state: { S: profileData.state || "" },
           collegeID: { S: collegeID },
+          collegeName: { S: collegeName },
           address: { S: profileData.address },
           associatedCollegeUniversity: { BOOL: associatedCollegeUniversity },
           logoPath: { S: logoPath },
