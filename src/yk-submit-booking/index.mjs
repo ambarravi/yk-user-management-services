@@ -274,9 +274,14 @@ export const handler = async (event) => {
     console.log("BookingID", bookingID);
     const createdAt = Math.floor(Date.now() / 1000);
 
+    const capacity = Number(event.capacity ?? 0);
+
+    const remainingSeats = capacity - bookedSeats;
+
     const transactionCommand = new TransactWriteItemsCommand({
       TransactItems: [
         // Update SeatsBooked in EventDetails
+
         {
           Update: {
             TableName: "EventDetails",
@@ -288,7 +293,7 @@ export const handler = async (event) => {
             ExpressionAttributeValues: {
               ":zero": { N: "0" },
               ":count": { N: ticketCount.toString() },
-              ":remainingSeats": { N: (totalSeats - ticketCount).toString() },
+              ":remainingSeats": { N: remainingSeats.toString() },
             },
           },
         },
