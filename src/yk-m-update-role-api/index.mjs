@@ -7,6 +7,7 @@ import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid"; // Add uuid package for UUID generation
+import { validateCollegeNameAI } from "./validateCollegeNameAI.js";
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // Verify this matches your Cognito User Pool
@@ -111,6 +112,20 @@ export const handler = async (event) => {
         );
         finalCollegeDetails = existingCollege;
       } else {
+        const validationResult = await validateCollegeNameAI(
+          finalCollegeDetails.Name
+        );
+
+        if (!validationResult.valid) {
+          return {
+            statusCode: 400,
+            body: JSON.stringify({
+              error:
+                "College/Institution name not recognized. Please re-enter the correct official name",
+              reason: validationResult.reason,
+            }),
+          };
+        }
         // Create new college with UUID
         const newCollegeId = uuidv4();
         finalCollegeDetails = {

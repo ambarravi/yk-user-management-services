@@ -54,6 +54,7 @@ jobs:
           - yk-sync-eventDate
           - yk-validate-image
           - yk-send-booking-otp
+          - yk-mark-attendance
 
     steps:
       - name: Checkout code
