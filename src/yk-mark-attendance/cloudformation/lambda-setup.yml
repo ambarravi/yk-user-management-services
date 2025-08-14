@@ -97,7 +97,7 @@ Resources:
     Properties:
       RestApiId: !Ref ApiGatewayRestApiId
       ParentId: !Ref ApiGatewayRootResourceId
-      PathPart: submit-booking
+      PathPart: mark-attendance
 
   # API Gateway POST Method
   MarkAttendancePOSTMethod:
