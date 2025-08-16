@@ -1,12 +1,12 @@
-const {
+import {
   DynamoDBClient,
   GetItemCommand,
   UpdateItemCommand,
-} = require("@aws-sdk/client-dynamodb");
+} from "@aws-sdk/client-dynamodb";
 
 const client = new DynamoDBClient({ region: "us-east-1" });
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   try {
     // Extract input parameters
     const { bookingID, eventID } = event;
@@ -30,8 +30,7 @@ exports.handler = async (event) => {
       },
     };
 
-    const getItemCommand = new GetItemCommand(getItemParams);
-    const bookingData = await client.send(getItemCommand);
+    const bookingData = await client.send(new GetItemCommand(getItemParams));
 
     // Check if booking exists
     if (!bookingData.Item) {
@@ -92,8 +91,7 @@ exports.handler = async (event) => {
       },
     };
 
-    const updateItemCommand = new UpdateItemCommand(updateItemParams);
-    await client.send(updateItemCommand);
+    await client.send(new UpdateItemCommand(updateItemParams));
 
     // Return success response
     return {
