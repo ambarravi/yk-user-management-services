@@ -6,6 +6,13 @@ import {
 
 const client = new DynamoDBClient({ region: "us-east-1" });
 
+// Reusable CORS headers
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "OPTIONS,POST",
+};
+
 export const handler = async (event) => {
   try {
     // Extract input parameters
@@ -15,6 +22,7 @@ export const handler = async (event) => {
     if (!bookingID || !eventID) {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({
           errorCode: "Bad Request - 400",
           errorMessage: "Missing required fields: bookingID or eventID",
@@ -36,6 +44,7 @@ export const handler = async (event) => {
     if (!bookingData.Item) {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({
           errorCode: "Bad Request - 400",
           errorMessage: "Event details do not match the booking record.",
@@ -49,6 +58,7 @@ export const handler = async (event) => {
     if (booking.EventID.S !== eventID) {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({
           errorCode: "Bad Request - 400",
           errorMessage: "Event details do not match the booking record.",
@@ -60,6 +70,7 @@ export const handler = async (event) => {
     if (booking.BookingStatus.S !== "Completed") {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({
           errorCode: "Bad Request - 400",
           errorMessage:
@@ -72,6 +83,7 @@ export const handler = async (event) => {
     if (booking.MarkAttendance && booking.MarkAttendance.BOOL === true) {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({
           errorCode: "Bad Request - 400",
           errorMessage: "Attendance has already been marked for this booking.",
@@ -96,6 +108,7 @@ export const handler = async (event) => {
     // Return success response
     return {
       statusCode: 200,
+      headers: corsHeaders,
       body: JSON.stringify({
         success: true,
       }),
@@ -104,6 +117,7 @@ export const handler = async (event) => {
     console.error("Error processing booking attendance:", error);
     return {
       statusCode: 500,
+      headers: corsHeaders,
       body: JSON.stringify({
         errorCode: "Internal Server Error - 500",
         errorMessage: "An error occurred while processing the request.",
