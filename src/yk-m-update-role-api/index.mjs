@@ -3,7 +3,11 @@ import {
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  GetItemCommand,
+  QueryCommand,
+} from "@aws-sdk/client-dynamodb";
 import { UpdateCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid"; // Add uuid package for UUID generation
@@ -120,8 +124,8 @@ export const handler = async (event) => {
           return {
             statusCode: 400,
             body: JSON.stringify({
-              error:
-                "College/Institution name not recognized. Please re-enter the correct official name",
+              error: "College name not recognized.",
+              suggestion: validationResult.suggestion,
               reason: validationResult.reason,
             }),
           };
@@ -166,14 +170,6 @@ export const handler = async (event) => {
     if (lastName) {
       updatedAttributes.push({ Name: "family_name", Value: lastName });
     }
-    // if (finalCollegeDetails.CollegeID) {
-    //   updatedAttributes.push({
-    //     Name: "custom:College_ID",
-    //     Value: finalCollegeDetails.CollegeID,
-    //   }); // Changed to custom:College_ID
-    // } else if (existingCognitoAttributes["custom:College_ID"]) {
-    //   updatedAttributes.push({ Name: "custom:College_ID", Value: "" });
-    // }
 
     // Update Cognito if we have an identifier and attributes to update
     if (cognitoIdentifier && updatedAttributes.length > 0) {
