@@ -15,10 +15,10 @@ const corsHeaders = {
 
 export const handler = async (event) => {
   try {
-    console.log(event);
-    console.log(JSON.stringify(event));
+    const body = JSON.parse(event.body);
     // Extract input parameters
-    const { bookingID, eventID } = event.body;
+    const bookingID = body.bookingId;
+    const eventID = body.eventId;
 
     // Validate input parameters
     if (!bookingID || !eventID) {

@@ -355,9 +355,6 @@ async function fetchCollegeDetails(CollegeID) {
   }
 }
 
-import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-
 async function getCollegeByNameAndCity(collegeName, cityId) {
   try {
     // Validate inputs
