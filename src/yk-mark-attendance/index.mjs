@@ -15,6 +15,8 @@ const corsHeaders = {
 
 export const handler = async (event) => {
   try {
+    console.log(event);
+    console.log(JSON.stringify(event));
     // Extract input parameters
     const { bookingID, eventID } = event;
 
