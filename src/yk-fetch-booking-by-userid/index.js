@@ -13,7 +13,7 @@ export const handler = async (event) => {
 
     const BOOKING_TABLE = "BookingDetails";
     const EVENT_TABLE = "EventDetails";
-    const GSI_NAME = "UserId-index"; // ✅ New GSI that only has UserId as Partition Key
+    const GSI_NAME = "UserId-index"; // New GSI that only has UserId as Partition Key
 
     let body = JSON.parse(event.body);
     let userId = body.userId;
@@ -76,7 +76,7 @@ export const handler = async (event) => {
         [EVENT_TABLE]: {
           Keys: eventIds.map((eventId) => ({ EventID: { S: eventId } })),
           ProjectionExpression:
-            "EventID, EventTitle, EventLocation, EventDate, CategoryName, OrganizerName, ReadableEventID , EventStatus, CollegeName",
+            "EventID, EventTitle, EventLocation, EventDate, CategoryName, OrganizerName, ReadableEventID, EventStatus, CollegeName",
         },
       },
     };
@@ -96,8 +96,9 @@ export const handler = async (event) => {
 
     console.log("Fetched Event Details:", eventDetailsMap);
 
-    // Attach event details to bookings
+    // Attach event details to bookings, explicitly including BookingID
     const enrichedRecords = filteredRecords.map((record) => ({
+      BookingID: record.BookingID, // Explicitly include BookingID for clarity
       ...record,
       EventDetails: eventDetailsMap[record.EventID] || null,
     }));
