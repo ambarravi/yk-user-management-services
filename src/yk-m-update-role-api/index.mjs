@@ -118,7 +118,8 @@ export const handler = async (event) => {
         finalCollegeDetails = existingCollege;
       } else {
         const validationResult = await validateCollegeNameAI(
-          finalCollegeDetails.Name
+          finalCollegeDetails.Name,
+          { city: city, cityId: finalCityId }
         );
 
         if (!validationResult.valid) {
@@ -126,7 +127,7 @@ export const handler = async (event) => {
             statusCode: 400,
             body: JSON.stringify({
               error: "College name not recognized.",
-              suggestion: validationResult.suggestion,
+              suggestions: validationResult.suggestions || [],
               reason: validationResult.reason,
             }),
           };
@@ -138,6 +139,7 @@ export const handler = async (event) => {
           Name: finalCollegeDetails.Name,
           CityID: finalCityId,
           City: city,
+          Verified: validationResult.verified,
           CreatedAt: new Date().toISOString(),
         };
         await createCollege(finalCollegeDetails);

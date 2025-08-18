@@ -56,6 +56,10 @@ const fetchEventsFromDDB = async (indexName, keyCondition, useScan = false) => {
       console.log("Query block ", keyCondition.keyexpression);
       params.KeyConditionExpression = keyCondition.keyexpression;
       params.ExpressionAttributeNames = keyCondition.names || {};
+      // Add FilterExpression to exclude Deleted events for Query
+      params.FilterExpression = "#EventStatus = :status";
+      params.ExpressionAttributeValues[":status"] = { S: "Published" };
+      params.ExpressionAttributeNames["#EventStatus"] = "EventStatus";
     }
 
     console.log("Executing query with params:", JSON.stringify(params));

@@ -8,18 +8,30 @@ const bedrockClient = new BedrockRuntimeClient({
   region: process.env.AWS_REGION,
 }); // Change region if needed
 
-export async function validateCollegeNameAI(collegeName) {
+export async function validateCollegeNameAI(collegeName, city) {
   const prompt = `
 You are an AI college name validator.
-Given this name: "${collegeName}"
+Given this college name: "${collegeName}" in city: "${city}".
 Check if it looks like a legitimate college or university name.
+
 Reject names that:
 - Are test data (e.g., "test", "abc", "demo")
 - Contain profanity or inappropriate words
-- Are too short (<3 words usually)
-- Are nonsensical or joke names
-Respond in JSON with keys:
-{ "valid": true/false, "reason": "short reason if invalid" }
+- Are too short (< 3 words usually)
+- Are fictional or joke names (e.g., "Hogwarts", "X-Men Academy")
+- Are nonsensical or meaningless
+
+Respond ONLY in JSON with keys:
+{
+  "valid": true/false,
+  "reason": "short reason if invalid",
+  "verified": true/false
+}
+
+Rules for "verified":
+- If it looks valid but not cross-checked → "verified": false
+- If invalid → "verified": false
+- Never mark "verified": true here (that should happen only after backend DB check).
 `;
 
   const input = {
@@ -39,11 +51,21 @@ Respond in JSON with keys:
   const textOutput = responseBody.content?.[0]?.text || "{}";
 
   try {
-    return JSON.parse(textOutput);
+    const result = JSON.parse(textOutput);
+
+    // Ensure verified always false at this stage
+    return {
+      valid: result.valid || false,
+      reason:
+        result.reason ||
+        (result.valid ? "Looks valid but unverified." : "Rejected."),
+      verified: false,
+    };
   } catch {
     return {
       valid: false,
       reason: "Validation failed due to AI response error.",
+      verified: false,
     };
   }
 }
