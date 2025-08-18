@@ -51,7 +51,9 @@ Rules for "verified":
   const textOutput = responseBody.content?.[0]?.text || "{}";
 
   try {
+    console.log("textOutput", textOutput);
     const result = JSON.parse(textOutput);
+    console.log(result);
 
     // Ensure verified always false at this stage
     return {
@@ -61,7 +63,8 @@ Rules for "verified":
         (result.valid ? "Looks valid but unverified." : "Rejected."),
       verified: false,
     };
-  } catch {
+  } catch (err) {
+    console.log(err);
     return {
       valid: false,
       reason: "Validation failed due to AI response error.",

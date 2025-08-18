@@ -101,8 +101,12 @@ export const handler = async (event) => {
     console.log("Final CityID:", finalCityId);
 
     // Step 2: Handle college details - Check or create CollegeID
-    let finalCollegeDetails = collegeDetails;
-    if (collegeId && Object.keys(collegeDetails).length === 0) {
+    let finalCollegeDetails = collegeDetails || {};
+    if (!collegeId && Object.keys(finalCollegeDetails).length === 0) {
+      console.log(
+        "No college details or collegeId provided, skipping college processing"
+      );
+    } else if (collegeId && Object.keys(finalCollegeDetails).length === 0) {
       console.log(`Fetching details for collegeId: ${collegeId}`);
       finalCollegeDetails = (await fetchCollegeDetails(collegeId)) || {};
     } else if (!finalCollegeDetails.CollegeID && finalCollegeDetails.Name) {
@@ -120,6 +124,10 @@ export const handler = async (event) => {
         const validationResult = await validateCollegeNameAI(
           finalCollegeDetails.Name,
           { city: city, cityId: finalCityId }
+        );
+
+        console.log(
+          `validateCollegeNameAI result: ${JSON.stringify(validationResult)}`
         );
 
         if (!validationResult.valid) {
@@ -349,6 +357,7 @@ async function fetchCollegeDetails(CollegeID) {
 
 async function getCollegeByNameAndCity(collegeName, cityId) {
   try {
+    console.log(`Querying college: ${collegeName}, cityId: ${cityId}`);
     const response = await dynamoDBClient.send(
       new QueryCommand({
         TableName: COLLEGE_TABLE,
@@ -361,6 +370,7 @@ async function getCollegeByNameAndCity(collegeName, cityId) {
         },
       })
     );
+    console.log(`Query response: ${JSON.stringify(response)}`);
     return response.Items.length > 0 ? unmarshall(response.Items[0]) : null;
   } catch (error) {
     console.error("Error querying college:", error);
