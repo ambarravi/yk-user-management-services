@@ -18,7 +18,7 @@ export const handler = async (event) => {
     console.log(event);
     console.log(JSON.stringify(event));
     // Extract input parameters
-    const { bookingID, eventID } = event;
+    const { bookingID, eventID } = event.body;
 
     // Validate input parameters
     if (!bookingID || !eventID) {
