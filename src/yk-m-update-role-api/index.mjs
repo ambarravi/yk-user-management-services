@@ -355,25 +355,54 @@ async function fetchCollegeDetails(CollegeID) {
   }
 }
 
+import { QueryCommand } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+
 async function getCollegeByNameAndCity(collegeName, cityId) {
   try {
+    // Validate inputs
+    if (
+      !collegeName ||
+      typeof collegeName !== "string" ||
+      !collegeName.trim()
+    ) {
+      console.error(`Invalid collegeName: ${collegeName}`);
+      return null;
+    }
+    if (!cityId || typeof cityId !== "string" || !cityId.trim()) {
+      console.error(`Invalid cityId: ${cityId}`);
+      return null;
+    }
+
     console.log(`Querying college: ${collegeName}, cityId: ${cityId}`);
     const response = await dynamoDBClient.send(
       new QueryCommand({
         TableName: COLLEGE_TABLE,
         IndexName: "Name-CityID-index",
         KeyConditionExpression: "#name = :name and #cityId = :cityId",
-        ExpressionAttributeNames: { "#name": "Name", "#cityId": "CityID" },
-        ExpressionAttributeValues: {
-          ":name": collegeName,
-          ":cityId": cityId,
+        ExpressionAttributeNames: {
+          "#name": "Name",
+          "#cityId": "CityID",
         },
+        ExpressionAttributeValues: marshall({
+          ":name": collegeName.trim(),
+          ":cityId": cityId.trim(),
+        }),
       })
     );
-    console.log(`Query response: ${JSON.stringify(response)}`);
-    return response.Items.length > 0 ? unmarshall(response.Items[0]) : null;
+
+    console.log(`Query response: ${JSON.stringify(response, null, 2)}`);
+
+    // Check if Items is defined and has at least one entry
+    if (!response.Items || response.Items.length === 0) {
+      console.log(`No college found for ${collegeName} in cityId: ${cityId}`);
+      return null;
+    }
+
+    return unmarshall(response.Items[0]);
   } catch (error) {
     console.error("Error querying college:", error);
+    console.error("Error details:", JSON.stringify(error, null, 2));
     return null;
   }
 }
