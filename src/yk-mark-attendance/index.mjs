@@ -111,7 +111,7 @@ export const handler = async (event) => {
     }
 
     // Get UserID from booking
-    const userId = booking.UserID?.S;
+    const userId = booking.UserId?.S;
     if (!userId) {
       console.log("Booking does not contain a valid UserID.");
       return createErrorResponse(
