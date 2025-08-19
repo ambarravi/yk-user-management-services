@@ -31,6 +31,7 @@ const createErrorResponse = (
 
 export const handler = async (event) => {
   try {
+    console.log(event);
     const body = JSON.parse(event.body);
     const { bookingId, eventId } = body;
 

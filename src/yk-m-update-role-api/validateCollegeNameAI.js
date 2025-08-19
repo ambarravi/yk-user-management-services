@@ -79,7 +79,7 @@ For collegeName: "Indira college", city: "Pune":
     accept: "application/json",
     body: JSON.stringify({
       anthropic_version: "bedrock-2023-05-31",
-      max_tokens: 300, // Increased to accommodate suggestions
+      max_tokens: 300,
       messages: [{ role: "user", content: prompt }],
     }),
   };
@@ -88,10 +88,19 @@ For collegeName: "Indira college", city: "Pune":
     const command = new InvokeModelCommand(input);
     const response = await bedrockClient.send(command);
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    const textOutput = responseBody.content?.[0]?.text || "{}";
+    let textOutput = responseBody.content?.[0]?.text || "{}";
 
     console.log("Bedrock textOutput:", textOutput);
-    const result = JSON.parse(textOutput);
+
+    // Extract JSON from textOutput, removing any preamble
+    const jsonMatch = textOutput.match(/{[\s\S]*}/);
+    if (!jsonMatch) {
+      throw new Error("No valid JSON found in response");
+    }
+    const jsonString = jsonMatch[0];
+
+    // Parse the extracted JSON
+    const result = JSON.parse(jsonString);
 
     // Ensure verified is false and suggestions is an array
     const finalResult = {
@@ -111,7 +120,7 @@ For collegeName: "Indira college", city: "Pune":
     console.error("Error invoking Bedrock:", error);
     return {
       valid: false,
-      reason: "Validation failed due to AI response error.",
+      reason: `Validation failed: ${error.message}`,
       suggestions: [],
       verified: false,
     };
