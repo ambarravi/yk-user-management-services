@@ -61,6 +61,8 @@ export const handler = async (event) => {
 
     // Check if booking exists
     if (!bookingData.Item) {
+      console.log("No booking found for the provided bookingId.");
+
       return createErrorResponse(
         404,
         "BOOKING_NOT_FOUND",
@@ -72,6 +74,8 @@ export const handler = async (event) => {
 
     // Validate EventID match
     if (booking.EventID.S !== eventId) {
+      console.log("The provided eventId does not match the booking.");
+
       return createErrorResponse(
         400,
         "EVENT_MISMATCH",
@@ -81,6 +85,10 @@ export const handler = async (event) => {
 
     // Validate BookingStatus
     if (booking.BookingStatus.S !== "Completed") {
+      console.log(
+        "Cannot mark attendance. Booking status is ${booking.BookingStatus.S}."
+      );
+
       return createErrorResponse(
         400,
         "INVALID_BOOKING_STATUS",
@@ -93,6 +101,8 @@ export const handler = async (event) => {
 
     // Validate MarkAttendance
     if (booking.MarkAttendance?.BOOL === true) {
+      console.log("Attendance has already been marked for this booking.");
+
       return createErrorResponse(
         400,
         "ATTENDANCE_ALREADY_MARKED",
@@ -103,6 +113,7 @@ export const handler = async (event) => {
     // Get UserID from booking
     const userId = booking.UserID?.S;
     if (!userId) {
+      console.log("Booking does not contain a valid UserID.");
       return createErrorResponse(
         400,
         "INVALID_BOOKING",
