@@ -1,16 +1,16 @@
-const {
+import {
   CognitoIdentityProviderClient,
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
-} = require("@aws-sdk/client-cognito-identity-provider");
-const {
+} from "@aws-sdk/client-cognito-identity-provider";
+import {
   DynamoDBClient,
   GetItemCommand,
   QueryCommand,
-} = require("@aws-sdk/client-dynamodb");
-const { UpdateCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
-const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
-const { v4: uuidv4 } = require("uuid");
+} from "@aws-sdk/client-dynamodb";
+import { UpdateCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { v4 as uuidv4 } from "uuid";
 
 const REGION = process.env.AWS_REGION;
 const USER_POOL_ID = "eu-west-1_hgUDdjyRr";
@@ -20,7 +20,7 @@ const COLLEGE_TABLE = "College";
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
 
   try {
