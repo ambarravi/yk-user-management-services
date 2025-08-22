@@ -1,39 +1,37 @@
-import {
+const {
   CognitoIdentityProviderClient,
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
-} from "@aws-sdk/client-cognito-identity-provider";
-import {
+} = require("@aws-sdk/client-cognito-identity-provider");
+const {
   DynamoDBClient,
   GetItemCommand,
   QueryCommand,
-} from "@aws-sdk/client-dynamodb";
-
-import { UpdateCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { v4 as uuidv4 } from "uuid"; // Add uuid package for UUID generation
-import { validateCollegeNameAI } from "./validateCollegeNameAI.js";
+} = require("@aws-sdk/client-dynamodb");
+const { UpdateCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
+const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
+const { v4: uuidv4 } = require("uuid");
 
 const REGION = process.env.AWS_REGION;
-const USER_POOL_ID = "eu-west-1_hgUDdjyRr"; // Verify this matches your Cognito User Pool
+const USER_POOL_ID = "eu-west-1_hgUDdjyRr";
 const USERS_TABLE = "UsersTable";
 const CITY_TABLE = "City";
 const COLLEGE_TABLE = "College";
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const cognitoClient = new CognitoIdentityProviderClient({ region: REGION });
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   console.log("Event: ", JSON.stringify(event));
 
   try {
     const {
       userName,
-      userID, // Maps to Cognito sub
+      userID,
       tempRole,
       currentRole,
       city,
-      cityId, // GeoNames cityId from frontend
-      state, // State from frontend
+      cityId,
+      state,
       collegeDetails = {},
       name,
       email: providedEmail,
@@ -121,25 +119,6 @@ export const handler = async (event) => {
         );
         finalCollegeDetails = existingCollege;
       } else {
-        const validationResult = await validateCollegeNameAI(
-          finalCollegeDetails.Name,
-          { city: city, cityId: finalCityId }
-        );
-
-        console.log(
-          `validateCollegeNameAI result: ${JSON.stringify(validationResult)}`
-        );
-
-        if (!validationResult.valid) {
-          return {
-            statusCode: 400,
-            body: JSON.stringify({
-              error: "College name not recognized.",
-              suggestions: validationResult.suggestions || [],
-              reason: validationResult.reason,
-            }),
-          };
-        }
         // Create new college with UUID
         const newCollegeId = uuidv4();
         finalCollegeDetails = {
@@ -147,7 +126,7 @@ export const handler = async (event) => {
           Name: finalCollegeDetails.Name,
           CityID: finalCityId,
           City: city,
-          Verified: validationResult.verified,
+          Verified: false,
           CreatedAt: new Date().toISOString(),
         };
         await createCollege(finalCollegeDetails);

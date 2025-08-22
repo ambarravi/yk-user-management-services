@@ -55,6 +55,7 @@ jobs:
           - yk-validate-image
           - yk-send-booking-otp
           - yk-mark-attendance
+          - yk-validate-college
 
     steps:
       - name: Checkout code

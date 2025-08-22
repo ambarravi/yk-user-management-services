@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  Env:
+    Type: String
+    Default: Development
+    AllowedValues:
+      - Development
+      - Production
+
+Mappings:
+  EnvToResources:
+    Development:
+      ApiGatewayId: 27sqbwaad7
+      UserPoolId: eu-west-1_hgUDdjyRr
+      Stage: dev
+      ApiGatewayRootResourceId: 78iwchywp5
+      CognitoAuthorizerId: c0oigh
+    Production:
+      ApiGatewayId: 27sqbwaad7
+      UserPoolId: eu-west-1_hgUDdjyRr
+      Stage: prod
+      ApiGatewayRootResourceId: 78iwchywp5
+      CognitoAuthorizerId: c0oigh
+
+Resources:
+  # Lambda: Validate College
+  ValidateCollegeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-validate-college
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Placeholder Lambda Function");
+              return { statusCode: 200, body: JSON.stringify([]) };
+          };
+      Role: !GetAtt ValidateCollegeLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+      Environment:
+        Variables:
+          CITY_TABLE: "City"
+          USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
+
+  # IAM Role for ValidateCollegeLambda
+  ValidateCollegeLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ValidateCollegeLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-validate-college:*
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminUpdateUserAttributes
+                  - cognito-idp:AdminGetUser
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"
+
+  # Lambda Permission for API Gateway (ValidateCollege)
+  ValidateCollegeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ValidateCollegeLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${!FindInMap [EnvToResources, !Ref Env, ApiGatewayId]}/*
+
+  # API Gateway Resource (ValidateCollege)
+  ValidateCollegeResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]
+      PathPart: validate-college
+
+  # API Gateway POST Method (ValidateCollege)
+  ValidateCollegePOSTMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      ResourceId: !Ref ValidateCollegeResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !FindInMap [EnvToResources, !Ref Env, CognitoAuthorizerId]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt ValidateCollegeLambda.Arn }
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+            method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+
+  # API Gateway OPTIONS Method (ValidateCollege)
+  ValidateCollegeOPTIONSMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      ResourceId: !Ref ValidateCollegeResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{ "statusCode": 200 }'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+Outputs:
+  ValidateCollegeLambdaArn:
+    Description: ARN of the Validate College Lambda function
+    Value: !GetAtt ValidateCollegeLambda.Arn
