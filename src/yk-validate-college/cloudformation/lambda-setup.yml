@@ -1,27 +1,18 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
-  Env:
+  ApiGatewayRestApiId:
     Type: String
-    Default: Development
-    AllowedValues:
-      - Development
-      - Production
-
-Mappings:
-  EnvToResources:
-    Development:
-      ApiGatewayId: 27sqbwaad7
-      UserPoolId: eu-west-1_hgUDdjyRr
-      Stage: dev
-      ApiGatewayRootResourceId: 78iwchywp5
-      CognitoAuthorizerId: c0oigh
-    Production:
-      ApiGatewayId: 27sqbwaad7
-      UserPoolId: eu-west-1_hgUDdjyRr
-      Stage: prod
-      ApiGatewayRootResourceId: 78iwchywp5
-      CognitoAuthorizerId: c0oigh
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
 
 Resources:
   # Lambda: Validate College
@@ -32,19 +23,29 @@ Resources:
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 30
+      Environment:
+        Variables:
+          CITY_TABLE: "City"
       Code:
         ZipFile: |
           exports.handler = async (event) => {
-              console.log("Placeholder Lambda Function");
-              return { statusCode: 200, body: JSON.stringify([]) };
+              console.log("Event:", JSON.stringify(event));
+              const { collegeName, city, cityId } = event;
+              if (!collegeName || !city || !cityId) {
+                  return {
+                      statusCode: 400,
+                      body: JSON.stringify([])
+                  };
+              }
+              // Return empty suggestions array as AI validation is removed
+              return {
+                  statusCode: 200,
+                  body: JSON.stringify([])
+              };
           };
       Role: !GetAtt ValidateCollegeLambdaExecutionRole.Arn
       TracingConfig:
         Mode: Active
-      Environment:
-        Variables:
-          CITY_TABLE: "City"
-          USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
 
   # IAM Role for ValidateCollegeLambda
   ValidateCollegeLambdaExecutionRole:
@@ -67,12 +68,8 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-validate-college:*
-              - Effect: Allow
-                Action:
-                  - cognito-idp:AdminUpdateUserAttributes
-                  - cognito-idp:AdminGetUser
-                Resource: "*"
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-validate-college:*
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
@@ -80,10 +77,10 @@ Resources:
                 Resource: "*"
               - Effect: Allow
                 Action:
-                  - bedrock:InvokeModel
-                  - bedrock:InvokeModelWithResponseStream
+                  - dynamodb:GetItem
+                  - dynamodb:Query
                 Resource:
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City
 
   # Lambda Permission for API Gateway (ValidateCollege)
   ValidateCollegeLambdaPermission:
@@ -92,25 +89,25 @@ Resources:
       FunctionName: !Ref ValidateCollegeLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${!FindInMap [EnvToResources, !Ref Env, ApiGatewayId]}/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
 
   # API Gateway Resource (ValidateCollege)
   ValidateCollegeResource:
     Type: AWS::ApiGateway::Resource
     Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
       PathPart: validate-college
 
   # API Gateway POST Method (ValidateCollege)
   ValidateCollegePOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref ValidateCollegeResource
       HttpMethod: POST
       AuthorizationType: COGNITO_USER_POOLS
-      AuthorizerId: !FindInMap [EnvToResources, !Ref Env, CognitoAuthorizerId]
+      AuthorizerId: !Ref CognitoAuthorizerId
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -128,7 +125,7 @@ Resources:
   ValidateCollegeOPTIONSMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref ValidateCollegeResource
       HttpMethod: OPTIONS
       AuthorizationType: NONE
