@@ -1,13 +1,13 @@
-const {
+import {
   BedrockRuntimeClient,
   InvokeModelCommand,
-} = require("@aws-sdk/client-bedrock-runtime");
+} from "@aws-sdk/client-bedrock-runtime";
 
 const bedrockClient = new BedrockRuntimeClient({
   region: process.env.AWS_REGION,
 });
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   const { collegeName, city, cityId } = event;
 
   console.log(
