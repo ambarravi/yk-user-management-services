@@ -10,7 +10,12 @@ const bedrockClient = new BedrockRuntimeClient({
 export const handler = async (event) => {
   console.log(event);
   console.log("String", JSON.stringify(event));
-  const { collegeName, city } = event;
+
+  const bodyString = event.body;
+
+  const bodyJson = JSON.parse(bodyString);
+  const collegeName = bodyJson.collegeName;
+  const city = bodyJson.city;
 
   console.log(`Validating college: ${collegeName} in city: ${city}`);
 
