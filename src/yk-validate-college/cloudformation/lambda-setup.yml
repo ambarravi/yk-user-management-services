@@ -84,8 +84,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
                 Resource:
-                  - arn:aws:bedrock:${AWS::Region}::foundation-model/*
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"
 
   # Lambda Permission for API Gateway (ValidateCollege)
   ValidateCollegeLambdaPermission:
