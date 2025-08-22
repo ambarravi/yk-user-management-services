@@ -8,11 +8,9 @@ const bedrockClient = new BedrockRuntimeClient({
 });
 
 export const handler = async (event) => {
-  const { collegeName, city, cityId } = event;
+  const { collegeName, city } = event;
 
-  console.log(
-    `Validating college: ${collegeName} in city: ${city}, cityId: ${cityId}`
-  );
+  console.log(`Validating college: ${collegeName} in city: ${city}`);
 
   // Validate inputs
   if (!collegeName || typeof collegeName !== "string" || !collegeName.trim()) {
