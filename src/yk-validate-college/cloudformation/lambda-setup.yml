@@ -81,6 +81,11 @@ Resources:
                   - dynamodb:Query
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - arn:aws:bedrock:${AWS::Region}::foundation-model/*
 
   # Lambda Permission for API Gateway (ValidateCollege)
   ValidateCollegeLambdaPermission:
