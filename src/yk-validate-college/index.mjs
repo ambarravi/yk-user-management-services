@@ -75,6 +75,7 @@ Given the college name "${collegeName}" and city "${city}", you will first valid
         2.  **Secondary Match**: If no close matches, consider keywords in the input (e.g., "engineering", "institute") to suggest up to 5 relevant colleges of that type.
         3.  **Fallback**: If still no relevant matches, return the top 5 most well-known and reputable colleges in "${city}".
     - Include the area or neighborhood in the suggestion name for clarity (e.g., "College of Engineering, Shivajinagar").
+    - **Append a well-known or popular short form after the area name, if one exists (e.g., "Pune Institute of Computer Technology, Dhankawadi, PICT").**
     - Limit the number of suggestions to a maximum of 5.
 
 - **Area Handling**:
@@ -83,25 +84,25 @@ Given the college name "${collegeName}" and city "${city}", you will first valid
 ### Output Format
 Respond **ONLY** with a JSON object that strictly follows this structure.
 {
-  "valid": boolean,
-  "reason": "A short, precise reason for the validation status.",
-  "suggestions": ["college name 1, area", "college name 2, area", ...],
-  "verified": false
+    "valid": boolean,
+    "reason": "A short, precise reason for the validation status.",
+    "suggestions": ["college name 1, area, short form", "college name 2, area, short form", ...],
+    "verified": false
 }
 
 Example:
 For collegeName: "Bharathi Engineering", city: "Pune":
 {
-  "valid": true,
-  "reason": "Looks valid but unverified.",
-  "suggestions": [
-    "Bharati Vidyapeeth College of Engineering, Katraj",
-    "Bharati Vidyapeeth Institute of Technology, Dhankawadi",
-    "College of Engineering, Shivajinagar",
-    "Vishwakarma Institute of Technology, Bibwewadi",
-    "Pune Institute of Computer Technology, Dhankawadi"
-  ],
-  "verified": false
+    "valid": true,
+    "reason": "Looks valid but unverified.",
+    "suggestions": [
+        "Bharati Vidyapeeth College of Engineering, Katraj,",
+        "Bharati Vidyapeeth College of Engineering, Lavale,BVCOE",
+        "College of Engineering, Shivajinagar, COEP",
+        "Vishwakarma Institute of Technology, Bibwewadi,VIT",
+        "Pune Institute of Computer Technology, Dhankawadi, PICT"
+    ],
+    "verified": false
 }
 `;
 

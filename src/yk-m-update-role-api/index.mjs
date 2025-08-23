@@ -100,6 +100,7 @@ export const handler = async (event) => {
 
     // Step 2: Handle college details - Check or create CollegeID
     let finalCollegeDetails = collegeDetails || {};
+    console.log("finalCollegeDetails", finalCollegeDetails);
     if (!collegeId && Object.keys(finalCollegeDetails).length === 0) {
       console.log(
         "No college details or collegeId provided, skipping college processing"
@@ -107,10 +108,10 @@ export const handler = async (event) => {
     } else if (collegeId && Object.keys(finalCollegeDetails).length === 0) {
       console.log(`Fetching details for collegeId: ${collegeId}`);
       finalCollegeDetails = (await fetchCollegeDetails(collegeId)) || {};
-    } else if (!finalCollegeDetails.CollegeID && finalCollegeDetails.Name) {
+    } else if (!finalCollegeDetails.CollegeID && finalCollegeDetails.name) {
       // CollegeID missing, check if college exists or create new
       const existingCollege = await getCollegeByNameAndCity(
-        finalCollegeDetails.Name,
+        finalCollegeDetails.name,
         finalCityId
       );
       if (existingCollege) {
@@ -121,14 +122,29 @@ export const handler = async (event) => {
       } else {
         // Create new college with UUID
         const newCollegeId = uuidv4();
+
+        // Parse the full college name string into its components
+        const nameParts = finalCollegeDetails.name.split(",");
+        const collegeName = nameParts[0] ? nameParts[0].trim() : "";
+        const collegeArea = nameParts[1] ? nameParts[1].trim() : "";
+        const collegeShortform = nameParts[2] ? nameParts[2].trim() : "";
+
+        // Construct the final object with the new fields
         finalCollegeDetails = {
           CollegeID: newCollegeId,
-          Name: finalCollegeDetails.Name,
+          Name: collegeName,
+          NameLower: collegeName.toLowerCase(),
+          Shortform: collegeShortform || {},
+          ShortformLower: (collegeShortform || "").toLowerCase() || {},
+          Area: collegeArea || {}, // New 'Area' field
+          AreaLower: (collegeArea || "").toLowerCase() || {}, // New lowercase 'Area' field
           CityID: finalCityId,
           City: city,
           Verified: false,
           CreatedAt: new Date().toISOString(),
+          CreatedBy: userID,
         };
+
         await createCollege(finalCollegeDetails);
         console.log(
           `Created new college: ${JSON.stringify(finalCollegeDetails)}`
