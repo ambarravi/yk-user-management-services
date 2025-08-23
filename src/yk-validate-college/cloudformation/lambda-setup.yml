@@ -26,6 +26,7 @@ Resources:
       Environment:
         Variables:
           CITY_TABLE: "City"
+          API_KEY: "Test"
       Code:
         ZipFile: |
           exports.handler = async (event) => {
