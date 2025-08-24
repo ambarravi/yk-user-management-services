@@ -3,13 +3,13 @@ import {
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
+  DynamoDBClient,
   GetItemCommand,
   QueryCommand,
   UpdateCommand,
   PutCommand,
-} from "@aws-sdk/lib-dynamodb";
+} from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 
@@ -184,12 +184,12 @@ async function ensureCityExists(cityName, cityId, state) {
       await dynamoDBClient.send(
         new PutCommand({
           TableName: CITY_TABLE,
-          Item: {
+          Item: marshall({
             CityID: cityId,
             CityName: cityName,
             State: state,
             CreatedAt: new Date().toISOString(),
-          },
+          }),
           ConditionExpression: "attribute_not_exists(CityID)",
         })
       );
@@ -348,7 +348,7 @@ async function createCollege(collegeDetails) {
     await dynamoDBClient.send(
       new PutCommand({
         TableName: COLLEGE_TABLE,
-        Item: collegeDetails,
+        Item: marshall(collegeDetails),
         ConditionExpression: "attribute_not_exists(CollegeID)",
       })
     );
@@ -444,46 +444,48 @@ async function updateDynamoUser(
       : userData.currentRole || "user";
     setExpressions.push("#role = :role");
     expressionAttributeNames["#role"] = "role";
-    expressionAttributeValues[":role"] = newRole;
+    expressionAttributeValues[":role"] = { S: newRole };
 
     // City
     setExpressions.push("#cityID = :cityID");
     expressionAttributeNames["#cityID"] = "CityID";
-    expressionAttributeValues[":cityID"] = cityId;
+    expressionAttributeValues[":cityID"] = { S: cityId };
 
     setExpressions.push("#city = :city");
     expressionAttributeNames["#city"] = "City";
-    expressionAttributeValues[":city"] = userData.city;
+    expressionAttributeValues[":city"] = { S: userData.city };
 
     setExpressions.push("#state = :state");
     expressionAttributeNames["#state"] = "State";
-    expressionAttributeValues[":state"] = userData.state || "";
+    expressionAttributeValues[":state"] = { S: userData.state || "" };
 
     // Other fields
     if (userData.name) {
       setExpressions.push("#name = :FirstName");
       expressionAttributeNames["#name"] = "FirstName";
-      expressionAttributeValues[":FirstName"] = userData.name;
+      expressionAttributeValues[":FirstName"] = { S: userData.name };
     }
     if (userData.lastName) {
       setExpressions.push("#lastName = :LastName");
       expressionAttributeNames["#lastName"] = "LastName";
-      expressionAttributeValues[":LastName"] = userData.lastName;
+      expressionAttributeValues[":LastName"] = { S: userData.lastName };
     }
     if (userData.email && userData.email !== "NA") {
       setExpressions.push("#EmailAddress = :email");
       expressionAttributeNames["#EmailAddress"] = "Email";
-      expressionAttributeValues[":email"] = userData.email;
+      expressionAttributeValues[":email"] = { S: userData.email };
     }
     if (userData.phoneNumber) {
       setExpressions.push("#phoneNumber = :phoneNumber");
       expressionAttributeNames["#phoneNumber"] = "PhoneNumber";
-      expressionAttributeValues[":phoneNumber"] = userData.phoneNumber;
+      expressionAttributeValues[":phoneNumber"] = { S: userData.phoneNumber };
     }
     if (collegeDetails?.CollegeID) {
       setExpressions.push("#collegeDetails = :collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
-      expressionAttributeValues[":collegeDetails"] = collegeDetails;
+      expressionAttributeValues[":collegeDetails"] = {
+        M: marshall(collegeDetails),
+      };
     } else if (existingDynamoData.collegeDetails) {
       removeExpressions.push("#collegeDetails");
       expressionAttributeNames["#collegeDetails"] = "collegeDetails";
@@ -498,7 +500,7 @@ async function updateDynamoUser(
     await dynamoDBClient.send(
       new UpdateCommand({
         TableName: USERS_TABLE,
-        Key: { UserID: userID },
+        Key: marshall({ UserID: userID }),
         UpdateExpression: updateExpression,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
