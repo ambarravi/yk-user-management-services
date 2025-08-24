@@ -3,13 +3,14 @@ import {
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-import {
+import pkg from "@aws-sdk/client-dynamodb";
+const {
   DynamoDBClient,
   GetItemCommand,
   QueryCommand,
   UpdateCommand,
   PutCommand,
-} from "@aws-sdk/client-dynamodb";
+} = pkg;
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 
