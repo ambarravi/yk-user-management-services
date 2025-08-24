@@ -3,14 +3,13 @@ import {
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-import pkg from "@aws-sdk/client-dynamodb";
-const {
+import {
   DynamoDBClient,
   GetItemCommand,
   QueryCommand,
   UpdateCommand,
-  PutCommand,
-} = pkg;
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 
@@ -183,7 +182,7 @@ async function ensureCityExists(cityName, cityId, state) {
 
     if (!response.Item) {
       await dynamoDBClient.send(
-        new PutCommand({
+        new PutItemCommand({
           TableName: CITY_TABLE,
           Item: marshall({
             CityID: cityId,
@@ -347,7 +346,7 @@ async function getCollegeByNameAndCity(collegeName, cityId) {
 async function createCollege(collegeDetails) {
   try {
     await dynamoDBClient.send(
-      new PutCommand({
+      new PutItemCommand({
         TableName: COLLEGE_TABLE,
         Item: marshall(collegeDetails),
         ConditionExpression: "attribute_not_exists(CollegeID)",
