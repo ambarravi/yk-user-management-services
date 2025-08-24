@@ -226,6 +226,11 @@ async function processCollegeDetails(
   userID
 ) {
   try {
+    if (collegeDetails?.name && !collegeDetails.Name) {
+      collegeDetails.Name = collegeDetails.name;
+      delete collegeDetails.name; // optional cleanup
+    }
+
     if (!collegeId && Object.keys(collegeDetails).length === 0) {
       console.log(
         "No college details or collegeId provided, skipping college processing"
@@ -238,7 +243,11 @@ async function processCollegeDetails(
       return (await fetchCollegeDetails(collegeId)) || {};
     }
 
-    if (!collegeDetails.CollegeID && collegeDetails.Name) {
+    if (
+      !collegeDetails.CollegeID &&
+      collegeDetails.Name &&
+      collegeDetails.source === "ai_suggestions"
+    ) {
       const existingCollege = await getCollegeByNameAndCity(
         collegeDetails.Name,
         cityId
