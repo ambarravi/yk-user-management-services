@@ -275,7 +275,7 @@ async function processCollegeDetails(
         Area: collegeArea || "",
         AreaLower: (collegeArea || "").toLowerCase(),
         CityID: cityId,
-        City: city,
+        City: city.toLowerCase(),
         Verified: false,
         CreatedAt: new Date().toISOString(),
         CreatedBy: userID,
