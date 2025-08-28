@@ -19,11 +19,48 @@ export const handler = async (event) => {
     const oldImage = record.dynamodb.OldImage;
 
     const eventID = newImage.EventID.S;
-    const newEventDate = newImage.EventDate.S;
+    const newEventDate = newImage.EventDate?.S;
     const oldEventDate = oldImage?.EventDate?.S;
 
-    // Only proceed if EventDate changed
-    if (newEventDate === oldEventDate) continue;
+    // Get EventImages, ThumbnailImages, and EventStatus from both images
+    const newEventImages = newImage.EventImages?.L?.map((item) => item.S) || [];
+    const oldEventImages =
+      oldImage?.EventImages?.L?.map((item) => item.S) || [];
+    const newThumbnailImages =
+      newImage.ThumbnailImages?.L?.map((item) => item.S) || [];
+    const oldThumbnailImages =
+      oldImage?.ThumbnailImages?.L?.map((item) => item.S) || [];
+    const newEventStatus = newImage.EventStatus?.S;
+    const oldEventStatus = oldImage?.EventStatus?.S;
+
+    // Check if EventDate changed
+    if (newEventDate === oldEventDate) {
+      // Check if the only changes are to EventImages, ThumbnailImages, or EventStatus
+      const eventImagesChanged =
+        JSON.stringify(newEventImages) !== JSON.stringify(oldEventImages);
+      const thumbnailImagesChanged =
+        JSON.stringify(newThumbnailImages) !==
+        JSON.stringify(oldThumbnailImages);
+      const eventStatusChanged = newEventStatus !== oldEventStatus;
+
+      // If only EventImages, ThumbnailImages, or EventStatus changed, skip processing
+      if (eventImagesChanged || thumbnailImagesChanged || eventStatusChanged) {
+        console.log({
+          eventID,
+          message:
+            "Skipping update: Only EventImages, ThumbnailImages, or EventStatus changed",
+        });
+        continue;
+      }
+
+      // If no relevant attributes changed, skip
+      console.log({
+        eventID,
+        message:
+          "Skipping update: EventDate unchanged and no other relevant changes",
+      });
+      continue;
+    }
 
     console.log(
       `EventDate changed for EventID: ${eventID}. Updating Bookings...`

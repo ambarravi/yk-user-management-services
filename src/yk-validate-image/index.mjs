@@ -2,7 +2,12 @@ import {
   RekognitionClient,
   DetectModerationLabelsCommand,
 } from "@aws-sdk/client-rekognition";
-import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
 import {
   DynamoDBClient,
   UpdateItemCommand,
@@ -15,6 +20,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { v4 as uuidv4 } from "uuid";
+import sharp from "sharp";
 
 const rekognition = new RekognitionClient({});
 const s3 = new S3Client({});
@@ -24,7 +30,6 @@ const ses = new SESClient({});
 
 const LOGO_URL = "https://tikties-logo.s3.amazonaws.com/images/logo.png";
 const EMAIL_LIMIT_PER_HOUR = 5;
-const ONE_HOUR_MS = 60 * 60 * 1000;
 const MAX_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 100;
 
@@ -80,7 +85,6 @@ const checkEmailRateLimit = async (eventId, organizerId, requestId) => {
   let emailCount = 0;
 
   try {
-    // Check recent notifications within the last hour
     for (let i = 0; i < EMAIL_LIMIT_PER_HOUR; i++) {
       const notificationId = `${notificationIdPrefix}_${i}`;
       const response = await retryOperation(() =>
@@ -162,6 +166,15 @@ const checkIdempotency = async (notificationId, requestId) => {
   }
 };
 
+const streamToBuffer = async (stream) => {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    stream.on("data", (chunk) => chunks.push(chunk));
+    stream.on("end", () => resolve(Buffer.concat(chunks)));
+    stream.on("error", reject);
+  });
+};
+
 export const handler = async (event) => {
   const errors = [];
 
@@ -171,6 +184,16 @@ export const handler = async (event) => {
       const bucket = record.s3.bucket.name;
       const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, " "));
       console.log({ requestId, bucket, key, message: "Processing image" });
+
+      // Skip processing if the object is in the thumbnails folder
+      if (key.startsWith("event-images/thumbnails/")) {
+        console.log({
+          requestId,
+          key,
+          message: "Skipping thumbnail object",
+        });
+        continue;
+      }
 
       // Extract EventID
       const match = key.match(/event-images\/(EVT-[^/]+)\//);
@@ -194,7 +217,32 @@ export const handler = async (event) => {
         continue;
       }
 
-      // Rekognition check with retry
+      // Get EventDetails to check existing EventImages
+      const eventDetailsRes = await retryOperation(() =>
+        ddbClient.send(
+          new QueryCommand({
+            TableName: "EventDetails",
+            IndexName: "ReadableEventID-index",
+            KeyConditionExpression: "ReadableEventID = :eid",
+            ExpressionAttributeValues: {
+              ":eid": { S: readableEventID },
+            },
+          })
+        )
+      );
+
+      const eventItem = eventDetailsRes.Items?.[0];
+      if (!eventItem) {
+        throw new ValidationError("Event not found");
+      }
+
+      const eventId = eventItem.EventID.S;
+      const currentEventImages =
+        eventItem.EventImages?.L?.map((item) => item.S) || [];
+      const currentThumbnailImages =
+        eventItem.ThumbnailImages?.L?.map((item) => item.S) || [];
+
+      // Rekognition check
       const moderationResult = await retryOperation(() =>
         rekognition.send(
           new DetectModerationLabelsCommand({
@@ -217,10 +265,100 @@ export const handler = async (event) => {
 
       if (!flagged) {
         console.log({ requestId, key, message: "Image passed moderation" });
-        continue;
+
+        // Generate thumbnail
+        try {
+          // Get original image
+          const originalImage = await s3.send(
+            new GetObjectCommand({
+              Bucket: bucket,
+              Key: key,
+            })
+          );
+
+          const imageBuffer = await streamToBuffer(originalImage.Body);
+
+          // Generate thumbnail (200x200, JPEG)
+          const thumbBuffer = await sharp(imageBuffer)
+            .resize(200, 200, { fit: "cover" })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+
+          // Upload thumbnail to S3
+          let thumbKey = key.replace(
+            "event-images/",
+            "event-images/thumbnails/"
+          );
+          thumbKey = thumbKey.replace(/\.[^/.]+$/, ".jpg"); // Force .jpg extension
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: bucket,
+              Key: thumbKey,
+              Body: thumbBuffer,
+              ContentType: "image/jpeg",
+            })
+          );
+
+          console.log({ requestId, thumbKey, message: "Thumbnail uploaded" });
+
+          // Update EventImages and ThumbnailImages in DynamoDB
+          const imageUrl = `https://${bucket}.s3.amazonaws.com/${key}`;
+          const thumbUrl = `https://${bucket}.s3.amazonaws.com/${thumbKey}`;
+
+          // Remove existing image URL if present to avoid duplicates
+          let updatedEventImages = currentEventImages.filter(
+            (url) => url !== imageUrl
+          );
+          updatedEventImages.push(imageUrl);
+
+          // Remove existing thumbnail for this image (based on key pattern)
+          let updatedThumbnailImages = currentThumbnailImages.filter(
+            (url) =>
+              !url.includes(
+                key
+                  .split("/")
+                  .pop()
+                  .replace(/\.[^/.]+$/, "")
+              )
+          );
+          updatedThumbnailImages.push(thumbUrl);
+
+          await retryOperation(() =>
+            ddbClient.send(
+              new UpdateItemCommand({
+                TableName: "EventDetails",
+                Key: { EventID: { S: eventId } },
+                UpdateExpression:
+                  "SET EventImages = :ei, ThumbnailImages = :ti",
+                ExpressionAttributeValues: {
+                  ":ei": { L: updatedEventImages.map((url) => ({ S: url })) },
+                  ":ti": {
+                    L: updatedThumbnailImages.map((url) => ({ S: url })),
+                  },
+                },
+              })
+            )
+          );
+
+          console.log({
+            requestId,
+            eventId,
+            message: "DynamoDB updated with image and thumbnail URLs",
+          });
+        } catch (thumbErr) {
+          console.error({
+            requestId,
+            error: thumbErr.message,
+            message: "Thumbnail generation failed",
+          });
+          throw thumbErr;
+        }
+
+        continue; // Skip violation path
       }
 
-      // Delete image with retry
+      // Image failed moderation
+      // Delete image from S3
       await retryOperation(() =>
         s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
       );
@@ -230,47 +368,62 @@ export const handler = async (event) => {
         message: "Image deleted due to violation",
       });
 
-      // Get EventDetails with retry
-      const eventDetailsRes = await retryOperation(() =>
+      // Delete corresponding thumbnail from S3 if it exists
+      let thumbKey = key.replace("event-images/", "event-images/thumbnails/");
+      thumbKey = thumbKey.replace(/\.[^/.]+$/, ".jpg");
+      try {
+        await s3.send(
+          new DeleteObjectCommand({ Bucket: bucket, Key: thumbKey })
+        );
+        console.log({
+          requestId,
+          thumbKey,
+          message: "Thumbnail deleted (if existed)",
+        });
+      } catch (deleteErr) {
+        console.warn({
+          requestId,
+          thumbKey,
+          error: deleteErr.message,
+          message: "Thumbnail deletion failed (may not exist)",
+        });
+      }
+
+      // Remove image and thumbnail URLs from DynamoDB
+      const imageUrl = `https://${bucket}.s3.amazonaws.com/${key}`;
+      const thumbUrl = `https://${bucket}.s3.amazonaws.com/${thumbKey}`;
+      const updatedEventImages = currentEventImages.filter(
+        (url) => url !== imageUrl
+      );
+      const updatedThumbnailImages = currentThumbnailImages.filter(
+        (url) => url !== thumbUrl
+      );
+
+      await retryOperation(() =>
         ddbClient.send(
-          new QueryCommand({
+          new UpdateItemCommand({
             TableName: "EventDetails",
-            IndexName: "ReadableEventID-index",
-            KeyConditionExpression: "ReadableEventID = :eid",
+            Key: { EventID: { S: eventId } },
+            UpdateExpression:
+              "SET EventImages = :ei, ThumbnailImages = :ti, #s = :r",
+            ExpressionAttributeNames: { "#s": "EventStatus" },
             ExpressionAttributeValues: {
-              ":eid": { S: readableEventID },
+              ":ei": { L: updatedEventImages.map((url) => ({ S: url })) },
+              ":ti": { L: updatedThumbnailImages.map((url) => ({ S: url })) },
+              ":r": { S: "UnderReview" },
             },
+            ConditionExpression: "attribute_exists(EventID)",
           })
         )
       );
 
-      const eventItem = eventDetailsRes.Items?.[0];
-      if (!eventItem) {
-        throw new ValidationError("Event not found");
-      }
-
-      const eventId = eventItem.EventID.S;
       const eventTitle = eventItem.EventTitle.S;
       const organizerId = eventItem.OrgID.S;
 
       // Check email rate limit
       await checkEmailRateLimit(eventId, organizerId, requestId);
 
-      // Update event status with retry
-      await retryOperation(() =>
-        ddbClient.send(
-          new UpdateItemCommand({
-            TableName: "EventDetails",
-            Key: { EventID: { S: eventId } },
-            UpdateExpression: "SET #s = :r",
-            ExpressionAttributeNames: { "#s": "EventStatus" },
-            ExpressionAttributeValues: { ":r": { S: "UnderReview" } },
-            ConditionExpression: "attribute_exists(EventID)",
-          })
-        )
-      );
-
-      // Get Organizer Email with retry
+      // Get Organizer Email
       const orgRes = await retryOperation(() =>
         ddbClient.send(
           new QueryCommand({
@@ -288,7 +441,7 @@ export const handler = async (event) => {
         throw new ValidationError("Organizer contactEmail not found");
       }
 
-      // Send Email with retry
+      // Send Email
       const subject = `Violation of Policy - Event: "${eventTitle}" is Under Review`;
       const htmlBody = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><div style="background:#fff;padding:30px;font-family:Arial;max-width:600px;margin:auto;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1)"><img src='${LOGO_URL}' style="max-width:120px;display:block;margin:0 auto 20px"/><h2 style="text-align:center">${subject}</h2><p>This is to inform you that your application to host event <strong>${eventTitle}</strong> is under review because an uploaded image was rejected by our system. Your event is currently marked <strong>Under Review</strong>.</p><div style="margin-top:40px;font-size:12px;color:#999;text-align:center">You are receiving this email as part of your event participation.<br/>For support, contact us at support@tikties.com</div></div></body></html>`;
 
@@ -311,7 +464,7 @@ export const handler = async (event) => {
         )
       );
 
-      // Log Notification with retry
+      // Log Notification
       const timestamp = new Date().toISOString();
       const ttl = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
 
