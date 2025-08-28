@@ -15,7 +15,9 @@
     "@aws-sdk/client-s3": "^3.670.0",
     "@aws-sdk/lib-dynamodb": "^3.670.0",
     "@aws-sdk/client-rekognition": "^3.670.0",
-    "@aws-sdk/client-ses": "^3.670.0"
+    "@aws-sdk/client-ses": "^3.670.0",
+    "sharp": "^0.33.5",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
