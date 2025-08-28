@@ -25,6 +25,10 @@ const formatEventDetails = (event) => ({
   benefits: event.AudienceBenefits || [],
   spl_banner: event.EventHighLight || "",
   images: event.EventImages ? event.EventImages.map((img) => img) : [],
+  thumbnails: event.ThumbnailImages
+    ? event.ThumbnailImages.map((thumb) => thumb)
+    : [],
+  organizerName: event.OrganizerName || "",
   organizerName: event.OrganizerName || "",
   collegeName: event.CollegeName || "", // Added CollegeName
   categoryName: event.CategoryName || "",

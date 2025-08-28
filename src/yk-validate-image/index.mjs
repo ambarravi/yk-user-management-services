@@ -217,7 +217,7 @@ export const handler = async (event) => {
         continue;
       }
 
-      // Get EventDetails to check existing EventImages
+      // Get EventDetails to check existing ThumbnailImages
       const eventDetailsRes = await retryOperation(() =>
         ddbClient.send(
           new QueryCommand({
@@ -237,8 +237,6 @@ export const handler = async (event) => {
       }
 
       const eventId = eventItem.EventID.S;
-      const currentEventImages =
-        eventItem.EventImages?.L?.map((item) => item.S) || [];
       const currentThumbnailImages =
         eventItem.ThumbnailImages?.L?.map((item) => item.S) || [];
 
@@ -301,15 +299,9 @@ export const handler = async (event) => {
 
           console.log({ requestId, thumbKey, message: "Thumbnail uploaded" });
 
-          // Update EventImages and ThumbnailImages in DynamoDB
-          const imageUrl = `https://${bucket}.s3.amazonaws.com/${key}`;
-          const thumbUrl = `https://${bucket}.s3.amazonaws.com/${thumbKey}`;
-
-          // Remove existing image URL if present to avoid duplicates
-          let updatedEventImages = currentEventImages.filter(
-            (url) => url !== imageUrl
-          );
-          updatedEventImages.push(imageUrl);
+          // Update ThumbnailImages in DynamoDB
+          const region = process.env.AWS_REGION || "us-east-1"; // Fallback to us-east-1 if not set
+          const thumbUrl = `https://${bucket}.s3.${region}.amazonaws.com/${thumbKey}`;
 
           // Remove existing thumbnail for this image (based on key pattern)
           let updatedThumbnailImages = currentThumbnailImages.filter(
@@ -328,10 +320,8 @@ export const handler = async (event) => {
               new UpdateItemCommand({
                 TableName: "EventDetails",
                 Key: { EventID: { S: eventId } },
-                UpdateExpression:
-                  "SET EventImages = :ei, ThumbnailImages = :ti",
+                UpdateExpression: "SET ThumbnailImages = :ti",
                 ExpressionAttributeValues: {
-                  ":ei": { L: updatedEventImages.map((url) => ({ S: url })) },
                   ":ti": {
                     L: updatedThumbnailImages.map((url) => ({ S: url })),
                   },
@@ -343,7 +333,7 @@ export const handler = async (event) => {
           console.log({
             requestId,
             eventId,
-            message: "DynamoDB updated with image and thumbnail URLs",
+            message: "DynamoDB updated with thumbnail URL",
           });
         } catch (thumbErr) {
           console.error({
@@ -389,12 +379,9 @@ export const handler = async (event) => {
         });
       }
 
-      // Remove image and thumbnail URLs from DynamoDB
-      const imageUrl = `https://${bucket}.s3.amazonaws.com/${key}`;
-      const thumbUrl = `https://${bucket}.s3.amazonaws.com/${thumbKey}`;
-      const updatedEventImages = currentEventImages.filter(
-        (url) => url !== imageUrl
-      );
+      // Remove thumbnail URL from DynamoDB
+      const region = process.env.AWS_REGION || "us-east-1"; // Fallback to us-east-1 if not set
+      const thumbUrl = `https://${bucket}.s3.${region}.amazonaws.com/${thumbKey}`;
       const updatedThumbnailImages = currentThumbnailImages.filter(
         (url) => url !== thumbUrl
       );
@@ -404,11 +391,9 @@ export const handler = async (event) => {
           new UpdateItemCommand({
             TableName: "EventDetails",
             Key: { EventID: { S: eventId } },
-            UpdateExpression:
-              "SET EventImages = :ei, ThumbnailImages = :ti, #s = :r",
+            UpdateExpression: "SET ThumbnailImages = :ti, #s = :r",
             ExpressionAttributeNames: { "#s": "EventStatus" },
             ExpressionAttributeValues: {
-              ":ei": { L: updatedEventImages.map((url) => ({ S: url })) },
               ":ti": { L: updatedThumbnailImages.map((url) => ({ S: url })) },
               ":r": { S: "UnderReview" },
             },
