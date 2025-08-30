@@ -14,16 +14,14 @@ Parameters:
     Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
 
 Resources:
-  # SQS Queue for Published Events
   EventPublishQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub ${AWS::StackName}-EventPublishQueue
-      VisibilityTimeout: 60 # Matches Lambda timeout + buffer
+      VisibilityTimeout: 60
       DelaySeconds: 0
-      MessageRetentionPeriod: 1209600 # 14 days
+      MessageRetentionPeriod: 1209600
 
-  # Lambda: Update Event Status
   UpdateEventStatusLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -35,7 +33,7 @@ Resources:
         Variables:
           EVENT_TABLE: "EventDetails"
           EVENT_PUBLISH_QUEUE_URL: !Ref EventPublishQueue
-          EVENT_CANCELLATION_QUEUE_URL: "https://sqs.ap-south-1.amazonaws.com/756157886151/EventCancellationQueue"
+          EVENT_CANCELLATION_QUEUE_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/EventCancellationQueue
       Code:
         ZipFile: |
           // Inline code placeholder - replace with actual zipped code in production
@@ -47,7 +45,6 @@ Resources:
       TracingConfig:
         Mode: Active
 
-  # IAM Role for UpdateEventStatusLambda
   UpdateEventStatusLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -86,9 +83,8 @@ Resources:
                   - sqs:SendMessage
                 Resource:
                   - !GetAtt EventPublishQueue.Arn
-                  - arn:aws:sqs:${AWS::Region}:756157886151:EventCancellationQueue
+                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:EventCancellationQueue
 
-  # Lambda Permission for API Gateway
   UpdateEventStatusLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -97,7 +93,6 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
 
-  # API Gateway Resource for Update Event Status
   UpdateEventStatusResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -105,7 +100,6 @@ Resources:
       ParentId: !Ref ApiGatewayRootResourceId
       PathPart: update-event-status
 
-  # POST Method for Update Event Status
   UpdateEventStatusPOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
@@ -127,7 +121,6 @@ Resources:
             method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
             method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
 
-  # OPTIONS Method for Update Event Status (CORS)
   UpdateEventStatusOPTIONSMethod:
     Type: AWS::ApiGateway::Method
     Properties:
