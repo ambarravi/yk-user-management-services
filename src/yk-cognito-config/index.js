@@ -69,9 +69,10 @@ export const handler = async (event) => {
       redirectSignOutURL = "tikto://logout";
     }
 
-    const userPoolId = "eu-west-1_hgUDdjyRr";
-    const clientId = "3apts80kiph7bafapf28ltu3vl";
-    const oauthDomain = "eventmgmt.auth.eu-west-1.amazoncognito.com";
+    const userPoolId = process.env.userPoolId;
+    const clientId = process.env.clientId;
+    const oauthDomain = process.env.oauthDomain;
+    //"eventmgmt.auth.process.env.AWS_REGION.amazoncognito.com";
     const redirectSignIn = redirectSignInURL;
     const redirectSignOut = redirectSignOutURL;
 
@@ -82,7 +83,7 @@ export const handler = async (event) => {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        region: "eu-west-1",
+        region: process.env.AWS_REGION,
         userPoolId,
         clientId,
         oauthDomain,

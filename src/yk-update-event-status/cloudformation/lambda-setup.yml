@@ -35,7 +35,7 @@ Resources:
         Variables:
           EVENT_TABLE: "EventDetails"
           EVENT_PUBLISH_QUEUE_URL: !Ref EventPublishQueue
-          EVENT_CANCELLATION_QUEUE_URL: "https://sqs.eu-west-1.amazonaws.com/756157886151/EventCancellationQueue"
+          EVENT_CANCELLATION_QUEUE_URL: "https://sqs.ap-south-1.amazonaws.com/756157886151/EventCancellationQueue"
       Code:
         ZipFile: |
           // Inline code placeholder - replace with actual zipped code in production
@@ -86,7 +86,7 @@ Resources:
                   - sqs:SendMessage
                 Resource:
                   - !GetAtt EventPublishQueue.Arn
-                  - arn:aws:sqs:eu-west-1:756157886151:EventCancellationQueue
+                  - arn:aws:sqs:${AWS::Region}:756157886151:EventCancellationQueue
 
   # Lambda Permission for API Gateway
   UpdateEventStatusLambdaPermission:

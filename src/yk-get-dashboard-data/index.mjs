@@ -6,7 +6,7 @@ import {
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 const client = new DynamoDBClient({
-  region: process.env.AWS_REGION || "eu-west-1",
+  region: process.env.AWS_REGION,
 });
 
 export const handler = async (event) => {

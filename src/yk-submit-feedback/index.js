@@ -8,7 +8,7 @@ import {
 
 import { v4 as uuidv4 } from "uuid";
 
-const ddbClient = new DynamoDBClient({ region: "eu-west-1" });
+const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 export const handler = async (event) => {
   console.log("Received event:", event);

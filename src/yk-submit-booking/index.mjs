@@ -10,10 +10,10 @@ import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { v4 as uuidv4 } from "uuid";
 
 const ddbClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || "eu-west-1",
+  region: process.env.AWS_REGION,
 });
 const sesClient = new SESClient({
-  region: process.env.AWS_REGION || "eu-west-1",
+  region: process.env.AWS_REGION,
 });
 
 // Get environment variables

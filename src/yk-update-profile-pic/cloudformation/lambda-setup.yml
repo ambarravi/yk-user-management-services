@@ -3,31 +3,18 @@ Parameters:
   ApiGatewayRestApiId:
     Type: String
     Description: The REST API ID for API Gateway deployment
-  Env:
+  ApiGatewayRootResourceId:
     Type: String
-    Default: Development
-    AllowedValues:
-      - Development
-      - Production
+    Description: The Root Resource ID for API Gateway deployment
   StageName:
     Type: String
     Description: The stage name (e.g., dev, prod)
   CognitoAuthorizerId:
     Type: String
     Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
-
-Mappings:
-  EnvToResources:
-    Development:
-      ApiGatewayId: 27sqbwaad7
-      UserPoolId: eu-west-1_hgUDdjyRr
-      Stage: dev
-      ApiGatewayRootResourceId: 78iwchywp5
-    Production:
-      ApiGatewayId: 27sqbwaad7
-      UserPoolId: eu-west-1_hgUDdjyRr
-      Stage: prod
-      ApiGatewayRootResourceId: 78iwchywp5
+  UserPoolId:
+    Type: String
+    Description: The Cognito User Pool ID for user management
 
 Resources:
   UpdateProfilePicLambda:
@@ -40,9 +27,8 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET_NAME: !Sub "tikto-orgnizer-${StageName}"
-          USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
+          USER_POOL_ID: !Ref UserPoolId
           DYNAMODB_TABLE_NAME: "UsersTable"
-
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -82,7 +68,6 @@ Resources:
                 Resource:
                   - !Sub arn:aws:s3:::tikto-orgnizer-${StageName}
                   - !Sub arn:aws:s3:::tikto-orgnizer-${StageName}/*
-
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
@@ -98,12 +83,6 @@ Resources:
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
 
-              - Effect: Allow
-                Action:
-                  - xray:PutTraceSegments
-                  - xray:PutTelemetryRecords
-                Resource: "*"
-
   UpdateProfilePicLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -115,14 +94,14 @@ Resources:
   UpdateProfilePicResource:
     Type: AWS::ApiGateway::Resource
     Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
       PathPart: update-profile-pic
 
   UpdateProfilePicPOSTMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref UpdateProfilePicResource
       HttpMethod: POST
       AuthorizationType: COGNITO_USER_POOLS
@@ -143,7 +122,7 @@ Resources:
   UpdateProfilePicOPTIONSMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref UpdateProfilePicResource
       HttpMethod: OPTIONS
       AuthorizationType: NONE

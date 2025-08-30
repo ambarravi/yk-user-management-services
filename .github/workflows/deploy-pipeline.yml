@@ -14,7 +14,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 10 # ✅ Limit parallel executions to prevent API throttling
+      max-parallel: 10
       matrix:
         function:
           - yk-sign-up-trigger
@@ -66,7 +66,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::756157886151:role/GitHubActionsDeploymentRole-yk-user-management
           role-session-name: GitHubActionsSession
-          aws-region: ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
+          aws-region: ${{ github.ref == 'refs/heads/main' && 'ap-south-1' || 'eu-west-1' }}
 
       - name: Set AWS CLI retry configuration
         run: |
@@ -85,8 +85,17 @@ jobs:
 
       - name: Upload Lambda function code to S3
         run: |
-          aws s3 cp src/${{ matrix.function }}/function.zip s3://yk-zips/${{ matrix.function }}/function.zip \
-            --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            BUCKET="yk-zips-ap-south-1"
+            REGION="ap-south-1"
+          else
+            BUCKET="yk-zips"
+            REGION="eu-west-1"
+          fi
+
+          aws s3 cp src/${{ matrix.function }}/function.zip \
+            s3://$BUCKET/${{ matrix.function }}/function.zip \
+            --region $REGION
 
       - name: Run CloudFormation for Lambda with Retry
         run: |
@@ -102,9 +111,10 @@ jobs:
               --parameter-overrides \
                 StageName=${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }} \
                 Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
-                ApiGatewayRestApiId=${{ github.ref == 'refs/heads/main' && '27sqbwaad7' || '27sqbwaad7' }} \
-                ApiGatewayRootResourceId=${{ github.ref == 'refs/heads/main' && '78iwchywp5' || '78iwchywp5' }} \
-                CognitoAuthorizerId=${{ github.ref == 'refs/heads/main' && 'c0oigh' || 'c0oigh' }} \
+                ApiGatewayRestApiId=${{ github.ref == 'refs/heads/main' && 'he65gtfesi' || '27sqbwaad7' }} \
+                ApiGatewayRootResourceId=${{ github.ref == 'refs/heads/main' && 'i0inlgzv3b' || '78iwchywp5' }} \
+                CognitoAuthorizerId=${{ github.ref == 'refs/heads/main' && '0rsexn' || 'c0oigh' }} \
+                UserPoolId=${{ github.ref == 'refs/heads/main' && 'ap-south-1_KOPY3vDg8' || 'eu-west-1_hgUDdjyRr' }} \
               --capabilities CAPABILITY_NAMED_IAM && break
             attempt=$((attempt+1))
             echo "Retrying in ${delay} seconds..."
@@ -122,8 +132,16 @@ jobs:
 
       - name: Update Lambda function code
         run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            BUCKET="yk-zips-ap-south-1"
+            REGION="ap-south-1"
+          else
+            BUCKET="yk-zips"
+            REGION="eu-west-1"
+          fi
+
           aws lambda update-function-code \
             --function-name ${{ matrix.function }} \
-            --s3-bucket yk-zips \
+            --s3-bucket $BUCKET \
             --s3-key ${{ matrix.function }}/function.zip \
-            --region ${{ github.ref == 'refs/heads/main' && 'us-west-2' || 'eu-west-1' }}
+            --region $REGION

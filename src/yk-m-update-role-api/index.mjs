@@ -14,7 +14,7 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 
 const REGION = process.env.AWS_REGION;
-const USER_POOL_ID = "eu-west-1_hgUDdjyRr";
+const USER_POOL_ID = process.env.USER_POOL_ID; // "eu-west-1_hgUDdjyRr";
 const USERS_TABLE = "UsersTable";
 const CITY_TABLE = "City";
 const COLLEGE_TABLE = "College";

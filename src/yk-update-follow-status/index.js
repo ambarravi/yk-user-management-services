@@ -5,8 +5,7 @@ import {
   DeleteItemCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
-//const client = new DynamoDBClient({ region: "eu-west-1"  });
-const ddbClient = new DynamoDBClient({ region: "eu-west-1" });
+const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 const USER_ORG_TABLE = "UserOrganizationFollow";
 const ORGANIZER_TABLE = "Organizer";

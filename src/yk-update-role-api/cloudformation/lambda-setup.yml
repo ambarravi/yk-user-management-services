@@ -3,56 +3,35 @@ Parameters:
   ApiGatewayRestApiId:
     Type: String
     Description: The REST API ID for API Gateway deployment
-  Env:
+  ApiGatewayRootResourceId:
     Type: String
-    Default: Development
-    AllowedValues:
-      - Development
-      - Production
-
-Mappings:
-  EnvToResources:
-    Development:
-      ApiGatewayId: 27sqbwaad7
-      UserPoolId: eu-west-1_hgUDdjyRr
-      Stage: dev
-      ApiGatewayRootResourceId: 78iwchywp5
-      CognitoAuthorizerId: c0oigh
-    Production:
-      ApiGatewayId: 27sqbwaad7
-      UserPoolId: eu-west-1_hgUDdjyRr
-      Stage: prod
-      ApiGatewayRootResourceId: 78iwchywp5
-      CognitoAuthorizerId: c0oigh
+    Description: The Root Resource ID for API Gateway deployment
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+  UserPoolId:
+    Type: String
+    Description: The Cognito User Pool ID for user management
 
 Resources:
   UpdateRoleApiResource:
     Type: AWS::ApiGateway::Resource
     Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-      ParentId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayRootResourceId]
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
       PathPart: update-role
-
-  # CognitoAuthorizer:
-  #   Type: AWS::ApiGateway::Authorizer
-  #   Properties:
-  #     Name: CognitoUserPoolAuthorizer
-  #     Type: COGNITO_USER_POOLS
-  #     RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
-  #     IdentitySource: method.request.header.Authorization
-  #     ProviderARNs:
-  #       - !Sub
-  #         - "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
-  #         - UserPoolId: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
 
   UpdateRoleApiPostMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref UpdateRoleApiResource
       HttpMethod: POST
       AuthorizationType: COGNITO_USER_POOLS
-      AuthorizerId: !FindInMap [EnvToResources, !Ref Env, CognitoAuthorizerId]
+      AuthorizerId: !Ref CognitoAuthorizerId
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -67,7 +46,7 @@ Resources:
   UpdateRoleOPTIONSMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      RestApiId: !FindInMap [EnvToResources, !Ref Env, ApiGatewayId]
+      RestApiId: !Ref ApiGatewayRestApiId
       ResourceId: !Ref UpdateRoleApiResource
       HttpMethod: OPTIONS
       AuthorizationType: NONE
@@ -84,11 +63,10 @@ Resources:
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: "'true'"
-            method.response.header.Access-Control-Allow-Methods: "'true'"
-            method.response.header.Access-Control-Allow-Headers: "'true'"
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
 
-  # Lambda Function
   UpdateRoleLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -106,12 +84,11 @@ Resources:
         Variables:
           USERS_TABLE: "UsersTable"
           ROLE_CONFIG: "user,organizer"
-          USER_POOL_ID: !FindInMap [EnvToResources, !Ref Env, UserPoolId]
+          USER_POOL_ID: !Ref UserPoolId
       Role: !GetAtt UpdateRoleApiExecutionRole.Arn
       TracingConfig:
         Mode: Active
 
-  # Lambda Execution Role
   UpdateRoleApiExecutionRole:
     Type: AWS::IAM::Role
     Properties:

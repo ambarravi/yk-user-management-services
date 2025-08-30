@@ -1,6 +1,6 @@
 import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
 
-const region = process.env.AWS_REGION || "eu-west-1"; // Default region
+const region = process.env.AWS_REGION; // Default region
 const dynamoDB = new DynamoDBClient({ region });
 import { unmarshall } from "@aws-sdk/util-dynamodb"; // Import unmarshall utility
 

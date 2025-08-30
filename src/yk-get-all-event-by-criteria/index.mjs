@@ -6,7 +6,7 @@ import {
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 // AWS Region Configuration
-const region = process.env.AWS_REGION || "eu-west-1";
+const region = process.env.AWS_REGION;
 const client = new DynamoDBClient({ region });
 
 // Function to format event details for frontend

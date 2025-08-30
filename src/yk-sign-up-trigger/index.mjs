@@ -2,7 +2,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 // Use the region from the environment variable
-const region = process.env.AWS_REGION || "eu-west-1"; // Default to us-east-1 if not set
+const region = process.env.AWS_REGION; // Default to us-east-1 if not set
 const dynamoDB = new DynamoDBClient({ region });
 
 const USERS_TABLE = "UsersTable"; // Replace with your table name
@@ -11,7 +11,13 @@ export const handler = async (event) => {
   console.log("Event received from Cognito:", JSON.stringify(event, null, 2));
 
   try {
-    const { sub: UserID, email, given_name: FirstName, family_name: LastName, phone_number: Mobile } = event.request.userAttributes;
+    const {
+      sub: UserID,
+      email,
+      given_name: FirstName,
+      family_name: LastName,
+      phone_number: Mobile,
+    } = event.request.userAttributes;
 
     if (!UserID) {
       throw new Error("Missing UserID (sub) from Cognito attributes");
