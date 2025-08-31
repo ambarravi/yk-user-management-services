@@ -36,7 +36,6 @@ Resources:
   GetDashboardDataExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: yk-get-dashboard-data-role
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -45,7 +44,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: yk-get-dashboard-data-policy
+        - PolicyName: !Sub "${AWS::StackName}-get-dashboard-data-policy"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -97,7 +96,7 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { LambdaArn: !GetAtt [GetDashboardDataLambda, Arn] }
+          - { LambdaArn: !GetAtt GetDashboardDataLambda.Arn }
         RequestTemplates:
           application/json: |
             {

@@ -20,7 +20,6 @@ Resources:
       Runtime: nodejs20.x
       Timeout: 300
       MemorySize: 1024 # Optimized for parallel processing
-      ReservedConcurrentExecutions: 10 # Control concurrency
       Environment:
         Variables:
           EVENT_PUBLISH_QUEUE_URL: "MyQueue"

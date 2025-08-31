@@ -15,7 +15,6 @@ Resources:
           ORGANIZER_TABLE: "Organizer"
           NOTIFICATION_LOGS_TABLE: "NotificationLogs"
       MemorySize: 256
-      ReservedConcurrentExecutions: 5
       Code:
         ZipFile: |
           // Placeholder: Upload actual code via ZIP file
