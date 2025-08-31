@@ -91,10 +91,13 @@ jobs:
             BUCKET="yk-zips"
             REGION="eu-west-1"
           fi
-
           aws s3 cp src/${{ matrix.function }}/function.zip \
             s3://$BUCKET/${{ matrix.function }}/function.zip \
             --region $REGION
+
+      - name: Debug StageName
+        run: |
+          echo "StageName: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}"
 
       - name: Run CloudFormation for Lambda with Retry
         run: |
@@ -120,7 +123,6 @@ jobs:
             sleep $delay
             delay=$((delay * 2))
           done
-
           if [ "$attempt" -eq "$max_attempts" ]; then
             echo "Deployment failed after $max_attempts attempts."
             exit 1
@@ -138,7 +140,6 @@ jobs:
             BUCKET="yk-zips"
             REGION="eu-west-1"
           fi
-
           aws lambda update-function-code \
             --function-name ${{ matrix.function }} \
             --s3-bucket $BUCKET \
