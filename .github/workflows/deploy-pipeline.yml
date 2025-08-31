@@ -38,7 +38,6 @@ jobs:
           - yk-get-user-profile-details
           - yk-submit-feedback
           - yk-soft-delete-booking
-          - yk-cognito-config
           - yk-register-token
           - yk-unregister-token
           - yk-send-notifications
