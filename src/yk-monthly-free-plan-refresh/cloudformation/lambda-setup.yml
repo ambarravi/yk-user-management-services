@@ -19,7 +19,6 @@ Resources:
           ADMIN_PHONE_NUMBER: "+919860719197"
           ADMIN_EMAIL: "ravi.ambar@gmail.com"
       MemorySize: 256 # Sufficient for DynamoDB scans
-      ReservedConcurrentExecutions: 5 # Limit concurrency to avoid throttling
       Code:
         ZipFile: |
           // Placeholder: Upload actual code via ZIP file

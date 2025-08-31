@@ -13,7 +13,6 @@ Resources:
         Variables:
           S3_FCM_KEY: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json"
       MemorySize: 256 # Sufficient for DynamoDB queries and Expo API calls
-      ReservedConcurrentExecutions: 5 # Limit concurrency to avoid DynamoDB throttling
       Code:
         ZipFile: |
           // Placeholder: Upload actual code via ZIP file
