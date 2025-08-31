@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    Description: The stage name for API Gateway deployment (e.g., dev, prod)
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+
+Resources:
+  FetchBookingByUserIDLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-fetch-booking-by-userid
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          BOOKING_TABLE: "BookingDetails"
+          S3_BUCKET_NAME: !Sub "tikto-orgnizer-${StageName}"
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Placeholder Lambda Function");
+              return { statusCode: 200, body: "Placeholder" };
+          };
+      Role: !GetAtt FetchBookingByUserIDLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  FetchBookingByUserIDLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FetchBookingByUserIDLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:BatchGetItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/UserId-EventID-index
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/UserId-index
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FetchBookingByUserIDLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
+
+  FetchBookingByUserIDResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
+      PathPart: fetch-booking-by-userid
+
+  FetchBookingByUserIDPOSTMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref FetchBookingByUserIDResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt FetchBookingByUserIDLambda.Arn }
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+            method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+
+  FetchBookingByUserIDOPTIONSMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref FetchBookingByUserIDResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{ "statusCode": 200 }'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true

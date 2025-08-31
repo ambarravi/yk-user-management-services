@@ -1,0 +1,144 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+  UserPoolId:
+    Type: String
+    Description: The Cognito User Pool ID for user management
+
+Resources:
+  UpdateProfilePicLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-update-profile-pic
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Sub "tikto-orgnizer-${StageName}"
+          USER_POOL_ID: !Ref UserPoolId
+          DYNAMODB_TABLE_NAME: "UsersTable"
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Submit Event Lambda Function");
+              return { statusCode: 200, body: "Event Submitted Successfully" };
+          };
+      Role: !GetAtt UpdateProfilePicLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  UpdateProfilePicLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: UpdateProfilePicLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminUpdateUserAttributes
+                  - cognito-idp:AdminGetUser
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::tikto-orgnizer-${StageName}
+                  - !Sub arn:aws:s3:::tikto-orgnizer-${StageName}/*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
+
+  UpdateProfilePicLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UpdateProfilePicLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
+
+  UpdateProfilePicResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
+      PathPart: update-profile-pic
+
+  UpdateProfilePicPOSTMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref UpdateProfilePicResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt UpdateProfilePicLambda.Arn }
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+            method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+
+  UpdateProfilePicOPTIONSMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref UpdateProfilePicResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{ "statusCode": 200 }'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true

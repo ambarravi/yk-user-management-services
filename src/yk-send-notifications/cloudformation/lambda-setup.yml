@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+
+Resources:
+  # Lambda: Send Notification
+  SendNotificationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-send-notifications
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 300
+      MemorySize: 1024 # Optimized for parallel processing
+      ReservedConcurrentExecutions: 10 # Control concurrency
+      Environment:
+        Variables:
+          EVENT_PUBLISH_QUEUE_URL: "MyQueue"
+          EXPO_ACCESS_TOKEN: "Test"
+          NOTIFICATION_TABLE: "NotificationLogs"
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Submit Event Lambda Function");
+              return { statusCode: 200, body: "Event Submitted Successfully" };
+          };
+      Role: !GetAtt SendNotificationLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  # IAM Role for SendNotificationLambda
+  SendNotificationLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SendNotificationLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:PutItem
+                  - dynamodb:BatchGetItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UserOrganizationFollow
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/TiktoPushTokens
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NotificationLogs
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:user-management-yk-update-event-status-stack-EventPublishQueue
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+  # Dead Letter Queue
+  EventPublishDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-EventPublishDLQ
+      MessageRetentionPeriod: 1209600 # 14 days

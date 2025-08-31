@@ -1,0 +1,21 @@
+{
+  "name": "yojanakaar-send-booking-otp",
+  "version": "1.0.0",
+  "description": "Send OTP",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "test": "node index.mjs",
+    "lint": "eslint . --ext .js,.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.731.1",
+    "@aws-sdk/lib-dynamodb": "3.731.1",
+    "@aws-sdk/client-ses": "3.731.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  },
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}

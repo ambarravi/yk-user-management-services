@@ -1,0 +1,535 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  # Lambda: Send Push Notification and Email for Event Updates
+  SendPushNotificationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-send-push-notification
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 900
+      Environment:
+        Variables:
+          S3_BUCKET: "tiktie-notifications"
+          S3_FCM_KEY: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json"
+          SENDER_EMAIL: !Ref SenderEmail
+          EVENT_TABLE: "EventDetails"
+          BOOKING_TABLE: "BookingDetails"
+          USERS_TABLE: "UsersTable"
+          ORGANIZER_TABLE: "Organizer"
+          NOTIFICATION_LOGS_TABLE: "NotificationLogs"
+      MemorySize: 256
+      ReservedConcurrentExecutions: 5
+      Code:
+        ZipFile: |
+          // Placeholder: Upload actual code via ZIP file
+          export const handler = async () => {
+            return { statusCode: 200, body: "Placeholder" };
+          };
+      Role: !GetAtt SendPushNotificationLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  # SES Template: CANCELLED
+  EventCancelledTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_CANCELLED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <meta charset="UTF-8" />
+            <style>
+              body {
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 30px auto;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              }
+              .logo {
+                max-width: 120px;
+                margin: 0 auto 20px;
+                display: block;
+              }
+              h2 {
+                text-align: center;
+                color: #222222;
+              }
+              p {
+                color: #555555;
+                line-height: 1.6;
+              }
+              .footer {
+                margin-top: 40px;
+                font-size: 12px;
+                color: #999999;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
+              <h2>{{subject}}</h2>
+              <p>{{body}}</p>
+            
+              <div class="footer">
+                You are receiving this email as part of your event participation.<br/>
+                For support, contact us at support@tikties.com
+              </div>
+            </div>
+          </body>
+          </html>
+
+  EventApprovedTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_APPROVED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <meta charset="UTF-8" />
+            <style>
+              body {
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 30px auto;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              }
+              .logo {
+                max-width: 120px;
+                margin: 0 auto 20px;
+                display: block;
+              }
+              h2 {
+                text-align: center;
+                color: #222222;
+              }
+              p {
+                color: #555555;
+                line-height: 1.6;
+              }
+              .footer {
+                margin-top: 40px;
+                font-size: 12px;
+                color: #999999;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
+              <h2>{{subject}}</h2>
+              <p>{{body}}</p>
+            
+              <div class="footer">
+                You are receiving this email as part of your event participation.<br/>
+                For support, contact us at support@tikties.com
+              </div>
+            </div>
+          </body>
+          </html>
+
+  EventUnderReviewTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_UNDERREVIEW
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <meta charset="UTF-8" />
+            <style>
+              body {
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 30px auto;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              }
+              .logo {
+                max-width: 120px;
+                margin: 0 auto 20px;
+                display: block;
+              }
+              h2 {
+                text-align: center;
+                color: #222222;
+              }
+              p {
+                color: #555555;
+                line-height: 1.6;
+              }
+              .footer {
+                margin-top: 40px;
+                font-size: 12px;
+                color: #999999;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
+              <h2>{{subject}}</h2>
+              <p>{{body}}</p>
+            
+              <div class="footer">
+                You are receiving this email as part of your event participation.<br/>
+                For support, contact us at support@tikties.com
+              </div>
+            </div>
+          </body>
+          </html>
+
+  # SES Template: RESCHEDULED
+  EventRescheduledTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_RESCHEDULED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <meta charset="UTF-8" />
+            <style>
+              body {
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 30px auto;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              }
+              .logo {
+                max-width: 120px;
+                margin: 0 auto 20px;
+                display: block;
+              }
+              h2 {
+                text-align: center;
+                color: #222222;
+              }
+              p {
+                color: #555555;
+                line-height: 1.6;
+              }
+              .footer {
+                margin-top: 40px;
+                font-size: 12px;
+                color: #999999;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
+              <h2>{{subject}}</h2>
+              <p>{{body}}</p>
+           
+              <div class="footer">
+                You are receiving this email as part of your event participation.<br/>
+                For support, contact us at support@tikties.com
+              </div>
+            </div>
+          </body>
+          </html>
+
+  # SES Template: VENUE_CHANGED
+  EventVenueChangedTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_VENUE_CHANGED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <meta charset="UTF-8" />
+            <style>
+              body {
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 30px auto;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              }
+              .logo {
+                max-width: 120px;
+                margin: 0 auto 20px;
+                display: block;
+              }
+              h2 {
+                text-align: center;
+                color: #222222;
+              }
+              p {
+                color: #555555;
+                line-height: 1.6;
+              }
+              .footer {
+                margin-top: 40px;
+                font-size: 12px;
+                color: #999999;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
+              <h2>{{subject}}</h2>
+              <p>{{body}}</p>
+            
+              <div class="footer">
+                You are receiving this email as part of your event participation.<br/>
+                For support, contact us at support@tikties.com
+              </div>
+            </div>
+          </body>
+          </html>
+
+  # SES Template: EVENT_UPDATED
+  EventUpdatedTemplate:
+    Type: AWS::SES::Template
+    Properties:
+      Template:
+        TemplateName: EventUpdateTemplate_EVENT_UPDATED
+        SubjectPart: "{{subject}}"
+        TextPart: "{{body}}"
+        HtmlPart: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{subject}}</title>
+            <meta charset="UTF-8" />
+            <style>
+              body {
+                background-color: #f4f4f4;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+              }
+              .container {
+                background-color: #ffffff;
+                max-width: 600px;
+                margin: 30px auto;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+              }
+              .logo {
+                max-width: 120px;
+                margin: 0 auto 20px;
+                display: block;
+              }
+              h2 {
+                text-align: center;
+                color: #222222;
+              }
+              p {
+                color: #555555;
+                line-height: 1.6;
+              }
+              .footer {
+                margin-top: 40px;
+                font-size: 12px;
+                color: #999999;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <img src="{{LogoUrl}}" alt="Event Logo" class="logo" />
+              <h2>{{subject}}</h2>
+              <p>{{body}}</p>
+             
+              <div class="footer">
+                You are receiving this email as part of your event participation.<br/>
+                For support, contact us at support@tikties.com
+              </div>
+            </div>
+          </body>
+          </html>
+
+  # IAM Role for SendPushNotificationLambda
+  SendPushNotificationLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SendPushNotificationLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:PutItem
+                  - dynamodb:BatchGetItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/*
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NotificationLogs
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-send-push-notification:*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::tiktie-notifications/*
+                  - !Sub arn:aws:s3:::tiktie-notifications
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt EventCancellationQueue.Arn
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt EventCancellationDLQ.Arn
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendBulkTemplatedEmail
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    ses:FromAddress: !Ref SenderEmail
+
+  # SQS Queue: Event Cancellation Queue
+  EventCancellationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: EventCancellationQueue
+      VisibilityTimeout: 1800
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt EventCancellationDLQ.Arn
+        maxReceiveCount: 3
+
+  # SQS Dead Letter Queue
+  EventCancellationDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: EventCancellationDLQ
+
+  # Lambda Event Source Mapping for SQS
+  EventCancellationQueueEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt EventCancellationQueue.Arn
+      FunctionName: !Ref SendPushNotificationLambda
+      BatchSize: 10
+      Enabled: true
+
+  # Lambda Permission for SQS
+  SqsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SendPushNotificationLambda
+      Action: lambda:InvokeFunction
+      Principal: sqs.amazonaws.com
+      SourceArn: !GetAtt EventCancellationQueue.Arn
+
+Parameters:
+  SenderEmail:
+    Type: String
+    Description: The verified SES sender email address
+    Default: "support@tikties.com"
+  LogoUrl:
+    Type: String
+    Description: Public URL of the logo image for email templates
+    Default: "https://tikties-logo.s3.amazonaws.com/images/logo.png"
+
+Outputs:
+  SendPushNotificationLambdaArn:
+    Description: ARN of the Send Push Notification Lambda function
+    Value: !GetAtt SendPushNotificationLambda.Arn
+  EventCancellationQueueArn:
+    Description: ARN of the Event Cancellation SQS Queue
+    Value: !GetAtt EventCancellationQueue.Arn
+  EventCancellationDLQArn:
+    Description: ARN of the Event Cancellation Dead Letter Queue
+    Value: !GetAtt EventCancellationDLQ.Arn

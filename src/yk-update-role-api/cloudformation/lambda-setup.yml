@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+  UserPoolId:
+    Type: String
+    Description: The Cognito User Pool ID for user management
+
+Resources:
+  UpdateRoleApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
+      PathPart: update-role
+
+  UpdateRoleApiPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref UpdateRoleApiResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateRoleLambda.Arn}/invocations"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+            method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+
+  UpdateRoleOPTIONSMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref UpdateRoleApiResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{ "statusCode": 200 }'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+  UpdateRoleLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-update-role-api
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Event received:", JSON.stringify(event));
+              return { statusCode: 200, body: "Placeholder" };
+          };
+      Environment:
+        Variables:
+          USERS_TABLE: "UsersTable"
+          ROLE_CONFIG: "user,organizer"
+          USER_POOL_ID: !Ref UserPoolId
+      Role: !GetAtt UpdateRoleApiExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  UpdateRoleApiExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: updateRoleLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable"
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminUpdateUserAttributes
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+
+  UpdateRoleApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt UpdateRoleLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*

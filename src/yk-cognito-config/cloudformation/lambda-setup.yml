@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+
+Resources:
+  CognitoConfigLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-cognito-config
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          BUILD: "Dev"
+          redirectSignInURL: "exp://192.168.1.3:8081/"
+          redirectSignOutURL: "exp://192.168.1.3:8081/"
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Submit Event Lambda Function");
+              return { statusCode: 200, body: "Event Submitted Successfully" };
+          };
+      Role: !GetAtt CognitoConfigLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  CognitoConfigLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CognitoConfigLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/secret
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cognito/*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  CognitoConfigLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CognitoConfigLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
+
+  CognitoConfigResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
+      PathPart: cognito-config
+
+  CognitoConfigGETMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref CognitoConfigResource
+      HttpMethod: GET # Changed from POST to GET to match your fetchCognitoConfig
+      AuthorizationType: NONE
+      ApiKeyRequired: true # Require API key
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST # Lambda proxy still uses POST internally
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt CognitoConfigLambda.Arn }
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+            method.response.header.Access-Control-Allow-Methods: "'GET, OPTIONS'"
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type, x-api-key, x-app-secret, x-app-token, User-Agent'"
+
+  CognitoConfigOPTIONSMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref CognitoConfigResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{ "statusCode": 200 }'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, x-api-key, x-app-secret, x-app-token, User-Agent'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+  CognitoConfigApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: CognitoConfigApiKey
+      Description: API Key for Cognito Config endpoint
+      Enabled: true
+
+  CognitoConfigUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      ApiStages:
+        - ApiId: !Ref ApiGatewayRestApiId
+          Stage: !Ref StageName
+      Description: Usage plan for Cognito Config API
+      UsagePlanName: CognitoConfigUsagePlan
+      Quota:
+        Limit: 1000 # Requests per day
+        Period: DAY
+      Throttle:
+        RateLimit: 10 # Requests per second
+        BurstLimit: 20 # Burst capacity
+
+  CognitoConfigUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref CognitoConfigApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref CognitoConfigUsagePlan
+
+Outputs:
+  CognitoConfigApiKey:
+    Description: The API Key for Cognito Config endpoint
+    Value: !Ref CognitoConfigApiKey

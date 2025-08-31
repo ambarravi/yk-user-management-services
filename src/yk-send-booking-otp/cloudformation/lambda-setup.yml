@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+  SenderEmail:
+    Type: String
+    Description: The verified SES sender email address
+    Default: "support@tikties.com"
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+
+Resources:
+  # Lambda: Send Booking OTP
+  SendBookingOtpLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-send-booking-otp
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30 # 30 seconds for OTP generation and email sending
+      Environment:
+        Variables:
+          OTP_TABLE: "BookingOtpTable"
+          SES_SENDER_EMAIL: !Ref SenderEmail # Sender email for SES
+      MemorySize: 128 # Sufficient for DynamoDB and SES operations
+      Code:
+        ZipFile: |
+          // Placeholder: Upload actual code via ZIP file
+          exports.handler = async () => {
+            return { statusCode: 200, body: "Placeholder" };
+          };
+      Role: !GetAtt SendBookingOtpLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  # IAM Role for SendBookingOtpLambda
+  SendBookingOtpLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SendBookingOtpLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingOtpTable
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-send-booking-otp:*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: "*"
+
+  # Lambda Permission for API Gateway (SendBookingOtp)
+  SendBookingOtpLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SendBookingOtpLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
+
+  # API Gateway Resource (SendBookingOtp)
+  SendBookingOtpResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
+      PathPart: send-booking-otp
+
+  # API Gateway POST Method (SendBookingOtp)
+  SendBookingOtpPOSTMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref SendBookingOtpResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt SendBookingOtpLambda.Arn }
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+            method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+
+  # API Gateway OPTIONS Method (SendBookingOtp)
+  SendBookingOtpOPTIONSMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref SendBookingOtpResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{ "statusCode": 200 }'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+Outputs:
+  SendBookingOtpLambdaArn:
+    Description: ARN of the Send Booking OTP Lambda function
+    Value: !GetAtt SendBookingOtpLambda.Arn

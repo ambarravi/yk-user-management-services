@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  Env:
+    Type: String
+    Default: Development
+    AllowedValues:
+      - Development
+      - Production
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+  UserPoolId:
+    Type: String
+    Description: The Cognito User Pool ID
+
+Resources:
+  RoleUpdateMobileTriggerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-m-update-role-api
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              console.log("Placeholder Lambda Function");
+              return { statusCode: 200, body: "Placeholder" };
+          };
+      Role: !GetAtt UpdateMobileRoleLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+      Environment:
+        Variables:
+          USERS_TABLE: "UsersTable"
+          ROLE_CONFIG: "user,organizer"
+          CITY_TABLE: "City"
+          USER_POOL_ID: !Ref UserPoolId
+
+  UpdateMobileRoleLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: UpdateMobileRoleLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Allow DynamoDB UpdateItem operation
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                  - dynamodb:PutItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/City/index/CityName-index
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College/index/Name-CityID-index
+
+              # Allow writing logs to log groups
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+
+              # Basic AWS Lambda service operations
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminUpdateUserAttributes
+                  - cognito-idp:AdminGetUser
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/*"

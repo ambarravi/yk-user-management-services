@@ -1,0 +1,22 @@
+{
+  "name": "yojanakaar-submit-org-profile",
+  "version": "1.0.0",
+  "description": "Function to insert/update Organization profile",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.216.0",
+    "@aws-sdk/client-dynamodb": "^3.731.1",
+    "@aws-sdk/client-s3": "^3.731.1",
+    "@aws-sdk/lib-dynamodb": "^3.216.0",
+    "@aws-sdk/s3-request-presigner": "^3.731.1",
+    "formidable": "^3.5.2",
+    "jose": "^4.14.4",
+    "uuid": "^9.0.0"
+  },
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}

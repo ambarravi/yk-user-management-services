@@ -1,0 +1,16 @@
+{
+  "name": "yojanakaar-fecth-event-by-id",
+  "version": "1.0.0",
+  "description": "Function to fecth Event Details",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.731.1",
+    "@aws-sdk/lib-dynamodb": "^3.216.0"
+  },
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}

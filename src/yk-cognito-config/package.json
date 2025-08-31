@@ -1,0 +1,15 @@
+{
+  "name": "yojanakaar-cognito-oconfig",
+  "version": "1.0.0",
+  "description": "Function to get cognito config",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ssm": "^3.731.1"
+  },
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}

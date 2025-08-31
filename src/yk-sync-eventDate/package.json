@@ -1,0 +1,16 @@
+{
+  "name": "yojanakaar-sync-eventdate",
+  "version": "1.0.0",
+  "description": "AWS Lambda function for syncing EvetnDate information from EventDetails to BookingsDetails table",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.645.0",
+    "@aws-sdk/lib-dynamodb": "^3.645.0"
+  },
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}

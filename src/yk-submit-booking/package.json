@@ -1,0 +1,21 @@
+{
+  "name": "yojanakaar-submit-booking-by-user",
+  "version": "1.0.0",
+  "description": "Function to insert/update booking tickets",
+  "main": "index.mjs",
+  "type": "module",
+  "scripts": {
+    "test": "node index.js",
+    "lint": "eslint . --ext .js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.731.1",
+    "@aws-sdk/client-ses": "3.731.1",
+    "uuid": "9.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  },
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}

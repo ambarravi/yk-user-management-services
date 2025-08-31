@@ -1,0 +1,25 @@
+{
+  "cityId": "1259229",
+  "currentRole": ",user",
+  "collegeDetails": {
+    "University": "Government College of Engineering",
+    "CollegeID": "c1cb54ea-74eb-4c4f-ba5c-7d387336a0c1",
+    "City": "pune",
+    "CreatedBy": "google_115751856932696261052",
+    "Shortform": "GCOE",
+    "CityID": "1259229",
+    "CreatedAt": "2025-03-31T07:10:27.159Z",
+    "Name": "Government College of Engineering"
+  },
+  "followingCount": 0,
+  "eventsAttended": 0,
+  "name": "Ravi",
+  "lastName": "Ambar",
+  "picture": "",
+  "city": "Pune",
+  "username": "google_115751856932696261052",
+  "phoneNumber": "+919860719197",
+  "userID": "google_115751856932696261052",
+  "collegeId": "c1cb54ea-74eb-4c4f-ba5c-7d387336a0c1",
+  "tempRole": "user"
+}

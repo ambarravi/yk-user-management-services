@@ -1,0 +1,147 @@
+name: Deploy User Management Services
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 10
+      matrix:
+        function:
+          - yk-sign-up-trigger
+          - yk-update-role-api
+          - yk-get-city-list
+          - yk-get-college-list
+          - yk-m-update-role-api
+          - yk-submit-profile
+          - yk-get-profile-by-id
+          - yk-get-category-list
+          - yk-submit-event
+          - yk-get-event-list-by-orgid
+          - yk-fetch-event-by-id
+          - yk-get-all-event-by-filter
+          - yk-update-event-status
+          - yk-get-all-event-by-criteria
+          - yk-submit-booking
+          - yk-fetch-booking-by-userid
+          - yk-cancel-booking
+          - yk-update-follow-status
+          - yk-get-user-profile-details
+          - yk-submit-feedback
+          - yk-soft-delete-booking
+          - yk-cognito-config
+          - yk-register-token
+          - yk-unregister-token
+          - yk-send-notifications
+          - yk-update-profile-pic
+          - yk-get-city-id
+          - yk-get-profile-pic
+          - yk-event-reminders
+          - yk-send-push-notification
+          - yk-fetch-booking-by-eventid
+          - yk-monthly-free-plan-refresh
+          - yk-get-dashboard-data
+          - yk-sync-token
+          - yk-sync-eventDate
+          - yk-validate-image
+          - yk-send-booking-otp
+          - yk-mark-attendance
+          - yk-validate-college
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::756157886151:role/GitHubActionsDeploymentRole-yk-user-management
+          role-session-name: GitHubActionsSession
+          aws-region: ${{ github.ref == 'refs/heads/main' && 'ap-south-1' || 'eu-west-1' }}
+
+      - name: Set AWS CLI retry configuration
+        run: |
+          aws configure set retry_mode standard
+          aws configure set max_attempts 2
+
+      - name: Install dependencies
+        run: |
+          cd src/${{ matrix.function }}
+          npm install --production
+
+      - name: Zip Lambda function code
+        run: |
+          cd src/${{ matrix.function }}
+          zip -r function.zip . -x "*.yml"
+
+      - name: Upload Lambda function code to S3
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            BUCKET="yk-zips-ap-south-1"
+            REGION="ap-south-1"
+          else
+            BUCKET="yk-zips"
+            REGION="eu-west-1"
+          fi
+
+          aws s3 cp src/${{ matrix.function }}/function.zip \
+            s3://$BUCKET/${{ matrix.function }}/function.zip \
+            --region $REGION
+
+      - name: Run CloudFormation for Lambda with Retry
+        run: |
+          attempt=0
+          max_attempts=2
+          delay=15
+          until [ "$attempt" -ge "$max_attempts" ]
+          do
+            echo "Attempt $((attempt+1)) to deploy stack..."
+            aws cloudformation deploy \
+              --template-file src/${{ matrix.function }}/cloudformation/lambda-setup.yml \
+              --stack-name user-management-${{ matrix.function }}-stack \
+              --parameter-overrides \
+                StageName=${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }} \
+                Env=${{ github.ref == 'refs/heads/main' && 'Production' || 'Development' }} \
+                ApiGatewayRestApiId=${{ github.ref == 'refs/heads/main' && 'he65gtfesi' || '27sqbwaad7' }} \
+                ApiGatewayRootResourceId=${{ github.ref == 'refs/heads/main' && 'i0inlgzv3b' || '78iwchywp5' }} \
+                CognitoAuthorizerId=${{ github.ref == 'refs/heads/main' && '0rsexn' || 'c0oigh' }} \
+                UserPoolId=${{ github.ref == 'refs/heads/main' && 'ap-south-1_KOPY3vDg8' || 'eu-west-1_hgUDdjyRr' }} \
+              --capabilities CAPABILITY_NAMED_IAM && break
+            attempt=$((attempt+1))
+            echo "Retrying in ${delay} seconds..."
+            sleep $delay
+            delay=$((delay * 2))
+          done
+
+          if [ "$attempt" -eq "$max_attempts" ]; then
+            echo "Deployment failed after $max_attempts attempts."
+            exit 1
+          fi
+
+      - name: Wait for resources to be available
+        run: sleep 30
+
+      - name: Update Lambda function code
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            BUCKET="yk-zips-ap-south-1"
+            REGION="ap-south-1"
+          else
+            BUCKET="yk-zips"
+            REGION="eu-west-1"
+          fi
+
+          aws lambda update-function-code \
+            --function-name ${{ matrix.function }} \
+            --s3-bucket $BUCKET \
+            --s3-key ${{ matrix.function }}/function.zip \
+            --region $REGION

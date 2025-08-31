@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  YKValidateImageLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-validate-image
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 900
+      Environment:
+        Variables:
+          SENDER_EMAIL: !Ref SenderEmail
+          EVENT_TABLE: "EventDetails"
+          ORGANIZER_TABLE: "Organizer"
+          NOTIFICATION_LOGS_TABLE: "NotificationLogs"
+      MemorySize: 256
+      ReservedConcurrentExecutions: 5
+      Code:
+        ZipFile: |
+          // Placeholder: Upload actual code via ZIP file
+          export const handler = async () => {
+            return { statusCode: 200, body: "Placeholder" };
+          };
+      Role: !GetAtt YKValidateImageLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  YKValidateImageLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: YKValidateImageLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails/index/*
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NotificationLogs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-validate-image:*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub arn:aws:s3:::tikto-orgnizer-dev/*
+                  - !Sub arn:aws:s3:::tikto-orgnizer-dev
+              - Effect: Allow
+                Action:
+                  - rekognition:DetectModerationLabels
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendBulkTemplatedEmail
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    ses:FromAddress: !Ref SenderEmail
+
+  ValidateImageS3Trigger:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref YKValidateImageLambda
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::tikto-orgnizer-dev
+
+Parameters:
+  SenderEmail:
+    Type: String
+    Description: Verified SES sender email address
+    Default: "support@tikties.com"
+
+Outputs:
+  YKValidateImageLambdaArn:
+    Description: ARN of the Image Validation Lambda function
+    Value: !GetAtt YKValidateImageLambda.Arn

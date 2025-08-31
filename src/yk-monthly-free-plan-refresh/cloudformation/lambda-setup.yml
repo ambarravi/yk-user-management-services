@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: CloudFormation template for Tikties monthly free plan refresh
+
+Resources:
+  # Lambda: Monthly Free Plan Refresh
+  MonthlyFreePlanRefreshLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-monthly-free-plan-refresh
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 300 # 5 minutes to handle large datasets
+      Environment:
+        Variables:
+          ORGANIZERS_TABLE: "Organizer"
+          PLANS_TABLE: "Plans"
+          SNS_TOPIC_ARN: !Ref MonthlyFreePlanRefreshSNSTopic
+          ADMIN_PHONE_NUMBER: "+919860719197"
+          ADMIN_EMAIL: "ravi.ambar@gmail.com"
+      MemorySize: 256 # Sufficient for DynamoDB scans
+      ReservedConcurrentExecutions: 5 # Limit concurrency to avoid throttling
+      Code:
+        ZipFile: |
+          // Placeholder: Upload actual code via ZIP file
+          export const handler = async () => {
+            return { statusCode: 200, body: "Placeholder" };
+          };
+      Role: !GetAtt MonthlyFreePlanRefreshLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  # IAM Role for MonthlyFreePlanRefreshLambda
+  MonthlyFreePlanRefreshLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MonthlyFreePlanRefreshLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Plans
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref MonthlyFreePlanRefreshSNSTopic
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource:
+                  - !Sub arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/ravi.ambar@gmail.com
+                Resource: !Ref MonthlyFreePlanRefreshSNSTopic
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-monthly-free-plan-refresh:*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  # SNS Topic for Reset Failure Notifications
+  MonthlyFreePlanRefreshSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: tikties-monthly-free-plan-refresh-notifications
+      DisplayName: Tikties Monthly Free Plan Refresh Notifications
+
+  # EventBridge Rule: Monthly Reset
+  MonthlyResetRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Trigger Lambda for monthly free plan refresh at midnight IST on last day of month
+      ScheduleExpression: cron(30 18 L * ? *) # 12:00 AM IST = 6:30 PM UTC previous day
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt MonthlyFreePlanRefreshLambda.Arn
+          Id: MonthlyResetTarget
+
+  # Lambda Permission for EventBridge
+  MonthlyResetRuleLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MonthlyFreePlanRefreshLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt MonthlyResetRule.Arn
+
+
+
+Outputs:
+  MonthlyFreePlanRefreshLambdaArn:
+    Description: ARN of the Monthly Free Plan Refresh Lambda function
+    Value: !GetAtt MonthlyFreePlanRefreshLambda.Arn
+  MonthlyResetRuleArn:
+    Description: ARN of the monthly reset EventBridge rule
+    Value: !GetAtt MonthlyResetRule.Arn
+  MonthlyFreePlanRefreshSNSTopicArn:
+    Description: ARN of the SNS topic for reset notifications
+    Value: !Ref MonthlyFreePlanRefreshSNSTopic

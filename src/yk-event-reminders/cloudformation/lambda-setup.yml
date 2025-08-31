@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  # Lambda: Event Reminder
+  EventReminderLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-event-reminders
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 300 # 5 minutes to handle up to 1,000 notifications
+      Environment:
+        Variables:
+          S3_FCM_KEY: "tiktie-firebase-adminsdk-fbsvc-345e7ed13f.json"
+      MemorySize: 256 # Sufficient for DynamoDB queries and Expo API calls
+      ReservedConcurrentExecutions: 5 # Limit concurrency to avoid DynamoDB throttling
+      Code:
+        ZipFile: |
+          // Placeholder: Upload actual code via ZIP file
+          export const handler = async () => {
+            return { statusCode: 200, body: "Placeholder" };
+          };
+      Role: !GetAtt EventReminderLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  # IAM Role for EventReminderLambda
+  EventReminderLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventReminderLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:PutItem
+                  - dynamodb:DeleteItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/*
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UsersTable
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/TiktoPushTokens
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/NotificationLogs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-event-reminders:*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::tiktie-notifications/*
+                  - !Sub arn:aws:s3:::tiktie-notifications
+
+  # EventBridge Rule: 6-Hour Reminders
+  SixHourReminderRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Trigger Lambda for 6-hour event reminders every 5 minutes (testing, revert to cron(0 1-13 * * ? *) post-testing)
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt EventReminderLambda.Arn
+          Id: SixHourReminderTarget
+          Input: '{"reminder_type":"6_hour"}'
+
+  # EventBridge Rule: 1-Hour Reminders
+  OneHourReminderRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Trigger Lambda for 1-hour event reminders every 5 minutes (testing, revert to cron(0 1-13 * * ? *) post-testing)
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt EventReminderLambda.Arn
+          Id: OneHourReminderTarget
+          Input: '{"reminder_type":"1_hour"}'
+
+  # Lambda Permission for EventBridge: 6-Hour Rule
+  SixHourRuleLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EventReminderLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SixHourReminderRule.Arn
+
+  # Lambda Permission for EventBridge: 1-Hour Rule
+  OneHourRuleLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EventReminderLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt OneHourReminderRule.Arn
+
+Outputs:
+  EventReminderLambdaArn:
+    Description: ARN of the Event Reminder Lambda function
+    Value: !GetAtt EventReminderLambda.Arn
+  SixHourReminderRuleArn:
+    Description: ARN of the 6-hour reminder EventBridge rule
+    Value: !GetAtt SixHourReminderRule.Arn
+  OneHourReminderRuleArn:
+    Description: ARN of the 1-hour reminder EventBridge rule
+    Value: !GetAtt OneHourReminderRule.Arn
