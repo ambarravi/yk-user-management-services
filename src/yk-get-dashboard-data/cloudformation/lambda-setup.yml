@@ -45,7 +45,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: yk-get-dashboard-data-policy
+        - PolicyName: yk-get-dashboard-data-policy-${StageName}
           PolicyDocument:
             Version: "2012-10-17"
             Statement:

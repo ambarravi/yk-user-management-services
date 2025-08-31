@@ -10,7 +10,6 @@ Resources:
       Runtime: nodejs20.x
       Timeout: 60 # 1 minute, sufficient for processing DynamoDB stream records
       MemorySize: 128 # Minimal memory for lightweight token sync operations
-      ReservedConcurrentExecutions: 5 # Limit concurrency to avoid DynamoDB throttling
       Code:
         ZipFile: |
           // Placeholder: Upload actual code via ZIP file
