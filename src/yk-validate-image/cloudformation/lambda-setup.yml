@@ -94,8 +94,8 @@ Resources:
                   - s3:DeleteObject
                   - s3:PutObject
                 Resource:
-                  - !Sub arn:aws:s3:::${!FindInMap [BucketNameMap, !Ref StageName, Bucket]}/*
-                  - !Sub arn:aws:s3:::${!FindInMap [BucketNameMap, !Ref StageName, Bucket]}
+                  - !Sub arn:aws:s3:::${BucketNameMap.${StageName}.Bucket}/*
+                  - !Sub arn:aws:s3:::${BucketNameMap.${StageName}.Bucket}
               - Effect: Allow
                 Action:
                   - rekognition:DetectModerationLabels
@@ -115,7 +115,7 @@ Resources:
       FunctionName: !Ref YKValidateImageLambda
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:aws:s3:::${!FindInMap [BucketNameMap, !Ref StageName, Bucket]}
+      SourceArn: !Sub arn:aws:s3:::${BucketNameMap.${StageName}.Bucket}
 
 Outputs:
   YKValidateImageLambdaArn:
