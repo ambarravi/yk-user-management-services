@@ -27,6 +27,12 @@ Mappings:
       Bucket: tikto-orgnizer-prod
 
 Resources:
+  # Define the S3 Bucket as a resource
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !FindInMap [BucketNameMap, !Ref StageName, Bucket]
+
   YKValidateImageLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -94,8 +100,8 @@ Resources:
                   - s3:DeleteObject
                   - s3:PutObject
                 Resource:
-                  - !Sub arn:aws:s3:::${Bucket}/*
-                  - !Sub arn:aws:s3:::${Bucket}
+                  - !Sub arn:aws:s3:::${!FindInMap [BucketNameMap, !Ref StageName, Bucket]}/*
+                  - !Sub arn:aws:s3:::${!FindInMap [BucketNameMap, !Ref StageName, Bucket]}
               - Effect: Allow
                 Action:
                   - rekognition:DetectModerationLabels
@@ -115,9 +121,8 @@ Resources:
       FunctionName: !Ref YKValidateImageLambda
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:aws:s3:::${BucketName}
+      SourceArn: !Sub arn:aws:s3:::${!FindInMap [BucketNameMap, !Ref StageName, Bucket]}
 
-# Assign the bucket name dynamically
 Outputs:
   YKValidateImageLambdaArn:
     Description: ARN of the Image Validation Lambda function
