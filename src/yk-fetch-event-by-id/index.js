@@ -5,6 +5,7 @@ const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 export const handler = async (event) => {
   try {
+    const origin = event.headers.origin || event.headers.Origin;
     console.log("Input event:", JSON.stringify(event));
 
     const TABLE_EVENT = "EventDetails";
@@ -109,25 +110,43 @@ export const handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
+      headers: getCorsHeaders(origin),
       body: JSON.stringify({ record: response }),
     };
   } catch (error) {
     console.error("Error processing request:", error);
     return {
       statusCode: 500,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
+      headers: getCorsHeaders(origin),
       body: JSON.stringify({
         message: error.message || "Internal Server Error",
       }),
     };
   }
 };
+
+// Helper function to get CORS headers
+function getCorsHeaders(origin) {
+  console.log("in getCorsHeaders function");
+
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "https://dom5rgdes5ko4.cloudfront.net",
+    "https://d14hm89gkj8tgn.cloudfront.net",
+    "https://tikties.com",
+    "*",
+  ];
+
+  const isOriginAllowed = allowedOrigins.includes(origin);
+
+  console.log("Allowed Origin:", isOriginAllowed);
+  return {
+    "Access-Control-Allow-Origin": isOriginAllowed
+      ? origin
+      : "http://localhost:3000",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, X-Amz-Date, X-Api-Key, X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "OPTIONS, POST, GET, PUT, DELETE",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
