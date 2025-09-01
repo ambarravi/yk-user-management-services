@@ -1,10 +1,36 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
+Parameters:
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+    AllowedValues: [dev, prod]
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+  SenderEmail:
+    Type: String
+    Description: Verified SES sender email address
+    Default: "support@tikties.com"
+
+Mappings:
+  BucketNameMap:
+    dev:
+      Bucket: tikto-orgnizer-dev
+    prod:
+      Bucket: tikto-orgnizer-prod
+
 Resources:
   YKValidateImageLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: yk-validate-image
+      FunctionName: !Sub yk-validate-image-${StageName}
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 900
@@ -56,7 +82,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-validate-image:*
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-validate-image-${StageName}:*
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
@@ -68,8 +94,8 @@ Resources:
                   - s3:DeleteObject
                   - s3:PutObject
                 Resource:
-                  - !Sub arn:aws:s3:::tikto-orgnizer-dev/*
-                  - !Sub arn:aws:s3:::tikto-orgnizer-dev
+                  - !Sub arn:aws:s3:::${BucketName}/*
+                  - !Sub arn:aws:s3:::${BucketName}
               - Effect: Allow
                 Action:
                   - rekognition:DetectModerationLabels
@@ -89,15 +115,14 @@ Resources:
       FunctionName: !Ref YKValidateImageLambda
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:aws:s3:::tikto-orgnizer-dev
+      SourceArn: !Sub arn:aws:s3:::${BucketName}
 
-Parameters:
-  SenderEmail:
-    Type: String
-    Description: Verified SES sender email address
-    Default: "support@tikties.com"
-
+# Assign the bucket name dynamically
 Outputs:
   YKValidateImageLambdaArn:
     Description: ARN of the Image Validation Lambda function
     Value: !GetAtt YKValidateImageLambda.Arn
+
+  BucketName:
+    Description: Stage-specific bucket name
+    Value: !FindInMap [BucketNameMap, !Ref StageName, Bucket]
