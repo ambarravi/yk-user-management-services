@@ -26,7 +26,7 @@ Resources:
   YKValidateImageLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub yk-validate-image-${StageName}
+      FunctionName: !Sub yk-validate-image
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 900
@@ -78,7 +78,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-validate-image-${StageName}:*
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-validate-image:*
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
