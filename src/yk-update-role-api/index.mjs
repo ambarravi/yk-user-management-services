@@ -151,6 +151,8 @@ function getCorsHeaders(origin) {
   const allowedOrigins = [
     "http://localhost:3000",
     "https://dom5rgdes5ko4.cloudfront.net",
+    "https://d14hm89gkj8tgn.cloudfront.net",
+    "https://tikties.com",
     "*",
   ];
 
