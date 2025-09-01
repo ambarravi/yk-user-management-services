@@ -27,12 +27,6 @@ Mappings:
       Bucket: tikto-orgnizer-prod
 
 Resources:
-  # Define the S3 Bucket as a resource
-  S3Bucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !FindInMap [BucketNameMap, !Ref StageName, Bucket]
-
   YKValidateImageLambda:
     Type: AWS::Lambda::Function
     Properties:
