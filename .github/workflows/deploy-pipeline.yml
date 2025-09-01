@@ -117,6 +117,7 @@ jobs:
                 ApiGatewayRootResourceId=${{ github.ref == 'refs/heads/main' && 'i0inlgzv3b' || '78iwchywp5' }} \
                 CognitoAuthorizerId=${{ github.ref == 'refs/heads/main' && '0rsexn' || 'c0oigh' }} \
                 UserPoolId=${{ github.ref == 'refs/heads/main' && 'ap-south-1_KOPY3vDg8' || 'eu-west-1_hgUDdjyRr' }} \
+                BucketName=${{ github.ref == 'refs/heads/main' && 'tikto-orgnizer-prod' || 'tikto-orgnizer-dev' }} \
               --capabilities CAPABILITY_NAMED_IAM && break
             attempt=$((attempt+1))
             echo "Retrying in ${delay} seconds..."

@@ -18,13 +18,9 @@ Parameters:
     Type: String
     Description: Verified SES sender email address
     Default: "support@tikties.com"
-
-Mappings:
-  BucketNameMap:
-    dev:
-      Bucket: tikto-orgnizer-dev
-    prod:
-      Bucket: tikto-orgnizer-prod
+  BucketName:
+    Type: String
+    Description: The name of the existing S3 bucket (e.g., tikto-orgnizer-dev or tikto-orgnizer-prod)
 
 Resources:
   YKValidateImageLambda:
@@ -94,8 +90,8 @@ Resources:
                   - s3:DeleteObject
                   - s3:PutObject
                 Resource:
-                  - !Sub arn:aws:s3:::${!FindInMap [BucketNameMap, !Ref StageName, Bucket]}/*
-                  - !Sub arn:aws:s3:::${!FindInMap [BucketNameMap, !Ref StageName, Bucket]}
+                  - !Sub arn:aws:s3:::${BucketName}/*
+                  - !Sub arn:aws:s3:::${BucketName}
               - Effect: Allow
                 Action:
                   - rekognition:DetectModerationLabels
@@ -115,7 +111,7 @@ Resources:
       FunctionName: !Ref YKValidateImageLambda
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: !Sub arn:aws:s3:::${!FindInMap [BucketNameMap, !Ref StageName, Bucket]}
+      SourceArn: !Sub arn:aws:s3:::${BucketName}
 
 Outputs:
   YKValidateImageLambdaArn:
@@ -123,5 +119,5 @@ Outputs:
     Value: !GetAtt YKValidateImageLambda.Arn
 
   BucketName:
-    Description: Stage-specific bucket name
-    Value: !FindInMap [BucketNameMap, !Ref StageName, Bucket]
+    Description: S3 bucket name
+    Value: !Ref BucketName
