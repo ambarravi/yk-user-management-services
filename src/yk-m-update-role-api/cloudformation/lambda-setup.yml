@@ -120,7 +120,7 @@ Resources:
     Properties:
       RestApiId: !Ref ApiGatewayRestApiId
       ParentId: !Ref ApiGatewayRootResourceId
-      PathPart: update-role
+      PathPart: update-m-role
 
   # API Gateway POST Method
   RoleUpdateMobilePOSTMethod:
