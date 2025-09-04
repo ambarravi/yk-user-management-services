@@ -4,10 +4,10 @@ import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { randomInt } from "crypto";
 
 // Initialize AWS clients
-const REGION = process.env.AWS_REGION || "us-east-1";
+const REGION = process.env.AWS_REGION || "eu-west-1";
 const dynamoDBClient = new DynamoDBClient({ region: REGION });
 const dynamodb = DynamoDBDocumentClient.from(dynamoDBClient);
-const ses = new SESClient({ region: REGION });
+const ses = new SESClient({ region: "eu-west-1" });
 
 // Configuration
 const TABLE_NAME = "BookingOtpTable";
