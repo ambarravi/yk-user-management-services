@@ -14,7 +14,7 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from "uuid";
 
 const REGION = process.env.AWS_REGION;
-const USER_POOL_ID = process.env.USER_POOL_ID; // "eu-west-1_hgUDdjyRr";
+const USER_POOL_ID = process.env.USER_POOL_ID;
 const USERS_TABLE = "UsersTable";
 const CITY_TABLE = "City";
 const COLLEGE_TABLE = "College";
@@ -96,8 +96,19 @@ export const handler = async (event) => {
 
 // Input validation
 const validateInput = (event) => {
+  let input;
+  try {
+    // Parse the event.body if it exists, as API Gateway sends the payload as a JSON string
+    input = event.body ? JSON.parse(event.body) : event;
+  } catch (error) {
+    console.error("Error parsing event.body:", error);
+    const parseError = new Error("Invalid JSON in request body");
+    parseError.statusCode = 400;
+    throw parseError;
+  }
+
   const requiredFields = ["userID", "city", "cityId"];
-  const missingFields = requiredFields.filter((field) => !event[field]);
+  const missingFields = requiredFields.filter((field) => !input[field]);
   if (missingFields.length > 0) {
     const error = new Error(
       `Missing required fields: ${missingFields.join(", ")}`
@@ -105,20 +116,21 @@ const validateInput = (event) => {
     error.statusCode = 400;
     throw error;
   }
+
   return {
-    userID: event.userID,
-    userName: event.userName,
-    tempRole: event.tempRole || "user",
-    currentRole: event.currentRole,
-    city: event.city,
-    cityId: event.cityId,
-    state: event.state || "",
-    collegeDetails: event.collegeDetails || {},
-    collegeId: event.collegeId,
-    name: event.name,
-    email: event.email,
-    lastName: event.lastName,
-    phoneNumber: event.phoneNumber,
+    userID: input.userID,
+    userName: input.userName,
+    tempRole: input.tempRole || "user",
+    currentRole: input.currentRole,
+    city: input.city,
+    cityId: input.cityId,
+    state: input.state || "",
+    collegeDetails: input.collegeDetails || {},
+    collegeId: input.collegeId,
+    name: input.name,
+    email: input.email,
+    lastName: input.lastName,
+    phoneNumber: input.phoneNumber,
   };
 };
 

@@ -26,8 +26,7 @@ Resources:
           EVENT_TABLE: "EventDetails"
           S3_BUCKET_NAME: !Sub "tikto-orgnizer-${StageName}"
           ORGANIZER_TABLE: "Organizer"
-          EVENT_UPDATE_SQS_URL: "https://sqs.eu-west-1.amazonaws.com/756157886151/EventCancellationQueue"
-
+          EVENT_UPDATE_SQS_URL: !Sub "https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/EventCancellationQueue-${StageName}"
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -64,7 +63,6 @@ Resources:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventIDGenerator
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
-
               - Effect: Allow
                 Action:
                   - s3:PutObject
@@ -74,14 +72,12 @@ Resources:
                 Resource:
                   - !Sub arn:aws:s3:::tikto-orgnizer-${StageName}
                   - !Sub arn:aws:s3:::tikto-orgnizer-${StageName}/*
-
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
-
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
@@ -91,7 +87,7 @@ Resources:
                 Action:
                   - sqs:SendMessage
                 Resource:
-                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:EventCancellationQueue
+                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:EventCancellationQueue-${StageName}
 
   SubmitEventLambdaPermission:
     Type: AWS::Lambda::Permission
