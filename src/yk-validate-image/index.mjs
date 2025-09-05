@@ -23,7 +23,9 @@ import { v4 as uuidv4 } from "uuid";
 import sharp from "sharp";
 
 const rekognition = new RekognitionClient({});
-const s3 = new S3Client({});
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+});
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const ses = new SESClient({ region: "eu-west-1" });
