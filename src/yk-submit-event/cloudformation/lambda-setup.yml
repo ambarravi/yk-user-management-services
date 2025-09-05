@@ -26,7 +26,7 @@ Resources:
           EVENT_TABLE: "EventDetails"
           S3_BUCKET_NAME: !Sub "tikto-orgnizer-${StageName}"
           ORGANIZER_TABLE: "Organizer"
-          EVENT_UPDATE_SQS_URL: !Sub "https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/EventCancellationQueue-${StageName}"
+          EVENT_UPDATE_SQS_URL: !Sub "https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/EventCancellationQueue"
       Code:
         ZipFile: |
           exports.handler = async (event) => {
@@ -87,7 +87,7 @@ Resources:
                 Action:
                   - sqs:SendMessage
                 Resource:
-                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:EventCancellationQueue-${StageName}
+                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:EventCancellationQueue
 
   SubmitEventLambdaPermission:
     Type: AWS::Lambda::Permission
