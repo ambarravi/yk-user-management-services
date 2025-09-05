@@ -26,7 +26,7 @@ const rekognition = new RekognitionClient({});
 const s3 = new S3Client({});
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
-const ses = new SESClient({});
+const ses = new SESClient({ region: "eu-west-1" });
 
 const LOGO_URL = "https://tikties-logo.s3.amazonaws.com/images/logo.png";
 const EMAIL_LIMIT_PER_HOUR = 5;

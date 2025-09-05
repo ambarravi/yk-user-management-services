@@ -11,7 +11,7 @@ import admin from "firebase-admin";
 
 const ddbClient = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(ddbClient);
-const ses = new SESClient();
+const ses = new SESClient({ region: "eu-west-1" });
 const s3Client = new S3Client();
 
 // Initialize Firebase Admin SDK

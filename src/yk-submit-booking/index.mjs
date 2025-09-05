@@ -13,7 +13,7 @@ const ddbClient = new DynamoDBClient({
   region: process.env.AWS_REGION,
 });
 const sesClient = new SESClient({
-  region: process.env.AWS_REGION,
+  region: "eu-west-1",
 });
 
 // Get environment variables

@@ -9,7 +9,7 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 
 const dynamodbClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const snsClient = new SNSClient({ region: process.env.AWS_REGION });
-const sesClient = new SESClient({ region: process.env.AWS_REGION });
+const sesClient = new SESClient({ region: "eu-west-1" });
 
 const { ORGANIZERS_TABLE, PLANS_TABLE, SNS_TOPIC_ARN, ADMIN_EMAIL } =
   process.env;
