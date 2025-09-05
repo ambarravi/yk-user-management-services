@@ -9,7 +9,7 @@ import {
 import admin from "firebase-admin";
 
 // Initialize S3 client
-const s3Client = new S3Client();
+const s3Client = new S3Client({ region: "eu-west-1" });
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
