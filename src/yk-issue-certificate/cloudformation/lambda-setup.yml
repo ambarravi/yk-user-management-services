@@ -13,13 +13,21 @@ Parameters:
   CognitoAuthorizerId:
     Type: String
     Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+  LambdaCodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing the Lambda deployment package
+    Default: your-lambda-code-bucket
+  LambdaCodeS3Key:
+    Type: String
+    Description: S3 key for the Lambda deployment package
+    Default: issue-certificate-request.zip
 
 Resources:
   # Lambda: Accept Request, Update DynamoDB, and Enqueue to SQS
   IssueCertificateRequestLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: IssueCertificateRequest
+      FunctionName: yk-issue-certificate
       Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 30
@@ -29,11 +37,8 @@ Resources:
           DYNAMODB_TABLE_NAME: EventDetails
       MemorySize: 256
       Code:
-        ZipFile: |
-          exports.handler = async (event) => {
-              console.log("Placeholder Lambda Function");
-              return { statusCode: 200, body: "Placeholder" };
-          };
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
       Role: !GetAtt IssueCertificateRequestLambdaExecutionRole.Arn
       TracingConfig:
         Mode: Active
@@ -64,7 +69,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/IssueCertificateRequest:*
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-issue-certificate:*
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
@@ -111,7 +116,7 @@ Resources:
       ParentId: !Ref ApiGatewayRootResourceId
       PathPart: issue-certificates
 
-  # API Gateway Method: POST /issue-certificates (Integrates with Lambda)
+  # API Gateway Method: POST /issue-certificates
   CertificatePostMethod:
     Type: AWS::ApiGateway::Method
     Properties:
