@@ -1,6 +1,7 @@
 const {
   DynamoDBClient,
   UpdateItemCommand,
+  GetItemCommand,
 } = require("@aws-sdk/client-dynamodb");
 const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
 
@@ -25,28 +26,60 @@ exports.handler = async (event) => {
   }
 
   const ddbClient = new DynamoDBClient({});
-  const updateParams = {
+
+  // Check current status in DynamoDB
+  const getParams = {
     TableName: process.env.DYNAMODB_TABLE_NAME,
     Key: { EventID: { S: eventId } },
-    UpdateExpression: "SET CertificateStatus = :status",
-    ExpressionAttributeValues: { ":status": { S: "Processing" } },
-    ConditionExpression: "attribute_exists(EventID)", // Ensure item exists
   };
 
+  let currentStatus;
   try {
-    await ddbClient.send(new UpdateItemCommand(updateParams));
+    const getResult = await ddbClient.send(new GetItemCommand(getParams));
+    currentStatus = getResult.Item?.CertificateStatus?.S;
   } catch (err) {
-    console.error("DynamoDB update error:", err);
+    console.error("DynamoDB get error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: "Failed to update event status" }),
+      body: JSON.stringify({ message: "Failed to retrieve event status" }),
     };
   }
+
+  // If status is "Completed", skip DynamoDB update
+  if (currentStatus === "Completed") {
+    console.log(`Event ${eventId} already completed, skipping DynamoDB update`);
+  } else {
+    // Update to "Processing" if status is not found or not "Completed"
+    const updateParams = {
+      TableName: process.env.DYNAMODB_TABLE_NAME,
+      Key: { EventID: { S: eventId } },
+      UpdateExpression: "SET CertificateStatus = :status",
+      ExpressionAttributeValues: { ":status": { S: "Processing" } },
+      ConditionExpression:
+        "attribute_exists(EventID) OR attribute_not_exists(CertificateStatus)",
+    };
+
+    try {
+      await ddbClient.send(new UpdateItemCommand(updateParams));
+    } catch (err) {
+      console.error("DynamoDB update error:", err);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ message: "Failed to update event status" }),
+      };
+    }
+  }
+
+  // Prepare SQS payload with status
+  const sqsPayload = {
+    ...body,
+    certificateStatus: currentStatus || "Processing",
+  };
 
   const sqsClient = new SQSClient({});
   const sqsParams = {
     QueueUrl: process.env.SQS_QUEUE_URL,
-    MessageBody: event.body, // Pass original payload as is
+    MessageBody: JSON.stringify(sqsPayload),
   };
 
   try {

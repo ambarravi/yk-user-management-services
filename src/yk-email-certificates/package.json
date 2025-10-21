@@ -1,0 +1,16 @@
+{
+  "name": "issue-certificate-request",
+  "version": "1.0.0",
+  "description": "Lambda function to accept certificate issuance requests, update EventDetails DynamoDB table, and enqueue to SQS",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.731.1",
+    "@aws-sdk/client-sqs": "^3.731.1"
+  },
+  "author": "Ravi Ambar",
+  "license": "MIT"
+}
