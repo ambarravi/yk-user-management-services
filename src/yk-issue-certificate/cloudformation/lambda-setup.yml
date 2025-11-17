@@ -13,6 +13,10 @@ Parameters:
   CognitoAuthorizerId:
     Type: String
     Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+  AllowedOrigin:  # NEW: Parameter for flexible origins (e.g., 'http://localhost:3000' for dev)
+    Type: String
+    Default: "'http://localhost:3000'"
+    Description: Allowed CORS origin (e.g., 'http://localhost:3000' for dev)
 
 Resources:
   # Lambda: Accept Request, Update DynamoDB, and Enqueue to SQS
@@ -130,7 +134,8 @@ Resources:
             method.response.header.Access-Control-Allow-Origin: true
             method.response.header.Access-Control-Allow-Headers: true  # ENHANCED: Enable headers param
             method.response.header.Access-Control-Allow-Methods: true  # ENHANCED: Enable methods param
-            method.response.header.Access-Control-Allow-Credentials: true
+            method.response.header.Access-Control-Allow-Credentials: true  # NEW: For auth headers
+      # NEW: IntegrationResponses to map CORS headers to Lambda responses
       IntegrationResponses:
         - SelectionPattern: "2\d{2}"  # Matches 200-299 (your 202)
           StatusCode: 202
@@ -155,15 +160,17 @@ Resources:
         IntegrationResponses:
           - StatusCode: 200
             ResponseParameters:
-              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Origin: !Ref AllowedOrigin  # ENHANCED: Use param (not '*')
               method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
-              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'"  # NEW: For auth
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
             method.response.header.Access-Control-Allow-Origin: true
             method.response.header.Access-Control-Allow-Methods: true
             method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Credentials: true  # NEW: Enable credentials
 
 Outputs:
   CertificateQueueUrl:
