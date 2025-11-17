@@ -1,11 +1,19 @@
-const {
+import {
   DynamoDBClient,
   UpdateItemCommand,
   GetItemCommand,
-} = require("@aws-sdk/client-dynamodb");
-const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
+} from "@aws-sdk/client-dynamodb";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
+  if (!event.body) {
+    console.error("Missing request body");
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: "Request body is required" }),
+    };
+  }
+
   let body;
   try {
     body = JSON.parse(event.body);
@@ -25,7 +33,8 @@ exports.handler = async (event) => {
     };
   }
 
-  const ddbClient = new DynamoDBClient({});
+  const region = process.env.AWS_REGION || "us-east-1";
+  const ddbClient = new DynamoDBClient({ region });
 
   // Check current status in DynamoDB
   const getParams = {
@@ -61,6 +70,7 @@ exports.handler = async (event) => {
 
     try {
       await ddbClient.send(new UpdateItemCommand(updateParams));
+      console.log(`Updated event ${eventId} status to Processing`);
     } catch (err) {
       console.error("DynamoDB update error:", err);
       return {
@@ -76,7 +86,7 @@ exports.handler = async (event) => {
     certificateStatus: currentStatus || "Processing",
   };
 
-  const sqsClient = new SQSClient({});
+  const sqsClient = new SQSClient({ region });
   const sqsParams = {
     QueueUrl: process.env.SQS_QUEUE_URL,
     MessageBody: JSON.stringify(sqsPayload),
@@ -84,6 +94,7 @@ exports.handler = async (event) => {
 
   try {
     await sqsClient.send(new SendMessageCommand(sqsParams));
+    console.log(`Enqueued certificate request for event ${eventId}`);
   } catch (err) {
     console.error("SQS send error:", err);
     return {
