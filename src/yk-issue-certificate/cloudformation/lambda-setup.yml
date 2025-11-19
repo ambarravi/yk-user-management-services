@@ -167,10 +167,10 @@ Resources:
         IntegrationResponses:
           - StatusCode: 200
             ResponseParameters:
-              method.response.header.Access-Control-Allow-Origin: !Ref AllowedOrigin # ENHANCED: Use param (not '*')
-              method.response.header.Access-Control-Allow-Methods: "POST, OPTIONS"
-              method.response.header.Access-Control-Allow-Headers: "Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token"
-              method.response.header.Access-Control-Allow-Credentials: "true" # NEW: For auth
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'" # ENHANCED: Use param (not '*'), wrapped in single quotes for static value
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'" # NEW: For auth
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
