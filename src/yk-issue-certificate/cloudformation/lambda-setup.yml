@@ -15,7 +15,7 @@ Parameters:
     Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
   AllowedOrigin: # NEW: Parameter for flexible origins (e.g., 'http://localhost:3000' for dev)
     Type: String
-    Default: "'http://localhost:3000'"
+    Default: http://localhost:3000
     Description: Allowed CORS origin (e.g., 'http://localhost:3000' for dev)
 
 Resources:
@@ -31,12 +31,28 @@ Resources:
         Variables:
           SQS_QUEUE_URL: !Ref CertificateQueue
           DYNAMODB_TABLE_NAME: EventDetails
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
       MemorySize: 256
       Code:
         ZipFile: |
           exports.handler = async (event) => {
-              console.log("Placeholder Lambda Function");
-              return { statusCode: 200, body: "Placeholder" };
+              const allowedOrigin = process.env.ALLOWED_ORIGIN;
+              const corsHeaders = {
+                  "Access-Control-Allow-Origin": allowedOrigin,
+                  "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token",
+                  "Access-Control-Allow-Methods": "POST,OPTIONS",
+                  "Access-Control-Allow-Credentials": "true"
+              };
+
+              // TODO: Implement actual logic for DynamoDB update and SQS enqueue
+              console.log("Certificate request accepted (placeholder)");
+              // Placeholder: Simulate enqueuing and updating
+
+              return {
+                  statusCode: 202,
+                  headers: corsHeaders,
+                  body: JSON.stringify({ message: "Certificate request accepted and queued for processing" })
+              };
           };
       Role: !GetAtt IssueCertificateRequestLambdaExecutionRole.Arn
       TracingConfig:
@@ -135,15 +151,6 @@ Resources:
             method.response.header.Access-Control-Allow-Headers: true # ENHANCED: Enable headers param
             method.response.header.Access-Control-Allow-Methods: true # ENHANCED: Enable methods param
             method.response.header.Access-Control-Allow-Credentials: true # NEW: For auth headers
-      # NEW: IntegrationResponses to map CORS headers to Lambda responses
-      IntegrationResponses:
-        - SelectionPattern: "2\\d{2}" # Matches 200-299 (your 202)
-          StatusCode: 202
-          ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: !Ref AllowedOrigin
-            method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token'"
-            method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
-            method.response.header.Access-Control-Allow-Credentials: "'true'"
 
   # API Gateway Method: OPTIONS /issue-certificates
   CertificateOptionsMethod:
@@ -161,9 +168,9 @@ Resources:
           - StatusCode: 200
             ResponseParameters:
               method.response.header.Access-Control-Allow-Origin: !Ref AllowedOrigin # ENHANCED: Use param (not '*')
-              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
-              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token'"
-              method.response.header.Access-Control-Allow-Credentials: "'true'" # NEW: For auth
+              method.response.header.Access-Control-Allow-Methods: "POST, OPTIONS"
+              method.response.header.Access-Control-Allow-Headers: "Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token"
+              method.response.header.Access-Control-Allow-Credentials: "true" # NEW: For auth
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
