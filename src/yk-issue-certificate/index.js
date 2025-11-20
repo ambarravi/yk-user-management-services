@@ -5,11 +5,28 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+  "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
+};
+
 export const handler = async (event) => {
+  // Handle preflight OPTIONS request for CORS
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: "",
+    };
+  }
+
   if (!event.body) {
     console.error("Missing request body");
     return {
       statusCode: 400,
+      headers: corsHeaders,
       body: JSON.stringify({ message: "Request body is required" }),
     };
   }
@@ -21,6 +38,7 @@ export const handler = async (event) => {
     console.error("Invalid JSON in request body:", err);
     return {
       statusCode: 400,
+      headers: corsHeaders,
       body: JSON.stringify({ message: "Invalid request payload" }),
     };
   }
@@ -29,6 +47,7 @@ export const handler = async (event) => {
   if (!eventId) {
     return {
       statusCode: 400,
+      headers: corsHeaders,
       body: JSON.stringify({ message: "Missing eventId in payload" }),
     };
   }
@@ -50,6 +69,7 @@ export const handler = async (event) => {
     console.error("DynamoDB get error:", err);
     return {
       statusCode: 500,
+      headers: corsHeaders,
       body: JSON.stringify({ message: "Failed to retrieve event status" }),
     };
   }
@@ -75,6 +95,7 @@ export const handler = async (event) => {
       console.error("DynamoDB update error:", err);
       return {
         statusCode: 500,
+        headers: corsHeaders,
         body: JSON.stringify({ message: "Failed to update event status" }),
       };
     }
@@ -99,12 +120,14 @@ export const handler = async (event) => {
     console.error("SQS send error:", err);
     return {
       statusCode: 500,
+      headers: corsHeaders,
       body: JSON.stringify({ message: "Failed to enqueue request" }),
     };
   }
 
   return {
     statusCode: 202,
+    headers: corsHeaders,
     body: JSON.stringify({ message: "Certificate request accepted" }),
   };
 };
