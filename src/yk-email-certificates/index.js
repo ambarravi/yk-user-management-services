@@ -13,11 +13,11 @@ const {
 const { SESClient, SendRawEmailCommand } = require("@aws-sdk/client-ses");
 const { createCanvas, loadImage, registerFont } = require("canvas");
 const QRCode = require("qrcode");
-const { v4: uuidv4 } = require("uuid"); // Add uuid library
+const { v4: uuidv4 } = require("uuid");
 
 // Utility function to wrap text
-const wrapText = (ctx, text, maxWidth, fontSize, fontFamily) => {
-  ctx.font = `${fontSize}px ${fontFamily}`;
+const wrapText = (ctx, text, maxWidth, fontStr) => {
+  ctx.font = fontStr;
   const words = text.split(" ");
   const lines = [];
   let currentLine = "";
@@ -27,7 +27,7 @@ const wrapText = (ctx, text, maxWidth, fontSize, fontFamily) => {
     const metrics = ctx.measureText(testLine);
     const testWidth = metrics.width;
 
-    if (testWidth > maxWidth && currentLine) {
+    if (testWidth > maxWidth && currentLine !== "") {
       lines.push(currentLine);
       currentLine = word;
     } else {
@@ -51,11 +51,530 @@ async function streamToBuffer(stream) {
   });
 }
 
+// Load fonts from S3
+async function loadFonts(s3Client, bucket, fontFiles) {
+  for (const font of fontFiles) {
+    try {
+      const fontData = await s3Client.send(
+        new GetObjectCommand({ Bucket: bucket, Key: font.path })
+      );
+      const fontBuffer = await streamToBuffer(fontData.Body);
+      registerFont(fontBuffer, {
+        family: font.family,
+        weight: font.weight || "normal",
+      });
+    } catch (err) {
+      console.error(`Failed to load font ${font.path}:`, err);
+    }
+  }
+}
+
+// Fetch template metadata and image
+async function fetchTemplate(ddbClient, s3Client, bucket, templateId) {
+  const templateParams = {
+    TableName: "CertificateTemplates",
+    Key: { TemplateID: { S: templateId } },
+  };
+  const templateResult = await ddbClient.send(
+    new GetItemCommand(templateParams)
+  );
+  if (!templateResult.Item) {
+    throw new Error(`Template ${templateId} not found in DynamoDB`);
+  }
+
+  const templateMetadata = {
+    templateId: templateId,
+    name: templateResult.Item.TemplateName.S,
+    dimensions: {
+      width: parseInt(templateResult.Item.Dimensions.M.width.N, 10),
+      height: parseInt(templateResult.Item.Dimensions.M.height.N, 10),
+    },
+    placeholders: templateResult.Item.Placeholders.L.map((p) => ({
+      id: p.M.id.S,
+      type: p.M.type.S,
+      position: {
+        x: parseInt(p.M.position.M.x.N, 10),
+        y: parseInt(p.M.position.M.y.N, 10),
+      },
+      style: {
+        fontSize: parseInt(p.M.style.M.fontSize.N, 10),
+        fontFamily: p.M.style.M.fontFamily.S,
+        color: p.M.style.M.color.S,
+        align: p.M.style.M.align.S,
+        fontWeight: p.M.style.M.fontWeight?.S || "normal",
+        radius: p.M.style.M.radius
+          ? parseInt(p.M.style.M.radius.N, 10)
+          : undefined,
+      },
+      maxWidth: parseInt(p.M.maxWidth?.N || "800", 10),
+      lineHeight: parseInt(p.M.lineHeight?.N || "60", 10),
+      size: p.M.size
+        ? {
+            width: parseInt(p.M.size.M.width.N, 10),
+            height: parseInt(p.M.size.M.height.N, 10),
+          }
+        : undefined,
+    })),
+  };
+
+  // Load template image dynamically
+  const templateKey = templateResult.Item.TemplateS3Key.S;
+  const templateData = await s3Client.send(
+    new GetObjectCommand({ Bucket: bucket, Key: templateKey })
+  );
+  const templateBuffer = await streamToBuffer(templateData.Body);
+  const templateImg = await loadImage(templateBuffer);
+
+  return { templateMetadata, templateImg };
+}
+
+// Fetch and load logo image
+async function fetchLogo(ddbClient, orgId) {
+  try {
+    const orgParams = {
+      TableName: "Organizers",
+      Key: { OrganizerID: { S: orgId } },
+    };
+    const orgResult = await ddbClient.send(new GetItemCommand(orgParams));
+    if (!orgResult.Item || !orgResult.Item.logoPath?.S) {
+      console.error(`No logoPath found for OrganizerID ${orgId}`);
+      return null;
+    }
+    const logoPath = orgResult.Item.logoPath.S;
+    return await loadImage(logoPath);
+  } catch (err) {
+    console.error(`Error fetching logo for OrganizerID ${orgId}:`, err);
+    return null;
+  }
+}
+
+// Generate certificate image and ID
+async function generateCertificate(
+  templateMetadata,
+  templateImg,
+  logoImg,
+  name,
+  eventName,
+  certificateInfo
+) {
+  const { width, height } = templateMetadata.dimensions;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+
+  // Draw background
+  ctx.drawImage(templateImg, 0, 0, width, height);
+
+  // Generate unique CertificateID
+  const certificateId = uuidv4();
+
+  // Generate QR code
+  const qrCodeUrl = `https://tikties.com/certificate/verify/${certificateId}`;
+  const qrDataUrl = await QRCode.toDataURL(qrCodeUrl, { margin: 1 });
+  const qrImg = await loadImage(qrDataUrl);
+
+  // Sample data for placeholders
+  const sampleData = {
+    certificate_info: certificateInfo,
+    student_name: name,
+    event_name: eventName,
+    qr_code: qrImg,
+    logo: logoImg,
+    note: "This certificate has been issued digitally through Tikties.com",
+  };
+
+  // Draw placeholders
+  templateMetadata.placeholders.forEach((placeholder) => {
+    const pos = placeholder.position;
+    if (placeholder.type === "text") {
+      let text = sampleData[placeholder.id] || "";
+      if (typeof text !== "string") text = String(text);
+      const fontWeight = placeholder.style.fontWeight || "normal";
+      const fontStr = `${fontWeight} ${placeholder.style.fontSize}px ${placeholder.style.fontFamily}`;
+      ctx.font = fontStr;
+      ctx.fillStyle = placeholder.style.color;
+      ctx.textAlign = placeholder.style.align || "left";
+      ctx.textBaseline = "top";
+
+      const lines = wrapText(ctx, text, placeholder.maxWidth, fontStr);
+
+      const lineHeight =
+        placeholder.lineHeight || placeholder.style.fontSize * 1.2;
+      lines.forEach((line, index) => {
+        ctx.fillText(line, pos.x, pos.y + index * lineHeight);
+      });
+    } else if (placeholder.type === "qr" && placeholder.size) {
+      ctx.drawImage(
+        sampleData.qr_code,
+        pos.x,
+        pos.y,
+        placeholder.size.width,
+        placeholder.size.height
+      );
+    } else if (
+      placeholder.type === "image" &&
+      sampleData[placeholder.id] &&
+      placeholder.size
+    ) {
+      const radius = placeholder.style.radius || 0;
+      ctx.save();
+      if (radius > 0) {
+        ctx.beginPath();
+        ctx.arc(
+          pos.x + placeholder.size.width / 2,
+          pos.y + placeholder.size.height / 2,
+          radius,
+          0,
+          Math.PI * 2
+        );
+        ctx.clip();
+      }
+      ctx.drawImage(
+        sampleData[placeholder.id],
+        pos.x,
+        pos.y,
+        placeholder.size.width,
+        placeholder.size.height
+      );
+      ctx.restore();
+    }
+  });
+
+  const buffer = canvas.toBuffer("image/png");
+  return { buffer, certificateId, qrCodeUrl };
+}
+
+// Upload certificate to S3
+async function uploadCertificate(s3Client, bucket, eventId, userId, buffer) {
+  const certKey = `${eventId}/${userId}/certificate.png`;
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: certKey,
+      Body: buffer,
+      ContentType: "image/png",
+    })
+  );
+  return certKey;
+}
+
+// Store certificate details in DynamoDB
+async function storeCertificate(
+  ddbClient,
+  eventId,
+  email,
+  userId,
+  certificateId,
+  certKey,
+  name,
+  eventName,
+  certificateInfo,
+  qrCodeUrl,
+  status
+) {
+  let item = {
+    EventID: { S: eventId },
+    AttendeeEmail: { S: email },
+    UserID: { S: userId },
+    CertificateID: { S: certificateId },
+    CertificateStatus: { S: status },
+    Name: { S: name },
+  };
+
+  if (certKey) {
+    item.CertificateS3Key = { S: certKey };
+  }
+
+  if (status === "Generated") {
+    item.EventName = { S: eventName };
+    item.CertificateInfo = { S: certificateInfo };
+    item.QRCodeUrl = { S: qrCodeUrl };
+  }
+
+  await ddbClient.send(
+    new PutItemCommand({
+      TableName: "CertificateRecipients",
+      Item: item,
+    })
+  );
+}
+
+// Check if certificate already generated
+async function checkCertificateExists(ddbClient, eventId, email) {
+  const checkCertParams = {
+    TableName: "CertificateRecipients",
+    Key: {
+      EventID: { S: eventId },
+      AttendeeEmail: { S: email },
+    },
+  };
+
+  try {
+    const checkResult = await ddbClient.send(
+      new GetItemCommand(checkCertParams)
+    );
+    return (
+      checkResult.Item && checkResult.Item.CertificateStatus.S === "Generated"
+    );
+  } catch (err) {
+    console.error(`Error checking CertificateRecipients for ${email}:`, err);
+    return false;
+  }
+}
+
+// Check booking and attendance
+async function checkAndGetBooking(ddbClient, eventId, email) {
+  try {
+    const queryParams = {
+      TableName: "BookingDetails",
+      IndexName: "EventBookingIndex",
+      KeyConditionExpression: "EventID = :eventId AND BookingEmail = :email",
+      ExpressionAttributeValues: {
+        ":eventId": { S: eventId },
+        ":email": { S: email },
+      },
+    };
+    const queryResult = await ddbClient.send(new QueryCommand(queryParams));
+
+    if (queryResult.Items.length > 0) {
+      const bookingItem = queryResult.Items[0];
+      if (!bookingItem.MarkAttendance?.BOOL) {
+        return { exists: true, attended: false, bookingItem: null };
+      }
+      return { exists: true, attended: true, bookingItem };
+    } else {
+      return { exists: false, attended: true, bookingItem: null };
+    }
+  } catch (err) {
+    console.error(`Error querying BookingDetails for ${email}:`, err);
+    return { exists: false, attended: false, bookingItem: null };
+  }
+}
+
+// Update booking with certificate issued
+async function updateBookingCertificate(ddbClient, bookingId) {
+  try {
+    const updateBookingParams = {
+      TableName: "BookingDetails",
+      Key: { BookingID: bookingId },
+      UpdateExpression: "SET CertificateIssued = :true",
+      ExpressionAttributeValues: { ":true": { BOOL: true } },
+    };
+    await ddbClient.send(new UpdateItemCommand(updateBookingParams));
+  } catch (err) {
+    console.error(
+      `Error updating BookingDetails for booking ${bookingId}:`,
+      err
+    );
+  }
+}
+
+// Send certificate email (separate module function)
+async function sendCertificateEmail(
+  sesClient,
+  email,
+  buffer,
+  subject = "Your Event Certificate",
+  textBody = "Please find your certificate attached.",
+  isTestMode = false
+) {
+  const fromEmail = "support@tikties.com";
+  const attachmentBase64 = buffer.toString("base64");
+  const rawEmail = `From: ${fromEmail}\r\nTo: ${email}\r\nSubject: ${subject}\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="NextPart"\r\n\r\n--NextPart\r\nContent-Type: text/plain\r\n\r\n${textBody}\r\n\r\n--NextPart\r\nContent-Type: image/png; name="certificate.png"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment\r\n\r\n${attachmentBase64}\r\n--NextPart--`;
+
+  if (isTestMode) {
+    console.log(`[TEST MODE] Would send email:`);
+    console.log(`  To: ${email}`);
+    console.log(`  From: ${fromEmail}`);
+    console.log(`  Subject: ${subject}`);
+    console.log(`  Body: ${textBody}`);
+    console.log(`  Attachment: certificate.png (${buffer.length} bytes)`);
+    return;
+  }
+
+  try {
+    await sesClient.send(
+      new SendRawEmailCommand({
+        RawMessage: { Data: Buffer.from(rawEmail) },
+      })
+    );
+  } catch (err) {
+    console.error(`Error sending email to ${email}:`, err);
+    throw err;
+  }
+}
+
+// Update event status
+async function updateEventStatus(
+  ddbClient,
+  eventId,
+  tableName = process.env.DYNAMODB_EVENT_TABLE
+) {
+  try {
+    const updateParams = {
+      TableName: tableName,
+      Key: { EventID: { S: eventId } },
+      UpdateExpression: "SET CertificateStatus = :status",
+      ExpressionAttributeValues: { ":status": { S: "Completed" } },
+    };
+    await ddbClient.send(new UpdateItemCommand(updateParams));
+  } catch (err) {
+    console.error(`Error updating event status for ${eventId}:`, err);
+    throw err;
+  }
+}
+
+// Process single attendee
+async function processAttendee(
+  ddbClient,
+  s3Client,
+  sesClient,
+  bucket,
+  eventId,
+  eventName,
+  orgId,
+  showLogo,
+  templateMetadata,
+  templateImg,
+  logoImg,
+  attendee,
+  certificateInfo,
+  isTestMode
+) {
+  const { name, email } = attendee;
+  if (!name || !email) {
+    console.log(`Skipping attendee: missing name or email`);
+    return false;
+  }
+
+  // Generate UserID from email
+  const userId = email.replace(/[^a-zA-Z0-9]/g, "-");
+
+  // Check if certificate already exists
+  if (await checkCertificateExists(ddbClient, eventId, email)) {
+    console.log(
+      `Certificate already generated for ${email} in event ${eventId}, skipping`
+    );
+    return false;
+  }
+
+  // Check attendance in BookingDetails
+  const bookingCheck = await checkAndGetBooking(ddbClient, eventId, email);
+  let isAdditionalRecipient = !bookingCheck.exists;
+  if (bookingCheck.exists && !bookingCheck.attended) {
+    console.log(
+      `Attendance not marked for ${email} in event ${eventId}, skipping`
+    );
+    return false;
+  } else if (isAdditionalRecipient) {
+    console.log(
+      `No booking found for ${email} in event ${eventId}, processing as additional recipient`
+    );
+  }
+
+  // Generate certificate
+  const { buffer, certificateId, qrCodeUrl } = await generateCertificate(
+    templateMetadata,
+    templateImg,
+    logoImg,
+    name,
+    eventName,
+    certificateInfo
+  );
+
+  let certKey;
+  try {
+    certKey = await uploadCertificate(
+      s3Client,
+      bucket,
+      eventId,
+      userId,
+      buffer
+    );
+  } catch (err) {
+    console.error(`Error uploading to S3 for ${email}:`, err);
+    // Store failure status in DynamoDB
+    await storeCertificate(
+      ddbClient,
+      eventId,
+      email,
+      userId,
+      certificateId,
+      null,
+      name,
+      eventName,
+      certificateInfo,
+      qrCodeUrl,
+      "Failed"
+    );
+    return false;
+  }
+
+  // Send email with attachment
+  try {
+    await sendCertificateEmail(
+      sesClient,
+      email,
+      buffer,
+      "Your Event Certificate",
+      "Please find your certificate attached.",
+      isTestMode
+    );
+  } catch (err) {
+    console.error(`Error sending email to ${email}:`, err);
+    // Store failure status in DynamoDB
+    await storeCertificate(
+      ddbClient,
+      eventId,
+      email,
+      userId,
+      certificateId,
+      certKey,
+      name,
+      eventName,
+      certificateInfo,
+      qrCodeUrl,
+      "Failed"
+    );
+    return false;
+  }
+
+  // Store certificate details in CertificateRecipients
+  try {
+    await storeCertificate(
+      ddbClient,
+      eventId,
+      email,
+      userId,
+      certificateId,
+      certKey,
+      name,
+      eventName,
+      certificateInfo,
+      qrCodeUrl,
+      "Generated"
+    );
+  } catch (err) {
+    console.error(`Error storing certificate details for ${email}:`, err);
+    throw err; // Critical error
+  }
+
+  // If not an additional recipient, update BookingDetails
+  if (!isAdditionalRecipient && bookingCheck.bookingItem) {
+    await updateBookingCertificate(
+      ddbClient,
+      bookingCheck.bookingItem.BookingID.S
+    );
+  }
+
+  return true;
+}
+
 exports.handler = async (event) => {
   const ddbClient = new DynamoDBClient({});
   const s3Client = new S3Client({});
   const sesClient = new SESClient({});
   const bucket = process.env.S3_BUCKET;
+  const isTestMode = process.env.TEST_MODE === "true";
   const fontFiles = [
     {
       path: "templates/fonts/Merriweather-Regular.ttf",
@@ -70,17 +589,7 @@ exports.handler = async (event) => {
   ];
 
   // Register fonts
-  for (const font of fontFiles) {
-    try {
-      const fontData = await s3Client.send(
-        new GetObjectCommand({ Bucket: bucket, Key: font.path })
-      );
-      const fontBuffer = await streamToBuffer(fontData.Body);
-      registerFont(fontBuffer, { family: font.family, weight: font.weight });
-    } catch (err) {
-      console.error(`Failed to load font ${font.path}:`, err);
-    }
-  }
+  await loadFonts(s3Client, bucket, fontFiles);
 
   for (const record of event.Records) {
     let body;
@@ -106,389 +615,57 @@ exports.handler = async (event) => {
       throw new Error("orgId is required");
     }
 
-    // Fetch dynamic template metadata from DynamoDB
     let templateMetadata;
     let templateImg;
+    let logoImg = null;
     try {
-      const templateParams = {
-        TableName: "CertificateTemplates",
-        Key: { TemplateID: { S: templateId } },
-      };
-      const templateResult = await ddbClient.send(
-        new GetItemCommand(templateParams)
-      );
-      if (!templateResult.Item) {
-        throw new Error(`Template ${templateId} not found in DynamoDB`);
-      }
-
-      templateMetadata = {
-        templateId: templateId,
-        name: templateResult.Item.TemplateName.S,
-        dimensions: {
-          width: parseInt(templateResult.Item.Dimensions.M.width.N, 10),
-          height: parseInt(templateResult.Item.Dimensions.M.height.N, 10),
-        },
-        placeholders: templateResult.Item.Placeholders.L.map((p) => ({
-          id: p.M.id.S,
-          type: p.M.type.S,
-          position: {
-            x: parseInt(p.M.position.M.x.N, 10),
-            y: parseInt(p.M.position.M.y.N, 10),
-          },
-          style: {
-            fontSize: parseInt(p.M.style.M.fontSize.N, 10),
-            fontFamily: p.M.style.M.fontFamily.S,
-            color: p.M.style.M.color.S,
-            align: p.M.style.M.align.S,
-            fontWeight: p.M.style.M.fontWeight?.S || "normal",
-          },
-          maxWidth: parseInt(p.M.maxWidth?.N || "0", 10) || 800,
-          lineHeight: parseInt(p.M.lineHeight?.N || "0", 10) || 60,
-          size: p.M.size
-            ? {
-                width: parseInt(p.M.size.M.width.N, 10),
-                height: parseInt(p.M.size.M.height.N, 10),
-              }
-            : undefined,
-        })),
-      };
-
-      // Load template image dynamically
-      const templateKey = templateResult.Item.TemplateS3Key.S;
-      const templateData = await s3Client.send(
-        new GetObjectCommand({ Bucket: bucket, Key: templateKey })
-      );
-      const templateBuffer = await streamToBuffer(templateData.Body);
-      templateImg = await loadImage(templateBuffer);
+      ({ templateMetadata, templateImg } = await fetchTemplate(
+        ddbClient,
+        s3Client,
+        bucket,
+        templateId
+      ));
     } catch (err) {
       console.error(`Error fetching template ${templateId}:`, err);
       throw err;
     }
 
-    // Fetch logo path from Organizers table
-    let logoImg = null;
-    let logoPath = null;
     if (showLogo) {
-      try {
-        const orgParams = {
-          TableName: "Organizers",
-          Key: { OrganizerID: { S: orgId } },
-        };
-        const orgResult = await ddbClient.send(new GetItemCommand(orgParams));
-        if (!orgResult.Item || !orgResult.Item.logoPath?.S) {
-          console.error(`No logoPath found for OrganizerID ${orgId}`);
-        } else {
-          logoPath = orgResult.Item.logoPath.S;
-          logoImg = await loadImage(logoPath);
-        }
-      } catch (err) {
-        console.error(`Error fetching logo for OrganizerID ${orgId}:`, err);
-        logoImg = null;
-      }
+      logoImg = await fetchLogo(ddbClient, orgId);
     }
 
-    let processedNewAttendees = false;
+    let processedAny = false;
 
     for (const attendee of attendees || []) {
-      const { name, email } = attendee;
-      if (!name || !email) {
-        console.log(`Skipping attendee: missing name or email`);
-        continue;
-      }
-
-      // Generate UserID from email
-      const userId = email.replace(/[^a-zA-Z0-9]/g, "-");
-
-      // Generate unique CertificateID
-      const certificateId = uuidv4();
-
-      // Check if certificate already exists in CertificateRecipients
-      const checkCertParams = {
-        TableName: "CertificateRecipients",
-        Key: {
-          EventID: { S: eventId },
-          AttendeeEmail: { S: email },
-        },
-      };
-
       try {
-        const checkResult = await ddbClient.send(
-          new GetItemCommand(checkCertParams)
+        const processed = await processAttendee(
+          ddbClient,
+          s3Client,
+          sesClient,
+          bucket,
+          eventId,
+          eventName,
+          orgId,
+          showLogo,
+          templateMetadata,
+          templateImg,
+          logoImg,
+          attendee,
+          certificateInfo,
+          isTestMode
         );
-        if (
-          checkResult.Item &&
-          checkResult.Item.CertificateStatus.S === "Generated"
-        ) {
-          console.log(
-            `Certificate already generated for ${email} in event ${eventId}, skipping`
-          );
-          continue;
+        if (processed) {
+          processedAny = true;
         }
       } catch (err) {
-        console.error(
-          `Error checking CertificateRecipients for ${email}:`,
-          err
-        );
-        continue;
-      }
-
-      // Check attendance in BookingDetails
-      let isAdditionalRecipient = true;
-      let bookingItem = null;
-      try {
-        const queryParams = {
-          TableName: "BookingDetails",
-          IndexName: "EventBookingIndex",
-          KeyConditionExpression:
-            "EventID = :eventId AND BookingEmail = :email",
-          ExpressionAttributeValues: {
-            ":eventId": { S: eventId },
-            ":email": { S: email },
-          },
-        };
-        const queryResult = await ddbClient.send(new QueryCommand(queryParams));
-
-        if (queryResult.Items.length > 0) {
-          bookingItem = queryResult.Items[0];
-          isAdditionalRecipient = false;
-          if (!bookingItem.MarkAttendance.BOOL) {
-            console.log(
-              `Attendance not marked for ${email} in event ${eventId}, skipping`
-            );
-            continue;
-          }
-        } else {
-          console.log(
-            `No booking found for ${email} in event ${eventId}, processing as additional recipient`
-          );
-        }
-      } catch (err) {
-        console.error(`Error querying BookingDetails for ${email}:`, err);
-        continue;
-      }
-
-      // Proceed with certificate generation
-      processedNewAttendees = true;
-
-      // Generate QR code with CertificateID
-      const qrCodeUrl = `https://tikties.com/certificate/verify/${certificateId}`;
-      const qrDataUrl = await QRCode.toDataURL(qrCodeUrl, { margin: 1 });
-      const qrImg = await loadImage(qrDataUrl);
-
-      // Create canvas
-      const width = templateMetadata.dimensions.width;
-      const height = templateMetadata.dimensions.height;
-      const canvas = createCanvas(width, height);
-      const ctx = canvas.getContext("2d");
-
-      // Draw background
-      ctx.drawImage(templateImg, 0, 0, width, height);
-
-      // Sample data for placeholders
-      const sampleData = {
-        certificate_info: certificateInfo,
-        student_name: name,
-        event_name: eventName,
-        qr_code: qrImg,
-        logo: logoImg,
-        note: "This certificate has been issued digitally through Tikties.com",
-      };
-
-      // Draw placeholders
-      templateMetadata.placeholders.forEach((placeholder) => {
-        if (placeholder.type === "text") {
-          const text = sampleData[placeholder.id] || "";
-          const fontWeight = placeholder.style.fontWeight || "normal";
-          ctx.font = `${fontWeight} ${placeholder.style.fontSize}px ${placeholder.style.fontFamily}`;
-          ctx.fillStyle = placeholder.style.color;
-          ctx.textAlign = placeholder.style.align || "left";
-          ctx.textBaseline = "top";
-
-          const lines = wrapText(
-            ctx,
-            text,
-            placeholder.maxWidth || width,
-            placeholder.style.fontSize,
-            placeholder.style.fontFamily
-          );
-
-          const lineHeight =
-            placeholder.lineHeight || placeholder.style.fontSize * 1.2;
-          lines.forEach((line, index) => {
-            ctx.fillText(
-              line,
-              placeholder.position.x,
-              placeholder.position.y + index * lineHeight
-            );
-          });
-        } else if (placeholder.type === "qr") {
-          ctx.drawImage(
-            sampleData.qr_code,
-            placeholder.position.x,
-            placeholder.position.y,
-            placeholder.size.width,
-            placeholder.size.height
-          );
-        } else if (placeholder.type === "image" && sampleData[placeholder.id]) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(
-            placeholder.position.x + placeholder.size.width / 2,
-            placeholder.position.y + placeholder.size.height / 2,
-            placeholder.style.radius,
-            0,
-            Math.PI * 2
-          );
-          ctx.clip();
-          ctx.drawImage(
-            sampleData[placeholder.id],
-            placeholder.position.x,
-            placeholder.position.y,
-            placeholder.size.width,
-            placeholder.size.height
-          );
-          ctx.restore();
-        }
-      });
-
-      // Get PNG buffer
-      const buffer = canvas.toBuffer("image/png");
-
-      // Upload to S3
-      const certKey = `${eventId}/${userId}/certificate.png`;
-      try {
-        await s3Client.send(
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: certKey,
-            Body: buffer,
-            ContentType: "image/png",
-          })
-        );
-      } catch (err) {
-        console.error(`Error uploading to S3 for ${certKey}:`, err);
-        // Store failure status in DynamoDB
-        await ddbClient.send(
-          new PutItemCommand({
-            TableName: "CertificateRecipients",
-            Item: {
-              EventID: { S: eventId },
-              AttendeeEmail: { S: email },
-              UserID: { S: userId },
-              CertificateID: { S: certificateId }, // Add CertificateID
-              CertificateStatus: { S: "Failed" },
-              Name: { S: name },
-            },
-          })
-        );
-        continue;
-      }
-
-      // Send email with attachment
-      const fromEmail = "support@tikties.com";
-      const subject = "Your Event Certificate";
-      const textBody = "Please find your certificate attached.";
-
-      const attachmentBase64 = buffer.toString("base64");
-      const rawEmail = `From: ${fromEmail}
-To: ${email}
-Subject: ${subject}
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="NextPart"
-
---NextPart
-Content-Type: text/plain
-
-${textBody}
-
---NextPart
-Content-Type: image/png; name="certificate.png"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment
-
-${attachmentBase64}
---NextPart--`;
-
-      try {
-        await sesClient.send(
-          new SendRawEmailCommand({
-            RawMessage: { Data: Buffer.from(rawEmail) },
-          })
-        );
-      } catch (err) {
-        console.error(`Error sending email to ${email}:`, err);
-        // Store failure status in DynamoDB
-        await ddbClient.send(
-          new PutItemCommand({
-            TableName: "CertificateRecipients",
-            Item: {
-              EventID: { S: eventId },
-              AttendeeEmail: { S: email },
-              UserID: { S: userId },
-              CertificateID: { S: certificateId }, // Add CertificateID
-              CertificateStatus: { S: "Failed" },
-              CertificateS3Key: { S: certKey },
-              Name: { S: name },
-            },
-          })
-        );
-        continue;
-      }
-
-      // Store certificate details in CertificateRecipients
-      try {
-        const recordParams = {
-          TableName: "CertificateRecipients",
-          Item: {
-            EventID: { S: eventId },
-            AttendeeEmail: { S: email },
-            UserID: { S: userId },
-            CertificateID: { S: certificateId }, // Add CertificateID
-            CertificateStatus: { S: "Generated" },
-            CertificateS3Key: { S: certKey },
-            Name: { S: name },
-            EventName: { S: eventName }, // For verification
-            CertificateInfo: { S: certificateInfo }, // For verification
-            QRCodeUrl: { S: qrCodeUrl }, // For audit
-          },
-        };
-        await ddbClient.send(new PutItemCommand(recordParams));
-      } catch (err) {
-        console.error(`Error storing certificate details for ${email}:`, err);
-        throw err; // Critical error, send to DLQ
-      }
-
-      // If not an additional recipient, update BookingDetails
-      if (!isAdditionalRecipient && bookingItem) {
-        try {
-          const updateBookingParams = {
-            TableName: "BookingDetails",
-            Key: { BookingID: bookingItem.BookingID },
-            UpdateExpression: "SET CertificateIssued = :true",
-            ExpressionAttributeValues: { ":true": { BOOL: true } },
-          };
-          await ddbClient.send(new UpdateItemCommand(updateBookingParams));
-        } catch (err) {
-          console.error(`Error updating BookingDetails for ${email}:`, err);
-          // Continue processing
-        }
+        console.error(`Error processing attendee ${attendee.email}:`, err);
+        // Continue to next attendee
       }
     }
 
     // Update event-level status if new attendees were processed
-    if (processedNewAttendees) {
-      try {
-        const updateParams = {
-          TableName: process.env.DYNAMODB_EVENT_TABLE,
-          Key: { EventID: { S: eventId } },
-          UpdateExpression: "SET CertificateStatus = :status",
-          ExpressionAttributeValues: { ":status": { S: "Completed" } },
-        };
-        await ddbClient.send(new UpdateItemCommand(updateParams));
-      } catch (err) {
-        console.error(`Error updating event status for ${eventId}:`, err);
-        throw err;
-      }
+    if (processedAny) {
+      await updateEventStatus(ddbClient, eventId);
     }
   }
 };

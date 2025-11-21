@@ -56,6 +56,7 @@ jobs:
           - yk-mark-attendance
           - yk-validate-college
           - yk-issue-certificate
+          - yk-email-certificate
 
     steps:
       - name: Checkout code

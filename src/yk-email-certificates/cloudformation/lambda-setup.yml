@@ -21,6 +21,7 @@ Resources:
           DYNAMODB_BOOKING_TABLE: BookingDetails
           S3_BUCKET: !Sub tikto-orgnizer-${StageName}
           CERTIFICATE_PATH_PREFIX: eventID/UserID
+          isTestMode: true
       MemorySize: 256
       Code:
         S3Bucket: !Sub tikto-orgnizer-${StageName}
