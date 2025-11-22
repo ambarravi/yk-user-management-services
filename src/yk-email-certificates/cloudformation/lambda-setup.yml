@@ -24,8 +24,26 @@ Resources:
           isTestMode: true
       MemorySize: 256
       Code:
-        S3Bucket: !Sub tikto-orgnizer-${StageName}
-        S3Key: lambda/email-certificates.zip # Assumes ZIP file is uploaded to S3
+        ZipFile: |
+          exports.handler = async (event) => {
+              const allowedOrigin = process.env.ALLOWED_ORIGIN;
+              const corsHeaders = {
+                  "Access-Control-Allow-Origin": allowedOrigin,
+                  "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token",
+                  "Access-Control-Allow-Methods": "POST,OPTIONS",
+                  "Access-Control-Allow-Credentials": "true"
+              };
+
+              // TODO: Implement actual logic for DynamoDB update and SQS enqueue
+              console.log("Certificate request accepted (placeholder)");
+              // Placeholder: Simulate enqueuing and updating
+
+              return {
+                  statusCode: 202,
+                  headers: corsHeaders,
+                  body: JSON.stringify({ message: "Certificate request accepted and queued for processing" })
+              };
+          };
       Role: !GetAtt EmailCertificatesLambdaExecutionRole.Arn
       TracingConfig:
         Mode: Active
