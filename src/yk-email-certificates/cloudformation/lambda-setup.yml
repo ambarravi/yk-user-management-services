@@ -10,7 +10,7 @@ Resources:
   EmailCertificatesLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: email-certificates
+      FunctionName: yk-email-certificates
       Handler: certificate_processor.handler
       Runtime: nodejs20.x
       Timeout: 30
@@ -97,7 +97,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/email-certificates:*
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-email-certificates:*
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
