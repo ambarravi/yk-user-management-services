@@ -11,7 +11,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: yk-email-certificates
-      Handler: certificate_processor.handler
+      Handler: index.handler
       Runtime: nodejs20.x
       Timeout: 30
       Environment:
