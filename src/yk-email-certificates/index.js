@@ -368,7 +368,7 @@ async function updateBookingCertificate(ddbClient, bookingId) {
   }
 }
 
-// Send certificate email (separate module function)
+// Send certificate email (separate module function) Updated test comment to reflect changes
 async function sendCertificateEmail(
   sesClient,
   email,
