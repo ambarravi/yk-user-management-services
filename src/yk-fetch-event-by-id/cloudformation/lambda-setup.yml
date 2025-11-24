@@ -15,7 +15,7 @@ Parameters:
     Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
 
 Resources:
-  FetchEventByIDLambda:
+  FetchEventByIDLambda: # Logical ID with uppercase ID
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: yk-fetch-event-by-id
@@ -30,13 +30,21 @@ Resources:
         ZipFile: |
           exports.handler = async (event) => {
               console.log("Placeholder Lambda Function");
-              return { statusCode: 200, body: "Placeholder" };
+              return { 
+                  statusCode: 200, 
+                  headers: {
+                      "Access-Control-Allow-Origin": "*",
+                      "Access-Control-Allow-Methods": "POST, OPTIONS",
+                      "Access-Control-Allow-Headers": "Content-Type, Authorization"
+                  },
+                  body: JSON.stringify("Placeholder") 
+              };
           };
-      Role: !GetAtt FetchEventByIdLambdaExecutionRole.Arn
+      Role: !GetAtt FetchEventByIDLambdaExecutionRole.Arn # Fixed casing to match role logical ID below
       TracingConfig:
         Mode: Active
 
-  FetchEventByIdLambdaExecutionRole:
+  FetchEventByIDLambdaExecutionRole: # Renamed logical ID to match uppercase ID
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -56,22 +64,23 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:Query
                 Resource:
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UserOrganizationFollow
-
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails" # Quoted
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer" # Quoted
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/UserOrganizationFollow" # Quoted
               - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:GetObject
                   - s3:DeleteObject
-                Resource: !Sub arn:aws:s3:::tikto-orgnizer-${StageName}/*
+                Resource: !Sub "arn:aws:s3:::tikto-orgnizer-${StageName}/*" # Quoted
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+                Resource: # Expanded for log streams
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*" # Quoted
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:log-stream:*" # Quoted
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
@@ -81,7 +90,7 @@ Resources:
   LambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref FetchEventByIDLambda
+      FunctionName: !Ref FetchEventByIDLambda # Consistent casing
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
@@ -106,8 +115,8 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { LambdaArn: !GetAtt FetchEventByIDLambda.Arn }
-      MethodResponses:
+          - { LambdaArn: !GetAtt FetchEventByIDLambda.Arn } # Fixed casing
+      MethodResponses: # No IntegrationResponses here (AWS_PROXY)
         - StatusCode: 200
           ResponseParameters:
             method.response.header.Access-Control-Allow-Origin: "'*'"
@@ -125,7 +134,7 @@ Resources:
         Type: MOCK
         RequestTemplates:
           application/json: '{ "statusCode": 200 }'
-        IntegrationResponses:
+        IntegrationResponses: # Keep this only here (MOCK)
           - StatusCode: 200
             ResponseParameters:
               method.response.header.Access-Control-Allow-Origin: "'*'"
