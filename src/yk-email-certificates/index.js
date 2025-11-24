@@ -569,7 +569,7 @@ async function processAttendee(
   return true;
 }
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   const ddbClient = new DynamoDBClient({});
   const s3Client = new S3Client({});
   const sesClient = new SESClient({});
