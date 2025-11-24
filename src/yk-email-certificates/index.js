@@ -1,19 +1,19 @@
-const {
+import {
   DynamoDBClient,
   UpdateItemCommand,
   GetItemCommand,
   PutItemCommand,
   QueryCommand,
-} = require("@aws-sdk/client-dynamodb");
-const {
+} from "@aws-sdk/client-dynamodb";
+import {
   S3Client,
   GetObjectCommand,
   PutObjectCommand,
-} = require("@aws-sdk/client-s3");
-const { SESClient, SendRawEmailCommand } = require("@aws-sdk/client-ses");
-const { createCanvas, loadImage, registerFont } = require("canvas");
-const QRCode = require("qrcode");
-const { v4: uuidv4 } = require("uuid");
+} from "@aws-sdk/client-s3";
+import { SESClient, SendRawEmailCommand } from "@aws-sdk/client-ses";
+import { createCanvas, loadImage, registerFont } from "canvas";
+import QRCode from "qrcode";
+import { v4 as uuidv4 } from "uuid";
 
 // Utility function to wrap text
 const wrapText = (ctx, text, maxWidth, fontStr) => {
