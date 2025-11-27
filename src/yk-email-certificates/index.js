@@ -14,6 +14,7 @@ import { SESClient, SendRawEmailCommand } from "@aws-sdk/client-ses";
 import { createCanvas, loadImage, registerFont } from "canvas";
 import QRCode from "qrcode";
 import { v4 as uuidv4 } from "uuid";
+import fs from "fs/promises";
 
 // Utility function to wrap text
 const wrapText = (ctx, text, maxWidth, fontStr) => {
@@ -41,6 +42,15 @@ const wrapText = (ctx, text, maxWidth, fontStr) => {
   return lines;
 };
 
+// Extract DynamoDB attribute value with default
+const extractAttr = (attr, defaultValue = 0) => {
+  if (!attr) return defaultValue;
+  if (attr.N !== undefined) return parseInt(attr.N, 10);
+  if (attr.S !== undefined) return attr.S;
+  if (attr.BOOL !== undefined) return attr.BOOL;
+  return defaultValue;
+};
+
 // Utility to convert stream to buffer
 async function streamToBuffer(stream) {
   return new Promise((resolve, reject) => {
@@ -51,7 +61,24 @@ async function streamToBuffer(stream) {
   });
 }
 
-// Load fonts from S3
+// // Load fonts from S3
+// async function loadFonts(s3Client, bucket, fontFiles) {
+//   for (const font of fontFiles) {
+//     try {
+//       const fontData = await s3Client.send(
+//         new GetObjectCommand({ Bucket: bucket, Key: font.path })
+//       );
+//       const fontBuffer = await streamToBuffer(fontData.Body);
+//       registerFont(fontBuffer, {
+//         family: font.family,
+//         weight: font.weight || "normal",
+//       });
+//     } catch (err) {
+//       console.error(`Failed to load font ${font.path}:`, err);
+//     }
+//   }
+// }
+
 async function loadFonts(s3Client, bucket, fontFiles) {
   for (const font of fontFiles) {
     try {
@@ -59,10 +86,17 @@ async function loadFonts(s3Client, bucket, fontFiles) {
         new GetObjectCommand({ Bucket: bucket, Key: font.path })
       );
       const fontBuffer = await streamToBuffer(fontData.Body);
-      registerFont(fontBuffer, {
+
+      // Write buffer to temp file
+      const tempPath = `/tmp/${font.path.split("/").pop()}`; // e.g., /tmp/merriweather.regular.ttf
+      await fs.writeFile(tempPath, fontBuffer);
+
+      // Register with path
+      registerFont(tempPath, {
         family: font.family,
         weight: font.weight || "normal",
       });
+      console.log(`Registered font: ${font.family} from ${tempPath}`);
     } catch (err) {
       console.error(`Failed to load font ${font.path}:`, err);
     }
@@ -86,39 +120,41 @@ async function fetchTemplate(ddbClient, s3Client, bucket, templateId) {
     templateId: templateId,
     name: templateResult.Item.TemplateName.S,
     dimensions: {
-      width: parseInt(templateResult.Item.Dimensions.M.width.N, 10),
-      height: parseInt(templateResult.Item.Dimensions.M.height.N, 10),
+      width: extractAttr(templateResult.Item.Dimensions?.M?.width, 800),
+      height: extractAttr(templateResult.Item.Dimensions?.M?.height, 600),
     },
     placeholders: templateResult.Item.Placeholders.L.map((p) => ({
-      id: p.M.id.S,
-      type: p.M.type.S,
+      id: p.M?.id?.S || "",
+      type: p.M?.type?.S || "text",
       position: {
-        x: parseInt(p.M.position.M.x.N, 10),
-        y: parseInt(p.M.position.M.y.N, 10),
+        x: extractAttr(p.M?.position?.M?.x, 0),
+        y: extractAttr(p.M?.position?.M?.y, 0),
       },
       style: {
-        fontSize: parseInt(p.M.style.M.fontSize.N, 10),
-        fontFamily: p.M.style.M.fontFamily.S,
-        color: p.M.style.M.color.S,
-        align: p.M.style.M.align.S,
-        fontWeight: p.M.style.M.fontWeight?.S || "normal",
-        radius: p.M.style.M.radius
-          ? parseInt(p.M.style.M.radius.N, 10)
-          : undefined,
+        fontSize: extractAttr(p.M?.style?.M?.fontSize, 12),
+        fontFamily: p.M?.style?.M?.fontFamily?.S || "Arial",
+        color: p.M?.style?.M?.color?.S || "#000000",
+        align: p.M?.style?.M?.align?.S || "left",
+        fontWeight: p.M?.style?.M?.fontWeight?.S || "normal",
+        radius: extractAttr(p.M?.style?.M?.radius),
       },
-      maxWidth: parseInt(p.M.maxWidth?.N || "800", 10),
-      lineHeight: parseInt(p.M.lineHeight?.N || "60", 10),
-      size: p.M.size
+      maxWidth: extractAttr(p.M?.maxWidth, 800),
+      lineHeight: extractAttr(p.M?.lineHeight, 60),
+      size: p.M?.size
         ? {
-            width: parseInt(p.M.size.M.width.N, 10),
-            height: parseInt(p.M.size.M.height.N, 10),
+            width: extractAttr(p.M.size.M?.width),
+            height: extractAttr(p.M.size.M?.height),
           }
         : undefined,
     })),
   };
 
   // Load template image dynamically
-  const templateKey = templateResult.Item.TemplateS3Key.S;
+
+  const templateKey = templateResult.Item?.TemplateS3Key?.S;
+  if (!templateKey) {
+    throw new Error(`No TemplateS3Key for ${templateId}`);
+  }
   const templateData = await s3Client.send(
     new GetObjectCommand({ Bucket: bucket, Key: templateKey })
   );
