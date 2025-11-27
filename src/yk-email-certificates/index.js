@@ -577,15 +577,15 @@ export const handler = async (event) => {
   const isTestMode = process.env.TEST_MODE === "true";
   const fontFiles = [
     {
-      path: "/templates/fonts/merriweather.regular.ttf",
+      path: "templates/fonts/merriweather.regular.ttf",
       family: "Merriweather",
     },
     {
-      path: "/templates/fonts/merriweather.bold.ttf",
+      path: "templates/fonts/merriweather.bold.ttf",
       family: "Merriweather",
       weight: "bold",
     },
-    { path: "/templates/fonts/alex-brush.regular.ttf", family: "Alex Brush" },
+    { path: "templates/fonts/alex-brush.regular.ttf", family: "Alex Brush" },
   ];
 
   // Register fonts
