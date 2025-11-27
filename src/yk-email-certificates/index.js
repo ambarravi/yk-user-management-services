@@ -606,6 +606,8 @@ async function processAttendee(
 }
 
 export const handler = async (event) => {
+  console.log(JSON.stringify(event));
+  console.log(event);
   const ddbClient = new DynamoDBClient({});
   const s3Client = new S3Client({});
   const sesClient = new SESClient({});
