@@ -165,21 +165,21 @@ async function fetchTemplate(ddbClient, s3Client, bucket, templateId) {
 }
 
 // Fetch and load logo image
-async function fetchLogo(ddbClient, orgId) {
+async function fetchLogo(ddbClient, orgID) {
   try {
     const orgParams = {
       TableName: "Organizers",
-      Key: { OrganizerID: { S: orgId } },
+      Key: { OrganizerID: { S: orgID } },
     };
     const orgResult = await ddbClient.send(new GetItemCommand(orgParams));
     if (!orgResult.Item || !orgResult.Item.logoPath?.S) {
-      console.error(`No logoPath found for OrganizerID ${orgId}`);
+      console.error(`No logoPath found for OrganizerID ${orgID}`);
       return null;
     }
     const logoPath = orgResult.Item.logoPath.S;
     return await loadImage(logoPath);
   } catch (err) {
-    console.error(`Error fetching logo for OrganizerID ${orgId}:`, err);
+    console.error(`Error fetching logo for OrganizerID ${orgID}:`, err);
     return null;
   }
 }
@@ -467,7 +467,7 @@ async function processAttendee(
   bucket,
   eventId,
   eventName,
-  orgId,
+  orgID,
   showLogo,
   templateMetadata,
   templateImg,
@@ -643,14 +643,14 @@ export const handler = async (event) => {
       eventName,
       certificateInfo,
       showLogo,
-      orgId,
+      orgID,
       attendees,
       templateId = "canva_001",
     } = body;
 
-    if (!orgId) {
-      console.error("Missing orgId in payload");
-      throw new Error("orgId is required");
+    if (!orgID) {
+      console.error("Missing orgID in payload");
+      throw new Error("orgID is required");
     }
 
     let templateMetadata;
@@ -669,7 +669,7 @@ export const handler = async (event) => {
     }
 
     if (showLogo) {
-      logoImg = await fetchLogo(ddbClient, orgId);
+      logoImg = await fetchLogo(ddbClient, orgID);
     }
 
     let processedAny = false;
@@ -683,7 +683,7 @@ export const handler = async (event) => {
           bucket,
           eventId,
           eventName,
-          orgId,
+          orgID,
           showLogo,
           templateMetadata,
           templateImg,
