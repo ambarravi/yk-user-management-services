@@ -82,6 +82,7 @@ Resources:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/CertificateTemplates
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/CertificateRecipients
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizers
+                  - !sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/EventBookingIndex
               - Effect: Allow
                 Action:
                   - s3:PutObject
