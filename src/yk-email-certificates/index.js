@@ -548,7 +548,7 @@ async function processAttendee(
     await storeCertificate(
       ddbClient,
       eventId,
-      email,
+      email.toLowerCase(),
       userId,
       certificateId,
       null,
@@ -565,7 +565,7 @@ async function processAttendee(
   try {
     await sendCertificateEmail(
       sesClient,
-      email,
+      email.toLowerCase(),
       buffer,
       "Your Event Certificate",
       "Please find your certificate attached.",
@@ -577,7 +577,7 @@ async function processAttendee(
     await storeCertificate(
       ddbClient,
       eventId,
-      email,
+      email.toLowerCase(),
       userId,
       certificateId,
       certKey,
@@ -595,7 +595,7 @@ async function processAttendee(
     await storeCertificate(
       ddbClient,
       eventId,
-      email,
+      email.toLowerCase(),
       userId,
       certificateId,
       certKey,
