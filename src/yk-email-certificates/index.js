@@ -307,13 +307,21 @@ async function storeCertificate(
   qrCodeUrl,
   status
 ) {
+  // Check if certificate already generated before storing
+  // const exists = await checkCertificateExists(ddbClient, eventId, email);
+  // if (exists) {
+  //   console.log(`Certificate already generated for eventId: ${eventId}, email: ${email}`);
+  //   return;
+  // }
+
   let item = {
+    CertificateID: { S: certificateId }, // Primary partition key
     EventID: { S: eventId },
     AttendeeEmail: { S: email },
     UserID: { S: userId },
-    CertificateID: { S: certificateId },
     CertificateStatus: { S: status },
     Name: { S: name },
+    IssueDate: { S: new Date().toISOString() },
   };
 
   if (certKey) {
@@ -338,18 +346,26 @@ async function storeCertificate(
 async function checkCertificateExists(ddbClient, eventId, email) {
   const checkCertParams = {
     TableName: "CertificateRecipients",
-    Key: {
-      EventID: { S: eventId },
-      AttendeeEmail: { S: email },
+    IndexName: "eventID-email-index",
+    KeyConditionExpression: "#eventId = :eventId AND #email = :email",
+    ExpressionAttributeNames: {
+      "#eventId": "EventID",
+      "#email": "AttendeeEmail",
     },
+    ExpressionAttributeValues: {
+      ":eventId": { S: eventId },
+      ":email": { S: email },
+    },
+    ProjectionExpression: "CertificateStatus", // Optional: project only the status to optimize
   };
 
   try {
-    const checkResult = await ddbClient.send(
-      new GetItemCommand(checkCertParams)
-    );
+    const checkResult = await ddbClient.send(new QueryCommand(checkCertParams));
+    // Assuming unique combination; check the first (and only) item
     return (
-      checkResult.Item && checkResult.Item.CertificateStatus.S === "Generated"
+      checkResult.Items &&
+      checkResult.Items.length > 0 &&
+      checkResult.Items[0].CertificateStatus?.S === "Generated"
     );
   } catch (err) {
     console.error(`Error checking CertificateRecipients for ${email}:`, err);

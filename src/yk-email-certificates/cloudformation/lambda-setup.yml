@@ -81,6 +81,7 @@ Resources:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/CertificateTemplates
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/CertificateRecipients
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/CertificateRecipients/eventID-email-index
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizers
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/EventBookingIndex
               - Effect: Allow
