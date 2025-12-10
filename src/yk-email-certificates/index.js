@@ -455,22 +455,31 @@ async function sendCertificateEmail(
   }
 }
 
-// Update event status
+// Update event status and certificate issued count
 async function updateEventStatus(
   ddbClient,
   eventId,
+  processedCount = 0,
   tableName = process.env.DYNAMODB_EVENT_TABLE
 ) {
   try {
+    let updateExpression = "SET CertificateStatus = :status";
+    const expressionValues = { ":status": { S: "Completed" } };
+
+    if (processedCount > 0) {
+      updateExpression += " ADD CertificateIssuedCount :count";
+      expressionValues[":count"] = { N: processedCount.toString() };
+    }
+
     const updateParams = {
       TableName: tableName,
       Key: { EventID: { S: eventId } },
-      UpdateExpression: "SET CertificateStatus = :status",
-      ExpressionAttributeValues: { ":status": { S: "Completed" } },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeValues: expressionValues,
     };
     await ddbClient.send(new UpdateItemCommand(updateParams));
   } catch (err) {
-    console.error(`Error updating event status for ${eventId}:`, err);
+    console.error(`Error updating event status/count for ${eventId}:`, err);
     throw err;
   }
 }
@@ -688,7 +697,7 @@ export const handler = async (event) => {
       logoImg = await fetchLogo(ddbClient, orgID);
     }
 
-    let processedAny = false;
+    let processedCount = 0;
 
     for (const attendee of attendees || []) {
       try {
@@ -709,7 +718,7 @@ export const handler = async (event) => {
           isTestMode
         );
         if (processed) {
-          processedAny = true;
+          processedCount++;
         }
       } catch (err) {
         console.error(`Error processing attendee ${attendee.email}:`, err);
@@ -717,9 +726,9 @@ export const handler = async (event) => {
       }
     }
 
-    // Update event-level status if new attendees were processed
-    if (processedAny) {
-      await updateEventStatus(ddbClient, eventId);
+    // Update event-level status and increment certificate issued count if any were processed
+    if (processedCount > 0) {
+      await updateEventStatus(ddbClient, eventId, processedCount);
     }
   }
 };

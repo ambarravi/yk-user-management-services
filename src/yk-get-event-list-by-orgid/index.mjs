@@ -36,7 +36,7 @@ export async function handler(event) {
       ":eventStatus": { S: "Deleted" }, // The status to exclude
     },
     ProjectionExpression:
-      "#eventID, #eventTitle, #eventDate, #eventstatus, #ticketsBooked, #seats,#readableEventID", // Fetch only required attributes
+      "#eventID, #eventTitle, #eventDate, #eventstatus, #ticketsBooked, #seats,#readableEventID, #certificateIssuedCount", // Fetch only required attributes
     ExpressionAttributeNames: {
       "#eventID": "EventID",
       "#readableEventID": "ReadableEventID",
@@ -45,6 +45,7 @@ export async function handler(event) {
       "#eventstatus": "EventStatus",
       "#ticketsBooked": "SeatsBooked",
       "#seats": "Seats",
+      "#certificateIssuedCount": "CertificateIssuedCount",
     },
     Limit: limit, // Pagination limit
     ExclusiveStartKey: lastEvaluatedKey ? JSON.parse(lastEvaluatedKey) : null, // Continue from the last evaluated key
@@ -67,6 +68,7 @@ export async function handler(event) {
         ...item,
         Status: item.Status || "AwaitingApproval", // Default to "AwaitingApproval" if Status is not found
         TicketsBooked: item.SeatsBooked || 0, // Default to 0 if TicketsBooked is not found
+        CertificateIssuedCount: item.CertificateIssuedCount || 0, // Default to 0 if CertificateIssuedCount is not found
       }));
 
       console.log("Query succeeded:", itemsWithDefaults);
