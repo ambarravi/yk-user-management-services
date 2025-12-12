@@ -21,15 +21,7 @@ Resources:
         ZipFile: |
           exports.handler = async (event) => {
               console.log("Placeholder Lambda Function");
-              return {
-                statusCode: 200,
-                headers: {
-                  "Access-Control-Allow-Origin": "*",
-                  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                  "Access-Control-Allow-Methods": "GET, OPTIONS"
-                },
-                body: JSON.stringify({ colleges: [] })
-              };
+              return { statusCode: 200, body: "Placeholder" };
           };
       Role: !GetAtt GetCollegeLambdaExecutionRole.Arn
       TracingConfig:
@@ -45,22 +37,30 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
       Policies:
-        - PolicyName: GetCollegeDynamoDBPolicy
+        - PolicyName: GetCollegeLambdaPolicy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
+                  - dynamodb:GetItem
                   - dynamodb:Scan
                   - dynamodb:Query
-                  - dynamodb:GetItem
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College*
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/College/index/City-index
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
 
   LambdaInvokePermission:
     Type: AWS::Lambda::Permission
@@ -68,7 +68,7 @@ Resources:
       FunctionName: !Ref GetCollegeListLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*/*/GET/get-college
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
 
   GetCollegeResource:
     Type: AWS::ApiGateway::Resource
@@ -87,11 +87,35 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetCollegeListLambda.Arn}/invocations
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt [GetCollegeListLambda, Arn] }
+        RequestParameters:
+          integration.request.querystring.city: method.request.querystring.city
+          integration.request.querystring.searchText: method.request.querystring.searchText
+        RequestTemplates:
+          application/json: |
+            {
+              "queryStringParameters": {
+                "city": "$input.params('city')",
+                "searchText": "$input.params('searchText')"
+              }
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+      RequestParameters:
+        method.request.querystring.city: false
+        method.request.querystring.searchText: false
       MethodResponses:
         - StatusCode: 200
-          ResponseModels:
-            "application/json": "Empty"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
 
   GetCollegeOPTIONSMethod:
     Type: AWS::ApiGateway::Method
@@ -103,25 +127,16 @@ Resources:
       Integration:
         Type: MOCK
         RequestTemplates:
-          application/json: '{"statusCode": 200}'
+          application/json: '{ "statusCode": 200 }'
         IntegrationResponses:
           - StatusCode: 200
             ResponseParameters:
-              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
               method.response.header.Access-Control-Allow-Origin: "'*'"
-            ResponseTemplates:
-              application/json: '{"statusCode": 200}'
+              method.response.header.Access-Control-Allow-Methods: "'GET, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
-            method.response.header.Access-Control-Allow-Headers: true
-            method.response.header.Access-Control-Allow-Methods: true
             method.response.header.Access-Control-Allow-Origin: true
-
-Outputs:
-  GetCollegeEndpoint:
-    Description: API Gateway endpoint URL for get-college
-    Value: !Sub https://${ApiGatewayRestApiId}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/get-college
-    Export:
-      Name: !Sub ${AWS::StackName}-GetCollegeEndpoint
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
