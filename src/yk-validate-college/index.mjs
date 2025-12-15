@@ -1,3 +1,8 @@
+const corsHeaders = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*", // For prod, restrict to your domain
+};
+
 export const handler = async (event) => {
   console.log(event.body);
   const bodyString = event.body;
@@ -17,6 +22,7 @@ export const handler = async (event) => {
     };
     return {
       statusCode: 400,
+      headers: corsHeaders,
       body: JSON.stringify(errorResult), // Return full error object
     };
   }
@@ -37,6 +43,7 @@ export const handler = async (event) => {
     console.log(`Validation result: ${JSON.stringify(result)}`);
     return {
       statusCode: 200,
+      headers: corsHeaders,
       body: JSON.stringify(result), // Return full result object
     };
   }
@@ -50,6 +57,7 @@ export const handler = async (event) => {
     console.log(`Validation result: ${JSON.stringify(result)}`);
     return {
       statusCode: 200,
+      headers: corsHeaders,
       body: JSON.stringify(result), // Return full result object
     };
   }
@@ -215,6 +223,7 @@ Respond **ONLY** with a JSON object that strictly follows this structure.
     };
     return {
       statusCode: 500,
+      headers: corsHeaders,
       body: JSON.stringify(errorResult), // Return full error object
     };
   }
@@ -240,6 +249,7 @@ Respond **ONLY** with a JSON object that strictly follows this structure.
 
   return {
     statusCode: 200,
+    headers: corsHeaders,
     body: JSON.stringify(finalResult),
   };
 };
