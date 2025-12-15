@@ -1,5 +1,6 @@
 {
-  "cityId": "1259229",
+  "collegeName": "BMCC",
+  "city": "pune",
   "currentRole": ",user",
   "collegeDetails": {
     "University": "Government College of Engineering",
@@ -16,7 +17,6 @@
   "name": "Ravi",
   "lastName": "Ambar",
   "picture": "",
-  "city": "Pune",
   "username": "google_115751856932696261052",
   "phoneNumber": "+919860719197",
   "userID": "google_115751856932696261052",

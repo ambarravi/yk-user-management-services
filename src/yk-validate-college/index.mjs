@@ -2,19 +2,22 @@ export const handler = async (event) => {
   console.log(event.body);
   const bodyString = event.body;
 
+  console.log("Parsing request body...");
+  console.log(bodyString);
   let bodyJson;
   try {
     bodyJson = JSON.parse(bodyString);
   } catch (error) {
     console.error("Failed to parse request body:", error);
+    const errorResult = {
+      valid: false,
+      reason: "Invalid JSON format in request body.",
+      suggestions: [],
+      verified: false,
+    };
     return {
       statusCode: 400,
-      body: JSON.stringify({
-        valid: false,
-        reason: "Invalid JSON format in request body.",
-        suggestions: [],
-        verified: false,
-      }),
+      body: JSON.stringify(errorResult), // Return full error object
     };
   }
 
@@ -34,7 +37,7 @@ export const handler = async (event) => {
     console.log(`Validation result: ${JSON.stringify(result)}`);
     return {
       statusCode: 200,
-      body: JSON.stringify(result.suggestions),
+      body: JSON.stringify(result), // Return full result object
     };
   }
   if (!city || typeof city !== "string" || !city.trim()) {
@@ -47,7 +50,7 @@ export const handler = async (event) => {
     console.log(`Validation result: ${JSON.stringify(result)}`);
     return {
       statusCode: 200,
-      body: JSON.stringify(result.suggestions),
+      body: JSON.stringify(result), // Return full result object
     };
   }
 
@@ -87,21 +90,6 @@ Respond **ONLY** with a JSON object that strictly follows this structure.
     "valid": boolean,
     "reason": "A short, precise reason for the validation status.",
     "suggestions": ["college name 1, area, short form", "college name 2, area, short form", ...],
-    "verified": false
-}
-
-Example:
-For collegeName: "Bharathi Engineering", city: "Pune":
-{
-    "valid": true,
-    "reason": "Looks valid but unverified.",
-    "suggestions": [
-        "Bharati Vidyapeeth College of Engineering, Katraj,",
-        "Bharati Vidyapeeth College of Engineering, Lavale,BVCOE",
-        "College of Engineering, Shivajinagar, COEP",
-        "Vishwakarma Institute of Technology, Bibwewadi,VIT",
-        "Pune Institute of Computer Technology, Dhankawadi, PICT"
-    ],
     "verified": false
 }
 `;
@@ -146,7 +134,11 @@ For collegeName: "Bharathi Engineering", city: "Pune":
   };
 
   const apiKey = process.env.API_KEY;
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+  //console.log(apiKey);
+  // **************** CRITICAL FIX *******************
+  // Change the deprecated model name to the stable version.
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  // *************************************************
 
   let retries = 0;
   const maxRetries = 5;
@@ -161,6 +153,7 @@ For collegeName: "Bharathi Engineering", city: "Pune":
         body: JSON.stringify(payload),
       });
 
+      // Handle Rate Limiting (429) - Retryable Error
       if (response.status === 429) {
         retries++;
         const delay = Math.pow(2, retries) * 1000; // Exponential backoff
@@ -171,27 +164,40 @@ For collegeName: "Bharathi Engineering", city: "Pune":
         continue;
       }
 
+      // Handle other non-ok responses (including 400 Bad Request) - Non-retryable
       if (!response.ok) {
-        throw new Error(`API call failed with status: ${response.status}`);
+        // Log the response body for detailed error analysis
+        const errorBody = await response.text();
+        console.error(
+          `Gemini API Error Status: ${response.status}. Body: ${errorBody}`
+        );
+        // For 400, throw the error and break the retry loop immediately
+        throw new Error(
+          `API call failed with status: ${
+            response.status
+          }. Reason: ${errorBody.substring(0, 100)}...`
+        );
       }
 
       const rawResult = await response.json();
-      if (
-        rawResult.candidates &&
-        rawResult.candidates.length > 0 &&
-        rawResult.candidates[0].content &&
-        rawResult.candidates[0].content.parts &&
-        rawResult.candidates[0].content.parts.length > 0
-      ) {
-        const jsonText = rawResult.candidates[0].content.parts[0].text;
+
+      // Simplified parsing of the structured JSON output
+      const candidates = rawResult.candidates || [];
+      if (candidates.length > 0 && candidates[0].content?.parts?.length > 0) {
+        const jsonText = candidates[0].content.parts[0].text;
         result = JSON.parse(jsonText);
       } else {
-        throw new Error("Invalid response structure from Gemini API");
+        throw new Error("Invalid or empty response structure from Gemini API");
       }
+
       break; // Success, exit the loop
     } catch (error) {
       console.error("Error invoking Gemini API:", error);
       retries++;
+      // If the error is not 429 and not a rate limit issue, stop retrying.
+      if (retries >= maxRetries || error.message.indexOf("429") === -1) {
+        break;
+      }
       const delay = Math.pow(2, retries) * 1000;
       console.warn(`Request failed. Retrying in ${delay / 1000}s...`);
       await new Promise((resolve) => setTimeout(resolve, delay));
@@ -202,37 +208,38 @@ For collegeName: "Bharathi Engineering", city: "Pune":
   if (!result) {
     const errorResult = {
       valid: false,
-      reason: "API call failed after multiple retries.",
+      reason:
+        "API call failed after multiple retries. Check logs for 400 error body.",
       suggestions: [],
       verified: false,
     };
     return {
       statusCode: 500,
-      body: JSON.stringify(errorResult.suggestions),
+      body: JSON.stringify(errorResult), // Return full error object
     };
   }
 
-  // The prompt and response schema should handle the logic, but we'll add a final check
-  // to ensure "suggestions" is empty if "valid" is false.
-  if (result.valid === false) {
-    result.suggestions = [];
-  }
-
-  // Ensure the final output matches the requested format, regardless of the model's output
+  // Final formatting and cleanup
   const finalResult = {
-    valid: result.valid || false,
+    valid: result.valid === true,
     reason:
       result.reason ||
-      (result.valid ? "Looks valid but unverified." : "Rejected."),
+      (result.valid
+        ? "Looks valid but unverified."
+        : "Rejected by model logic."),
     suggestions: Array.isArray(result.suggestions) ? result.suggestions : [],
     verified: false,
   };
 
+  // Enforce suggestion emptiness if invalid
+  if (finalResult.valid === false) {
+    finalResult.suggestions = [];
+  }
+
   console.log(`Final validation result: ${JSON.stringify(finalResult)}`);
 
-  // Return only suggestions array for UI compatibility, as per the original code
   return {
     statusCode: 200,
-    body: JSON.stringify(finalResult.suggestions),
+    body: JSON.stringify(finalResult),
   };
 };
