@@ -31,16 +31,23 @@ Resources:
         ZipFile: |
           exports.handler = async (event) => {
               console.log("Event:", JSON.stringify(event));
-              const { collegeName, city, cityId } = event;
+              const corsHeaders = {
+                  "Access-Control-Allow-Origin": "*",
+                  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                  "Access-Control-Allow-Methods": "POST, OPTIONS"
+              };
+              const { collegeName, city, cityId } = JSON.parse(event.body || '{}');
               if (!collegeName || !city || !cityId) {
                   return {
                       statusCode: 400,
-                      body: JSON.stringify([])
+                      headers: corsHeaders,
+                      body: JSON.stringify({ error: "Missing required parameters: collegeName, city, cityId" })
                   };
               }
               // Return empty suggestions array as AI validation is removed
               return {
                   statusCode: 200,
+                  headers: corsHeaders,
                   body: JSON.stringify([])
               };
           };
@@ -96,7 +103,7 @@ Resources:
       FunctionName: !Ref ValidateCollegeLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*/*/POST/validate-college
 
   # API Gateway Resource (ValidateCollege)
   ValidateCollegeResource:
@@ -118,15 +125,23 @@ Resources:
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
-        Uri: !Sub
-          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
-          - { LambdaArn: !GetAtt ValidateCollegeLambda.Arn }
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ValidateCollegeLambda.Arn}/invocations
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
-            method.response.header.Access-Control-Allow-Origin: "'*'"
-            method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
-            method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+        - StatusCode: 400
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+        - StatusCode: 500
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
 
   # API Gateway OPTIONS Method (ValidateCollege)
   ValidateCollegeOPTIONSMethod:
@@ -145,7 +160,7 @@ Resources:
             ResponseParameters:
               method.response.header.Access-Control-Allow-Origin: "'*'"
               method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
-              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type, Authorization, X-Amz-Date, X-Amz-Security-Token'"
       MethodResponses:
         - StatusCode: 200
           ResponseParameters:
