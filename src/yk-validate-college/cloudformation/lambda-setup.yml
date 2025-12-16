@@ -103,7 +103,7 @@ Resources:
       FunctionName: !Ref ValidateCollegeLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*/*/POST/validate-college
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*/validate-college/POST
 
   # API Gateway Resource (ValidateCollege)
   ValidateCollegeResource:
