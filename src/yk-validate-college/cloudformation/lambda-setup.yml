@@ -36,12 +36,12 @@ Resources:
                   "Access-Control-Allow-Headers": "Content-Type, Authorization",
                   "Access-Control-Allow-Methods": "POST, OPTIONS"
               };
-              const { collegeName, city, cityId } = JSON.parse(event.body || '{}');
-              if (!collegeName || !city || !cityId) {
+              const { collegeName, city } = JSON.parse(event.body || '{}');
+              if (!collegeName || !city ) {
                   return {
                       statusCode: 400,
                       headers: corsHeaders,
-                      body: JSON.stringify({ error: "Missing required parameters: collegeName, city, cityId" })
+                      body: JSON.stringify({ error: "Missing required parameters: collegeName, city" })
                   };
               }
               // Return empty suggestions array as AI validation is removed
@@ -103,7 +103,7 @@ Resources:
       FunctionName: !Ref ValidateCollegeLambda
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*/validate-college/POST
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
 
   # API Gateway Resource (ValidateCollege)
   ValidateCollegeResource:
