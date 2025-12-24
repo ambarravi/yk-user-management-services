@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+
+Resources:
+  # Lambda: Process SQS Messages and Send Certificates
+  EmailCertificatesLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-email-certificates
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          SQS_QUEUE_URL: !Sub arn:aws:sqs:${AWS::Region}:756157886151:user-management-yk-issue-certificate-stack-CertificateQueue
+          DYNAMODB_EVENT_TABLE: EventDetails
+          DYNAMODB_BOOKING_TABLE: BookingDetails
+          S3_BUCKET: !Sub tikto-orgnizer-${StageName}
+          CERTIFICATE_PATH_PREFIX: eventID/UserID
+          isTestMode: true
+      MemorySize: 256
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              const allowedOrigin = process.env.ALLOWED_ORIGIN;
+              const corsHeaders = {
+                  "Access-Control-Allow-Origin": allowedOrigin,
+                  "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token",
+                  "Access-Control-Allow-Methods": "POST,OPTIONS",
+                  "Access-Control-Allow-Credentials": "true"
+              };
+
+              // TODO: Implement actual logic for DynamoDB update and SQS enqueue
+              console.log("Certificate request accepted (placeholder)");
+              // Placeholder: Simulate enqueuing and updating
+
+              return {
+                  statusCode: 202,
+                  headers: corsHeaders,
+                  body: JSON.stringify({ message: "Certificate request accepted and queued for processing" })
+              };
+          };
+      Role: !GetAtt EmailCertificatesLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  # IAM Role for EmailCertificatesLambda
+  EmailCertificatesLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EmailCertificatesLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !Sub arn:aws:sqs:${AWS::Region}:756157886151:user-management-yk-issue-certificate-stack-CertificateQueue
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/CertificateTemplates
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/CertificateRecipients
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/CertificateRecipients/index/eventID-email-index
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/BookingDetails/index/EventBookingIndex
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::tikto-orgnizer-${StageName}/*
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub arn:aws:s3:::tikto-orgnizer-${StageName}
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: !Sub arn:aws:ses:eu-west-1:${AWS::AccountId}:identity/*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-email-certificates:*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+
+  # Event Source Mapping for SQS to Lambda
+  EmailCertificatesSqsTrigger:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !Sub arn:aws:sqs:${AWS::Region}:756157886151:user-management-yk-issue-certificate-stack-CertificateQueue
+      FunctionName: !Ref EmailCertificatesLambda
+      Enabled: true
+      BatchSize: 10
+      MaximumBatchingWindowInSeconds: 5
+
+Outputs:
+  EmailCertificatesLambdaArn:
+    Description: ARN of the EmailCertificates Lambda function
+    Value: !GetAtt EmailCertificatesLambda.Arn

@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  ApiGatewayRestApiId:
+    Type: String
+    Description: The REST API ID for API Gateway deployment
+  ApiGatewayRootResourceId:
+    Type: String
+    Description: The Root Resource ID for API Gateway deployment
+  StageName:
+    Type: String
+    Description: The stage name (e.g., dev, prod)
+  CognitoAuthorizerId:
+    Type: String
+    Description: The CognitoAuthorizerId Resource ID for API Gateway Authorization
+  AllowedOrigin: # NEW: Parameter for flexible origins (e.g., 'http://localhost:3000' for dev)
+    Type: String
+    Default: http://localhost:3000
+    Description: Allowed CORS origin (e.g., 'http://localhost:3000' for dev)
+
+Resources:
+  # Lambda: Accept Request, Update DynamoDB, and Enqueue to SQS
+  IssueCertificateRequestLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: yk-issue-certificate
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      Environment:
+        Variables:
+          SQS_QUEUE_URL: !Ref CertificateQueue
+          DYNAMODB_TABLE_NAME: EventDetails
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
+      MemorySize: 256
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+              const allowedOrigin = process.env.ALLOWED_ORIGIN;
+              const corsHeaders = {
+                  "Access-Control-Allow-Origin": allowedOrigin,
+                  "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token",
+                  "Access-Control-Allow-Methods": "POST,OPTIONS",
+                  "Access-Control-Allow-Credentials": "true"
+              };
+
+              // TODO: Implement actual logic for DynamoDB update and SQS enqueue
+              console.log("Certificate request accepted (placeholder)");
+              // Placeholder: Simulate enqueuing and updating
+
+              return {
+                  statusCode: 202,
+                  headers: corsHeaders,
+                  body: JSON.stringify({ message: "Certificate request accepted and queued for processing" })
+              };
+          };
+      Role: !GetAtt IssueCertificateRequestLambdaExecutionRole.Arn
+      TracingConfig:
+        Mode: Active
+
+  # IAM Role for IssueCertificateRequestLambda
+  IssueCertificateRequestLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: IssueCertificateRequestLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/yk-issue-certificate:*
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt CertificateQueue.Arn
+
+  # Lambda Permission for API Gateway
+  IssueCertificateRequestLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref IssueCertificateRequestLambda
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*
+
+  # SQS Queue: Certificate Processing Queue
+  CertificateQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-CertificateQueue
+      VisibilityTimeout: 1800
+      DelaySeconds: 0
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt CertificateDLQ.Arn
+        maxReceiveCount: 3
+
+  # SQS Dead Letter Queue
+  CertificateDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-CertificateDLQ
+      MessageRetentionPeriod: 1209600
+
+  # API Gateway Resource
+  CertificateResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ParentId: !Ref ApiGatewayRootResourceId
+      PathPart: issue-certificates
+
+  # API Gateway Method: POST /issue-certificates
+  CertificatePostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref CertificateResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizerId
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IssueCertificateRequestLambda.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 202
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true # ENHANCED: Enable headers param
+            method.response.header.Access-Control-Allow-Methods: true # ENHANCED: Enable methods param
+            method.response.header.Access-Control-Allow-Credentials: true # NEW: For auth headers
+
+  # API Gateway Method: OPTIONS /issue-certificates
+  CertificateOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApiId
+      ResourceId: !Ref CertificateResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{ "statusCode": 200 }'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'" # ENHANCED: Use param (not '*'), wrapped in single quotes for static value
+              method.response.header.Access-Control-Allow-Methods: "'POST, OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Credentials: "'true'" # NEW: For auth
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Credentials: true # NEW: Enable credentials
+
+Outputs:
+  CertificateQueueUrl:
+    Description: URL of the SQS queue for certificate requests
+    Value: !Ref CertificateQueue
+  CertificateDLQArn:
+    Description: ARN of the Certificate Dead Letter Queue
+    Value: !GetAtt CertificateDLQ.Arn
+  CertificateApiUrl:
+    Description: URL of the Certificate Issuance API
+    Value: !Sub https://${ApiGatewayRestApiId}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/issue-certificates
+  IssueCertificateRequestLambdaArn:
+    Description: ARN of the IssueCertificateRequest Lambda function
+    Value: !GetAtt IssueCertificateRequestLambda.Arn

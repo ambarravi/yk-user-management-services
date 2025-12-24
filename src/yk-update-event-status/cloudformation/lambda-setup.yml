@@ -65,14 +65,16 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:UpdateItem
                 Resource:
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/EventDetails"
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/Organizer"
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:log-stream:*"
               - Effect: Allow
                 Action:
                   - xray:PutTraceSegments
@@ -83,7 +85,7 @@ Resources:
                   - sqs:SendMessage
                 Resource:
                   - !GetAtt EventPublishQueue.Arn
-                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:EventCancellationQueue
+                  - !Sub "arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:EventCancellationQueue"
 
   UpdateEventStatusLambdaPermission:
     Type: AWS::Lambda::Permission

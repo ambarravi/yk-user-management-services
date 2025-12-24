@@ -67,7 +67,61 @@ export const handler = async (event) => {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       );
 
-    if (isCustomCollege && profileData.associatedCollegeUniversity === "Yes") {
+    // New logic for AI-suggested colleges: If collegeSource is "ai_suggestions" and no collegeID, create new college
+    if (profileData.collegeSource === "ai_suggestions" && !collegeID) {
+      // Generate new UUID for CollegeID
+      collegeID = uuidv4();
+      collegeName = profileData.collegeName; // Use profileData.collegeName as CollegeName
+
+      // Generate Shortform: First letter of each word in college name
+      const shortform = collegeName
+        .split(/\s+/) // Split by whitespace
+        .map((word) => word.charAt(0)) // Take first letter of each word
+        .join("") // Join without separators
+        .toUpperCase(); // Convert to uppercase
+
+      const collegeInsertParams = {
+        TableName: COLLEGE_TABLE,
+        Item: {
+          CollegeID: { S: collegeID },
+          Name: { S: collegeName },
+          NameLower: { S: collegeName.toLowerCase() },
+          Shortform: { S: shortform },
+          ShortformLower: { S: shortform.toLowerCase() },
+          City: { S: profileData.cityName.toLowerCase() },
+          CityID: { S: profileData.cityID },
+          University: { S: collegeName }, // Default to same as Name
+          CreatedAt: { S: new Date().toISOString() },
+          CreatedBy: { S: username },
+        },
+      };
+
+      // Add Area and AreaLower if provided
+      if (profileData.area) {
+        collegeInsertParams.Item.Area = { S: profileData.area };
+        collegeInsertParams.Item.AreaLower = {
+          S: profileData.area.toLowerCase(),
+        };
+      }
+
+      // Add Verified if provided
+      if (profileData.verified !== undefined) {
+        collegeInsertParams.Item.Verified = {
+          BOOL:
+            profileData.verified === true || profileData.verified === "true",
+        };
+      }
+
+      console.log(
+        "Insert AI-suggested college params:",
+        JSON.stringify(collegeInsertParams)
+      );
+      await dynamoDBClient.send(new PutItemCommand(collegeInsertParams));
+      console.log("New AI-suggested college inserted successfully.");
+    } else if (
+      isCustomCollege &&
+      profileData.associatedCollegeUniversity === "Yes"
+    ) {
       // Custom college name provided, check if it exists in CollegeTable
       const collegeGetParams = {
         TableName: COLLEGE_TABLE,
@@ -96,7 +150,9 @@ export const handler = async (event) => {
           Item: {
             CollegeID: { S: collegeID },
             Name: { S: collegeName },
+            NameLower: { S: collegeName.toLowerCase() },
             Shortform: { S: shortform },
+            ShortformLower: { S: shortform.toLowerCase() },
             City: { S: profileData.cityName.toLowerCase() },
             CityID: { S: profileData.cityID },
             University: { S: collegeName }, // Default to same as Name
@@ -104,6 +160,23 @@ export const handler = async (event) => {
             CreatedBy: { S: username },
           },
         };
+
+        // Add Area and AreaLower if provided
+        if (profileData.area) {
+          collegeInsertParams.Item.Area = { S: profileData.area };
+          collegeInsertParams.Item.AreaLower = {
+            S: profileData.area.toLowerCase(),
+          };
+        }
+
+        // Add Verified if provided
+        if (profileData.verified !== undefined) {
+          collegeInsertParams.Item.Verified = {
+            BOOL:
+              profileData.verified === true || profileData.verified === "true",
+          };
+        }
+
         console.log(
           "Insert college params:",
           JSON.stringify(collegeInsertParams)
@@ -113,6 +186,43 @@ export const handler = async (event) => {
       } else {
         // College exists, get CollegeName from CollegeTable
         collegeName = collegeRecord.Item.Name?.S || profileData.collegeID;
+
+        // If relevant values received, update the existing college
+        let updateNeeded = false;
+        const updateExpressionParts = [];
+        const expressionAttributeValues = {};
+        const expressionAttributeNames = {};
+
+        if (profileData.area !== undefined) {
+          updateNeeded = true;
+          updateExpressionParts.push("Area = :area, AreaLower = :areaLower");
+          expressionAttributeValues[":area"] = { S: profileData.area };
+          expressionAttributeValues[":areaLower"] = {
+            S: profileData.area.toLowerCase(),
+          };
+        }
+
+        if (profileData.verified !== undefined) {
+          updateNeeded = true;
+          updateExpressionParts.push("Verified = :verified");
+          expressionAttributeValues[":verified"] = {
+            BOOL:
+              profileData.verified === true || profileData.verified === "true",
+          };
+        }
+
+        if (updateNeeded) {
+          const updateExpression = `SET ${updateExpressionParts.join(", ")}`;
+          const updateParams = {
+            TableName: COLLEGE_TABLE,
+            Key: { CollegeID: { S: collegeID } },
+            UpdateExpression: updateExpression,
+            ExpressionAttributeValues: expressionAttributeValues,
+          };
+          console.log("Update college params:", JSON.stringify(updateParams));
+          await dynamoDBClient.send(new UpdateItemCommand(updateParams));
+          console.log("Existing college updated successfully.");
+        }
       }
     } else if (collegeID && !isCustomCollege) {
       // Non-custom collegeID, fetch CollegeName from CollegeTable
@@ -126,6 +236,43 @@ export const handler = async (event) => {
         new GetItemCommand(collegeGetParams)
       );
       collegeName = collegeRecord.Item?.Name?.S || "";
+
+      // If relevant values received, update the existing college (for non-custom case as well)
+      let updateNeeded = false;
+      const updateExpressionParts = [];
+      const expressionAttributeValues = {};
+      const expressionAttributeNames = {};
+
+      if (profileData.area !== undefined) {
+        updateNeeded = true;
+        updateExpressionParts.push("Area = :area, AreaLower = :areaLower");
+        expressionAttributeValues[":area"] = { S: profileData.area };
+        expressionAttributeValues[":areaLower"] = {
+          S: profileData.area.toLowerCase(),
+        };
+      }
+
+      if (profileData.verified !== undefined) {
+        updateNeeded = true;
+        updateExpressionParts.push("Verified = :verified");
+        expressionAttributeValues[":verified"] = {
+          BOOL:
+            profileData.verified === true || profileData.verified === "true",
+        };
+      }
+
+      if (updateNeeded) {
+        const updateExpression = `SET ${updateExpressionParts.join(", ")}`;
+        const updateParams = {
+          TableName: COLLEGE_TABLE,
+          Key: { CollegeID: { S: collegeID } },
+          UpdateExpression: updateExpression,
+          ExpressionAttributeValues: expressionAttributeValues,
+        };
+        console.log("Update college params:", JSON.stringify(updateParams));
+        await dynamoDBClient.send(new UpdateItemCommand(updateParams));
+        console.log("Existing college updated successfully.");
+      }
     }
 
     // Fetch existing organizer record
