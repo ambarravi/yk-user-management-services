@@ -168,7 +168,7 @@ async function fetchTemplate(ddbClient, s3Client, bucket, templateId) {
 async function fetchLogo(ddbClient, orgID) {
   try {
     const orgParams = {
-      TableName: "Organizers",
+      TableName: "Organizer",
       Key: { OrganizerID: { S: orgID } },
     };
     const orgResult = await ddbClient.send(new GetItemCommand(orgParams));
