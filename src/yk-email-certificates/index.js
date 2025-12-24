@@ -520,16 +520,27 @@ async function processAttendee(
 
   // Check attendance in BookingDetails
   const bookingCheck = await checkAndGetBooking(ddbClient, eventId, email);
+
+  // Always allow if no booking (additional recipient)
   let isAdditionalRecipient = !bookingCheck.exists;
-  if (bookingCheck.exists && !bookingCheck.attended) {
+  if (isAdditionalRecipient) {
+    console.log(
+      `No booking found for ${email} in event ${eventId}, processing as additional recipient`
+    );
+  } else if (!bookingCheck.attended) {
+    // Force-allow for payload attendees by overriding as additional recipient
+    console.log(
+      `Attendance not marked for ${email} in event ${eventId}, but forcing as additional (override)`
+    );
+    isAdditionalRecipient = true;
+  }
+
+  // Proceed only if attended OR additional
+  if (!isAdditionalRecipient && !bookingCheck.attended) {
     console.log(
       `Attendance not marked for ${email} in event ${eventId}, skipping`
     );
     return false;
-  } else if (isAdditionalRecipient) {
-    console.log(
-      `No booking found for ${email} in event ${eventId}, processing as additional recipient`
-    );
   }
 
   // Generate certificate
