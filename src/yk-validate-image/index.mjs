@@ -269,7 +269,7 @@ export const handler = async (event) => {
         // Generate thumbnail
         try {
           // Get original image
-          const originalImage = await s3.send(
+          const originalImage = await s3Client.send(
             new GetObjectCommand({
               Bucket: bucket,
               Key: key,
@@ -290,7 +290,7 @@ export const handler = async (event) => {
             "event-images/thumbnails/"
           );
           thumbKey = thumbKey.replace(/\.[^/.]+$/, ".jpg"); // Force .jpg extension
-          await s3.send(
+          await s3Client.send(
             new PutObjectCommand({
               Bucket: bucket,
               Key: thumbKey,
@@ -352,7 +352,7 @@ export const handler = async (event) => {
       // Image failed moderation
       // Delete image from S3
       await retryOperation(() =>
-        s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
+        s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
       );
       console.log({
         requestId,
@@ -364,7 +364,7 @@ export const handler = async (event) => {
       let thumbKey = key.replace("event-images/", "event-images/thumbnails/");
       thumbKey = thumbKey.replace(/\.[^/.]+$/, ".jpg");
       try {
-        await s3.send(
+        await s3Client.send(
           new DeleteObjectCommand({ Bucket: bucket, Key: thumbKey })
         );
         console.log({
